@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { PostalCodesMap } from "./postal-codes-map"
-import { PostalCodesControls } from "./postal-codes-controls"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useMapState } from "@/lib/url-state/map-state"
 import type { MapData } from "@/lib/types/map-data"
@@ -56,14 +55,13 @@ export function PostalCodesView({ initialData, defaultGranularity }: PostalCodes
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 px-4 lg:px-6 @container/main:h-full h-full">
-      <div className="col-span-3 space-y-4">
-        <PostalCodesControls onSearch={handleSearch} />
-        
-        {searchResults.length > 0 && (
+    <div className="h-full relative">
+      {/* Search Results Panel - Only show when there are results */}
+      {searchResults.length > 0 && (
+        <div className="absolute top-4 right-4 z-10 w-64">
           <Card>
-            <CardHeader>
-              <CardTitle>Search Results</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Search Results</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -74,6 +72,7 @@ export function PostalCodesView({ initialData, defaultGranularity }: PostalCodes
                     onClick={() => {
                       // Handle result selection
                       console.log('Selected result:', result)
+                      setSearchResults([]) // Clear results after selection
                     }}
                   >
                     {result}
@@ -82,12 +81,11 @@ export function PostalCodesView({ initialData, defaultGranularity }: PostalCodes
               </div>
             </CardContent>
           </Card>
-        )}
+        </div>
+      )}
 
-        
-      </div>
-      
-      <div className="col-span-9">
+      {/* Map with integrated tools */}
+      <div className="h-full">
         <Card className="h-full">
           <CardHeader>
             <CardTitle>

@@ -13,6 +13,11 @@ interface MapInstance {
   setFilter: (layerId: string, filter: any[]) => void;
   remove: () => void;
   getCanvas: () => HTMLCanvasElement;
+  dragPan: { disable: () => void; enable: () => void };
+  dragRotate: { disable: () => void; enable: () => void };
+  scrollZoom: { disable: () => void; enable: () => void };
+  doubleClickZoom: { disable: () => void; enable: () => void };
+  touchZoomRotate: { disable: () => void; enable: () => void };
 }
 
 interface LassoSelectionProps {
@@ -33,15 +38,31 @@ export function useLassoSelection({
   const { addSelectedRegion, removeSelectedRegion } = useMapState()
   const isDrawing = useRef(false)
   const lassoPoints = useRef<[number, number][]>([])
-  const lassoSource = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!map || !isMapLoaded || !enabled) return
+    if (!map || !isMapLoaded) return
 
     const canvas = map.getCanvas()
     const ctx = canvas.getContext('2d')
 
     if (!ctx) return
+
+    // Disable map interactions when lasso mode is enabled
+    if (enabled) {
+      map.dragPan.disable()
+      map.dragRotate.disable()
+      map.scrollZoom.disable()
+      map.doubleClickZoom.disable()
+      map.touchZoomRotate.disable()
+    } else {
+      // Re-enable map interactions when lasso mode is disabled
+      map.dragPan.enable()
+      map.dragRotate.enable()
+      map.scrollZoom.enable()
+      map.doubleClickZoom.enable()
+      map.touchZoomRotate.enable()
+      return
+    }
 
     const handleMouseDown = (e: MouseEvent) => {
       if (!enabled) return
@@ -149,15 +170,28 @@ export function useLassoSelection({
       return inside
     }
 
-    // Add event listeners
+    // Add event listeners only when enabled
     canvas.addEventListener('mousedown', handleMouseDown)
     canvas.addEventListener('mousemove', handleMouseMove)
     canvas.addEventListener('mouseup', handleMouseUp)
 
     return () => {
+      // Cleanup event listeners
       canvas.removeEventListener('mousedown', handleMouseDown)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseup', handleMouseUp)
+      
+      // Re-enable map interactions on cleanup
+      map.dragPan.enable()
+      map.dragRotate.enable()
+      map.scrollZoom.enable()
+      map.doubleClickZoom.enable()
+      map.touchZoomRotate.enable()
+      
+      // Clear any remaining drawing
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
     }
   }, [map, isMapLoaded, data, granularity, enabled, addSelectedRegion, removeSelectedRegion])
 } 

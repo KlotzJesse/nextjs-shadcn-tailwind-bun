@@ -47,6 +47,8 @@
     "recharts": "^2.15.3",
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.1",
+    "terra-draw": "^1.8.0",
+    "terra-draw-maplibre-gl-adapter": "^1.1.1",
     "topojson-client": "^3.1.0",
     "vaul": "^1.1.2",
     "xlsx": "^0.18.5",

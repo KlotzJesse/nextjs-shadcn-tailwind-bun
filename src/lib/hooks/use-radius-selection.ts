@@ -2,12 +2,29 @@ import { useEffect, useRef } from "react"
 import type { MapData } from "@/lib/types/map-data"
 import { useMapState } from "@/lib/url-state/map-state"
 
+interface MapInstance {
+  on: (type: string, listener: (e: any) => void) => void;
+  off: (type: string, listener: (e: any) => void) => void;
+  addSource: (id: string, source: any) => void;
+  removeSource: (id: string) => void;
+  addLayer: (layer: any) => void;
+  removeLayer: (id: string) => void;
+  getSource: (id: string) => any;
+  setFilter: (layerId: string, filter: any[]) => void;
+  remove: () => void;
+  getCanvas: () => HTMLCanvasElement;
+  dragPan: { disable: () => void; enable: () => void };
+  dragRotate: { disable: () => void; enable: () => void };
+  scrollZoom: { disable: () => void; enable: () => void };
+  doubleClickZoom: { disable: () => void; enable: () => void };
+  touchZoomRotate: { disable: () => void; enable: () => void };
+}
+
 interface RadiusSelectionProps {
-  map: any
+  map: MapInstance | null
   isMapLoaded: boolean
   data: MapData
   granularity: string
-  onRadiusSelect?: (radius: number) => void
   enabled: boolean
 }
 
@@ -16,21 +33,37 @@ export function useRadiusSelection({
   isMapLoaded, 
   data, 
   granularity, 
-  onRadiusSelect, 
   enabled 
 }: RadiusSelectionProps) {
-  const { addSelectedRegion, radius, setRadius } = useMapState()
+  const { addSelectedRegion, removeSelectedRegion, radius, setRadius } = useMapState()
   const isDrawing = useRef(false)
   const centerPoint = useRef<[number, number] | null>(null)
-  const radiusCircle = useRef<string | null>(null)
+  const radiusRadius = useRef<number>(0)
 
   useEffect(() => {
-    if (!map || !isMapLoaded || !enabled) return
+    if (!map || !isMapLoaded) return
 
     const canvas = map.getCanvas()
     const ctx = canvas.getContext('2d')
 
     if (!ctx) return
+
+    // Disable map interactions when radius mode is enabled
+    if (enabled) {
+      map.dragPan.disable()
+      map.dragRotate.disable()
+      map.scrollZoom.disable()
+      map.doubleClickZoom.disable()
+      map.touchZoomRotate.disable()
+    } else {
+      // Re-enable map interactions when radius mode is disabled
+      map.dragPan.enable()
+      map.dragRotate.enable()
+      map.scrollZoom.enable()
+      map.doubleClickZoom.enable()
+      map.touchZoomRotate.enable()
+      return
+    }
 
     const handleMouseDown = (e: MouseEvent) => {
       if (!enabled) return
@@ -42,6 +75,7 @@ export function useRadiusSelection({
       const y = e.clientY - rect.top
       
       centerPoint.current = [x, y]
+      radiusRadius.current = 0
       
       // Start drawing
       ctx.beginPath()
@@ -93,11 +127,7 @@ export function useRadiusSelection({
       // Clear the drawing
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       centerPoint.current = null
-      
-      // Call callback if provided
-      if (onRadiusSelect) {
-        onRadiusSelect(radius)
-      }
+      radiusRadius.current = 0
     }
 
     const findFeaturesInRadius = (): string[] => {
@@ -105,7 +135,7 @@ export function useRadiusSelection({
       
       const selectedFeatures: string[] = []
       const [cx, cy] = centerPoint.current
-      const currentRadius = radius
+      const currentRadius = radiusRadius.current
       
       data.features.forEach((feature: any) => {
         // Check if feature centroid is within radius
@@ -135,15 +165,28 @@ export function useRadiusSelection({
       return null
     }
 
-    // Add event listeners
+    // Add event listeners only when enabled
     canvas.addEventListener('mousedown', handleMouseDown)
     canvas.addEventListener('mousemove', handleMouseMove)
     canvas.addEventListener('mouseup', handleMouseUp)
 
     return () => {
+      // Cleanup event listeners
       canvas.removeEventListener('mousedown', handleMouseDown)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseup', handleMouseUp)
+      
+      // Re-enable map interactions on cleanup
+      map.dragPan.enable()
+      map.dragRotate.enable()
+      map.scrollZoom.enable()
+      map.doubleClickZoom.enable()
+      map.touchZoomRotate.enable()
+      
+      // Clear any remaining drawing
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
     }
-  }, [map, isMapLoaded, data, granularity, enabled, radius, onRadiusSelect, addSelectedRegion, setRadius])
+  }, [map, isMapLoaded, data, granularity, enabled, radius, addSelectedRegion, removeSelectedRegion, setRadius])
 } 

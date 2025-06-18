@@ -2,9 +2,7 @@
 
 import { useState } from "react"
 import { StatesMap } from "./states-map"
-import { StatesControls } from "./states-controls"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { useMapState } from "@/lib/url-state/map-state"
 import type { MapData } from "@/lib/types/map-data"
 
@@ -31,14 +29,13 @@ export function StatesView({ data }: StatesViewProps) {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 px-4 lg:px-6 @container/main:h-full h-full">
-      <div className="col-span-3 space-y-4">
-        <StatesControls onSearch={handleSearch} />
-        
-        {searchResults.length > 0 && (
+    <div className="h-full relative">
+      {/* Search Results Panel - Only show when there are results */}
+      {searchResults.length > 0 && (
+        <div className="absolute top-4 right-4 z-10 w-64">
           <Card>
-            <CardHeader>
-              <CardTitle>Search Results</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Search Results</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -49,6 +46,7 @@ export function StatesView({ data }: StatesViewProps) {
                     onClick={() => {
                       // Handle result selection
                       console.log('Selected result:', result)
+                      setSearchResults([]) // Clear results after selection
                     }}
                   >
                     {result}
@@ -57,15 +55,12 @@ export function StatesView({ data }: StatesViewProps) {
               </div>
             </CardContent>
           </Card>
-        )}
-      </div>
+        </div>
+      )}
       
-      <div className="col-span-9">
-        <Card className="h-full gap-0 p-0">
-          <CardContent className="h-full p-0">
-            <StatesMap data={data} onSearch={handleSearch} />
-          </CardContent>
-        </Card>
+      {/* Map with integrated tools */}
+      <div className="h-full">
+        <StatesMap data={data} onSearch={handleSearch} />
       </div>
     </div>
   )
