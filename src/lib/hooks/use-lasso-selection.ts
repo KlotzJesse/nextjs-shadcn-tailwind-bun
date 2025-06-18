@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
-import type { MapData } from "@/app/map/[granularity]/map-data"
-import { useMapStore } from "@/lib/store/map-store"
+import type { MapData } from "@/lib/types/map-data"
+import { useMapState } from "@/lib/url-state/map-state"
 
 interface MapInstance {
   on: (type: string, listener: (e: any) => void) => void;
@@ -23,124 +23,141 @@ interface LassoSelectionProps {
   enabled: boolean
 }
 
-export function useLassoSelection({ map, isMapLoaded, data, granularity, enabled }: LassoSelectionProps) {
-  const pointsRef = useRef<number[][]>([])
-  const isDrawingRef = useRef(false)
-  const { setSelectedRegions } = useMapStore()
+export function useLassoSelection({ 
+  map, 
+  isMapLoaded, 
+  data, 
+  granularity, 
+  enabled 
+}: LassoSelectionProps) {
+  const { addSelectedRegion, removeSelectedRegion } = useMapState()
+  const isDrawing = useRef(false)
+  const lassoPoints = useRef<[number, number][]>([])
+  const lassoSource = useRef<string | null>(null)
 
   useEffect(() => {
     if (!map || !isMapLoaded || !enabled) return
 
-    // Create source and layer for lasso polygon if they don't exist
-    if (!map.getSource('lasso-source')) {
-      map.addSource('lasso-source', {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[]]
-          }
-        }
-      })
+    const canvas = map.getCanvas()
+    const ctx = canvas.getContext('2d')
 
-      map.addLayer({
-        id: 'lasso-polygon',
-        type: 'fill',
-        source: 'lasso-source',
-        paint: {
-          'fill-color': '#088',
-          'fill-opacity': 0.3,
-          'fill-outline-color': '#000'
-        }
-      })
-    }
+    if (!ctx) return
 
-    const handleMouseDown = (e: any) => {
+    const handleMouseDown = (e: MouseEvent) => {
       if (!enabled) return
-      isDrawingRef.current = true
-      pointsRef.current = [[e.lngLat.lng, e.lngLat.lat]]
       
-      // Update polygon immediately to show first point
-      map.getSource('lasso-source')?.setData({
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'Polygon',
-          coordinates: [pointsRef.current]
-        }
-      })
+      isDrawing.current = true
+      lassoPoints.current = []
+      
+      const rect = canvas.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      
+      lassoPoints.current.push([x, y])
+      
+      // Start drawing
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.strokeStyle = '#2563EB'
+      ctx.lineWidth = 2
+      ctx.setLineDash([5, 5])
     }
 
-    const handleMouseMove = (e: any) => {
-      if (!isDrawingRef.current || !enabled) return
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDrawing.current || !enabled) return
       
-      const newPoint = [e.lngLat.lng, e.lngLat.lat]
-      pointsRef.current.push(newPoint)
-
-      // Only update polygon if we have at least 3 points
-      if (pointsRef.current.length >= 3) {
-        // Close the polygon by adding the first point at the end
-        const closedPoints = [...pointsRef.current, pointsRef.current[0]]
-        
-        map.getSource('lasso-source')?.setData({
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'Polygon',
-            coordinates: [closedPoints]
-          }
-        })
-      }
+      const rect = canvas.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      
+      lassoPoints.current.push([x, y])
+      
+      // Continue drawing
+      ctx.lineTo(x, y)
+      ctx.stroke()
     }
 
     const handleMouseUp = () => {
-      if (!isDrawingRef.current || !enabled) return
-      isDrawingRef.current = false
-
-      // Only process selection if we have at least 3 points
-      if (pointsRef.current.length >= 3) {
-        // Close the polygon
-        const closedPoints = [...pointsRef.current, pointsRef.current[0]]
+      if (!isDrawing.current || !enabled) return
+      
+      isDrawing.current = false
+      
+      // Close the path
+      if (lassoPoints.current.length > 2) {
+        ctx.closePath()
+        ctx.stroke()
         
-        // Find intersecting features
-        const selectedIds = data.features
-          .filter(feature => {
-            // TODO: Implement proper polygon intersection check
-            return true
-          })
-          .map(feature => feature.properties.id)
-
-        // Clear the lasso
-        pointsRef.current = []
-        map.getSource('lasso-source')?.setData({
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[]]
-          }
+        // Find features within the lasso area
+        const selectedFeatures = findFeaturesInLasso()
+        
+        // Update selected regions
+        selectedFeatures.forEach(featureId => {
+          addSelectedRegion(featureId)
         })
       }
+      
+      // Clear the drawing
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      lassoPoints.current = []
+    }
+
+    const findFeaturesInLasso = (): string[] => {
+      // Simple implementation - in a real app, you'd want more sophisticated point-in-polygon testing
+      const selectedFeatures: string[] = []
+      
+      data.features.forEach((feature: any) => {
+        // Check if feature centroid is within lasso area
+        const centroid = getFeatureCentroid(feature)
+        if (centroid && isPointInLasso(centroid)) {
+          const featureId = feature.properties?.id || feature.properties?.PLZ || feature.properties?.plz
+          if (featureId) {
+            selectedFeatures.push(featureId)
+          }
+        }
+      })
+      
+      return selectedFeatures
+    }
+
+    const getFeatureCentroid = (feature: any): [number, number] | null => {
+      // Simple centroid calculation - in a real app, use a proper geometry library
+      if (feature.geometry.type === 'Polygon') {
+        const coords = feature.geometry.coordinates[0]
+        const sumX = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0)
+        const sumY = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0)
+        return [sumX / coords.length, sumY / coords.length]
+      }
+      return null
+    }
+
+    const isPointInLasso = (point: [number, number]): boolean => {
+      // Simple point-in-polygon test using ray casting
+      if (lassoPoints.current.length < 3) return false
+      
+      let inside = false
+      const [x, y] = point
+      
+      for (let i = 0, j = lassoPoints.current.length - 1; i < lassoPoints.current.length; j = i++) {
+        const [xi, yi] = lassoPoints.current[i]
+        const [xj, yj] = lassoPoints.current[j]
+        
+        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+          inside = !inside
+        }
+      }
+      
+      return inside
     }
 
     // Add event listeners
-    map.on('mousedown', handleMouseDown)
-    map.on('mousemove', handleMouseMove)
-    map.on('mouseup', handleMouseUp)
+    canvas.addEventListener('mousedown', handleMouseDown)
+    canvas.addEventListener('mousemove', handleMouseMove)
+    canvas.addEventListener('mouseup', handleMouseUp)
 
     return () => {
-      // Remove event listeners
-      map.off('mousedown', handleMouseDown)
-      map.off('mousemove', handleMouseMove)
-      map.off('mouseup', handleMouseUp)
-
-      // Clean up source and layer
-      if (map.getSource('lasso-source')) {
-        map.removeLayer('lasso-polygon')
-        map.removeSource('lasso-source')
-      }
+      canvas.removeEventListener('mousedown', handleMouseDown)
+      canvas.removeEventListener('mousemove', handleMouseMove)
+      canvas.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [map, isMapLoaded, data, granularity, enabled])
+  }, [map, isMapLoaded, data, granularity, enabled, addSelectedRegion, removeSelectedRegion])
 } 

@@ -1,12 +1,11 @@
 import { useEffect } from "react"
-import { Map as MapLibreMap } from "maplibre-gl"
-import { MapData } from "@/app/map/[granularity]/map-data"
-import { useMapStore } from "@/lib/store/map-store"
+import type { MapData } from "@/lib/types/map-data"
+import { useMapState } from "@/lib/url-state/map-state"
 import { useLassoSelection } from "./use-lasso-selection"
 import { useRadiusSelection } from "./use-radius-selection"
 
 interface DrawToolsProps {
-  map: MapLibreMap | null
+  map: any
   isMapLoaded: boolean
   data: MapData
   granularity: string
@@ -15,45 +14,67 @@ interface DrawToolsProps {
   onRadiusSelect: (radius: number) => void
 }
 
-export function useMapDrawTools({
-  map,
-  isMapLoaded,
-  data,
-  granularity,
-  drawMode,
-  onSearch,
-  onRadiusSelect,
+export function useMapDrawTools({ 
+  map, 
+  isMapLoaded, 
+  data, 
+  granularity, 
+  drawMode, 
+  onSearch, 
+  onRadiusSelect 
 }: DrawToolsProps) {
-  const { setSelectedRegions } = useMapStore()
+  const { selectionMode } = useMapState()
 
-  // Initialize lasso selection
+  // Use lasso selection when in lasso mode
   useLassoSelection({
     map,
     isMapLoaded,
     data,
     granularity,
+    enabled: selectionMode === 'lasso' && drawMode === 'lasso'
   })
 
-  // Initialize radius selection
+  // Use radius selection when in radius mode
   useRadiusSelection({
     map,
     isMapLoaded,
     data,
     granularity,
     onRadiusSelect,
+    enabled: selectionMode === 'radius' && drawMode === 'radius'
   })
 
-  // Handle draw mode changes
+  // Handle mode changes
   useEffect(() => {
     if (!map || !isMapLoaded) return
 
-    // Update cursor based on draw mode
-    if (drawMode === 'lasso') {
-      map.getCanvas().style.cursor = 'crosshair'
-    } else if (drawMode === 'radius') {
-      map.getCanvas().style.cursor = 'crosshair'
+    // Disable map interactions when in draw mode
+    if (drawMode) {
+      map.dragPan.disable()
+      map.dragRotate.disable()
+      map.scrollZoom.disable()
+      map.keyboard.disable()
+      map.doubleClickZoom.disable()
+      map.touchZoomRotate.disable()
     } else {
-      map.getCanvas().style.cursor = 'default'
+      map.dragPan.enable()
+      map.dragRotate.enable()
+      map.scrollZoom.enable()
+      map.keyboard.enable()
+      map.doubleClickZoom.enable()
+      map.touchZoomRotate.enable()
+    }
+
+    return () => {
+      // Re-enable interactions on cleanup
+      if (map) {
+        map.dragPan.enable()
+        map.dragRotate.enable()
+        map.scrollZoom.enable()
+        map.keyboard.enable()
+        map.doubleClickZoom.enable()
+        map.touchZoomRotate.enable()
+      }
     }
   }, [map, isMapLoaded, drawMode])
 } 

@@ -1,4 +1,13 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KRAUSS Territory Management
+
+A professional territory management and visualization platform for Germany, built with Next.js, TypeScript, and modern UI components.
+
+## Features
+
+- Interactive territory mapping with multiple granularity levels
+- Professional territory management tools
+- Modern, responsive UI built with Shadcn UI and Tailwind CSS
+- Real-time territory visualization and analysis
 
 ## Getting Started
 

@@ -1,15 +1,14 @@
 import { useEffect } from "react"
-import { Map as MapLibreMap } from "maplibre-gl"
-import { useMapStore } from "@/lib/store/map-store"
+import { useMapState } from "@/lib/url-state/map-state"
 
 interface MapStyleProps {
-  map: MapLibreMap | null
+  map: any
   isMapLoaded: boolean
   granularity: string
 }
 
 export function useMapStyle({ map, isMapLoaded, granularity }: MapStyleProps) {
-  const { selectedRegions } = useMapStore()
+  const { selectedRegions } = useMapState()
 
   useEffect(() => {
     if (!map || !isMapLoaded) return
@@ -63,5 +62,5 @@ export function useMapStyle({ map, isMapLoaded, granularity }: MapStyleProps) {
     }
 
     applyStyles()
-  }, [map, isMapLoaded, granularity])
+  }, [map, isMapLoaded, granularity, selectedRegions])
 } 

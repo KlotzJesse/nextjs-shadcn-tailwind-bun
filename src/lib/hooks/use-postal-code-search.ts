@@ -1,58 +1,67 @@
-import { Map as MapLibreMap } from "maplibre-gl"
-import { MapData } from "@/app/map/[granularity]/map-data"
-import * as turf from "@turf/turf"
+import { useState, useCallback } from "react"
+import type { MapData } from "@/lib/types/map-data"
+import { useMapState } from "@/lib/url-state/map-state"
 
 interface PostalCodeSearchProps {
-  map: MapLibreMap | null
-  isMapLoaded: boolean
   data: MapData
-  granularity: string
 }
 
-export function usePostalCodeSearch({
-  map,
-  isMapLoaded,
-  data,
-  granularity,
-}: PostalCodeSearchProps) {
-  const searchPostalCode = (plz: string) => {
-    if (!map || !isMapLoaded || !data) return
+export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
+  const [searchResults, setSearchResults] = useState<string[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const { addSelectedRegion } = useMapState()
 
-    // Find the feature with the matching postal code
-    const feature = data.features.find((f) => {
-      const props = f.properties
-      return (
-        props.plz === plz ||
-        props.PLZ99 === plz ||
-        props.PLZ === plz ||
-        props.plz99 === plz ||
-        props.code === plz ||
-        props.id === plz
-      )
-    })
-
-    if (feature) {
-      // Calculate the center of the feature
-      const center = turf.center(feature as any)
-      const bbox = turf.bbox(feature as any)
-      const bboxPolygon = turf.bboxPolygon(bbox)
-
-      // Fly to the feature
-      map.fitBounds(
-        [
-          [bbox[0], bbox[1]], // Southwest coordinates
-          [bbox[2], bbox[3]], // Northeast coordinates
-        ],
-        {
-          padding: 50,
-          duration: 1000,
-        }
-      )
-
-      // Highlight the feature
-      map.setFilter(`${granularity}-hover`, ["==", "id", feature.properties.id])
+  const searchPostalCodes = useCallback((query: string) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      return
     }
-  }
 
-  return { searchPostalCode }
+    setIsSearching(true)
+
+    try {
+      // Simple search implementation - in a real app, you'd want more sophisticated search
+      const results = data.features
+        .filter(feature => {
+          const searchTerm = query.toLowerCase()
+          const id = feature.properties?.id?.toLowerCase() || ''
+          const plz = feature.properties?.PLZ?.toLowerCase() || ''
+          const plzAlt = feature.properties?.plz?.toLowerCase() || ''
+          const name = feature.properties?.name?.toLowerCase() || ''
+          
+          return id.includes(searchTerm) || 
+                 plz.includes(searchTerm) || 
+                 plzAlt.includes(searchTerm) ||
+                 name.includes(searchTerm)
+        })
+        .map(feature => feature.properties?.id || feature.properties?.PLZ || feature.properties?.plz || '')
+        .filter(Boolean)
+        .slice(0, 10) // Limit to 10 results
+
+      setSearchResults(results)
+    } catch (error) {
+      console.error('Error searching postal codes:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }, [data])
+
+  const selectPostalCode = useCallback((postalCode: string) => {
+    addSelectedRegion(postalCode)
+    setSearchResults([]) // Clear search results after selection
+  }, [addSelectedRegion])
+
+  const clearSearch = useCallback(() => {
+    setSearchResults([])
+    setIsSearching(false)
+  }, [])
+
+  return {
+    searchResults,
+    isSearching,
+    searchPostalCodes,
+    selectPostalCode,
+    clearSearch
+  }
 } 
