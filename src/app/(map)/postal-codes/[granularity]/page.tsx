@@ -60,7 +60,7 @@ export default async function PostalCodesPage({ params }: PostalCodesPageProps) 
   }
 
   return (
-    <div className="h-full">
+    <div className="h-full px-4 lg:px-6">
       <Suspense fallback={<PostalCodesLoading />}>
         <PostalCodesView initialData={postalCodesData} defaultGranularity={granularity} />
       </Suspense>

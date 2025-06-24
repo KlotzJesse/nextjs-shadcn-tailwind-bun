@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useRef } from "react"
 import { useMapState } from "@/lib/url-state/map-state"
 import type { MapData } from "@/lib/types/map-data"
 
@@ -12,6 +12,11 @@ interface CursorSelectionProps {
 
 export function useCursorSelection({ map, isMapLoaded, data, layerId, enabled }: CursorSelectionProps) {
   const { selectedRegions, addSelectedRegion, removeSelectedRegion } = useMapState()
+
+  // Track last hovered region to avoid redundant setFilter calls
+  const lastRegionIdRef = useRef<string | null>(null)
+  const throttleTimeout = useRef<NodeJS.Timeout | null>(null)
+  const pendingEvent = useRef<any>(null)
 
   // Click handler for selecting/deselecting regions
   const handleClick = useCallback((e: any) => {
@@ -27,29 +32,50 @@ export function useCursorSelection({ map, isMapLoaded, data, layerId, enabled }:
     }
   }, [map, enabled, selectedRegions, addSelectedRegion, removeSelectedRegion])
 
-  // Hover handler for cursor feedback
-  const handleMouseMove = useCallback((e: any) => {
+  // Throttled hover handler
+  const processHover = useCallback((e: any) => {
     if (!map || !enabled) return
     const hoverLayerId = `${layerId}-hover`
     if (e.features && e.features.length > 0) {
       const feature = e.features[0]
       const regionId = feature.properties?.id
-      if (regionId) {
+      if (regionId && lastRegionIdRef.current !== regionId) {
         map.setFilter(hoverLayerId, ['==', 'id', regionId])
         map.setLayoutProperty(hoverLayerId, 'visibility', 'visible')
         map.getCanvas().style.cursor = 'pointer'
+        lastRegionIdRef.current = regionId
       }
     } else {
-      map.setLayoutProperty(hoverLayerId, 'visibility', 'none')
-      map.getCanvas().style.cursor = ''
+      if (lastRegionIdRef.current !== null) {
+        map.setLayoutProperty(hoverLayerId, 'visibility', 'none')
+        map.getCanvas().style.cursor = ''
+        lastRegionIdRef.current = null
+      }
     }
   }, [map, enabled, layerId])
+
+  // Throttle wrapper
+  const handleMouseMove = useCallback((e: any) => {
+    if (throttleTimeout.current) {
+      pendingEvent.current = e
+      return
+    }
+    processHover(e)
+    throttleTimeout.current = setTimeout(() => {
+      throttleTimeout.current = null
+      if (pendingEvent.current) {
+        processHover(pendingEvent.current)
+        pendingEvent.current = null
+      }
+    }, 32) // ~30fps
+  }, [processHover])
 
   const handleMouseLeave = useCallback(() => {
     if (!map || !enabled) return
     const hoverLayerId = `${layerId}-hover`
     map.getCanvas().style.cursor = ''
     map.setLayoutProperty(hoverLayerId, 'visibility', 'none')
+    lastRegionIdRef.current = null
   }, [map, enabled, layerId])
 
   useEffect(() => {
@@ -64,6 +90,12 @@ export function useCursorSelection({ map, isMapLoaded, data, layerId, enabled }:
         map.off('mousemove', mainLayerId, handleMouseMove)
         map.off('mouseleave', mainLayerId, handleMouseLeave)
       }
+      if (throttleTimeout.current) {
+        clearTimeout(throttleTimeout.current)
+        throttleTimeout.current = null
+      }
+      pendingEvent.current = null
+      lastRegionIdRef.current = null
     }
   }, [map, isMapLoaded, enabled, layerId, handleClick, handleMouseMove, handleMouseLeave])
 } 

@@ -7,6 +7,10 @@ import { useMapState } from "@/lib/url-state/map-state"
 import type { MapData } from "@/lib/types/map-data"
 import { useTerraDraw, TerraDrawMode } from "@/lib/hooks/use-terradraw"
 import { DrawingTools } from "./drawing-tools"
+import type { Feature, FeatureCollection, Polygon, MultiPolygon, GeoJsonProperties } from 'geojson'
+import centroid from '@turf/centroid'
+import area from '@turf/area'
+import { point } from '@turf/helpers'
 
 interface BaseMapProps {
   data: MapData
@@ -14,13 +18,19 @@ interface BaseMapProps {
   onSearch?: (query: string) => void
   center?: [number, number]
   zoom?: number
+  statesData?: MapData | null
+  granularity?: string
+  onGranularityChange?: (granularity: string) => void
 }
 
 export function BaseMap({ 
   data, 
   layerId, 
   center = [10.4515, 51.1657], 
-  zoom = 5 
+  zoom = 5,
+  statesData,
+  granularity,
+  onGranularityChange
 }: BaseMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<any>(null)
@@ -30,6 +40,12 @@ export function BaseMap({
   const [currentDrawingMode, setCurrentDrawingMode] = useState<TerraDrawMode | null>(null)
   const [isDrawingToolsVisible, setIsDrawingToolsVisible] = useState(true)
   const { selectedRegions, addSelectedRegion, removeSelectedRegion, selectionMode, setSelectedRegions } = useMapState()
+
+  // Track hovered regionId for hover source
+  const hoveredRegionIdRef = useRef<string | null>(null)
+  // Throttle timer for hover
+  const hoverThrottleTimeout = useRef<NodeJS.Timeout | null>(null)
+  const pendingHoverEvent = useRef<any>(null)
 
   // Helper functions for feature selection
   const getFeatureCentroid = useCallback((feature: any): [number, number] | null => {
@@ -441,7 +457,7 @@ export function BaseMap({
   const terraDrawApi = useTerraDraw({
     map: map.current,
     isEnabled: currentDrawingMode !== null && currentDrawingMode !== 'cursor' && isMapLoaded && styleLoaded,
-    mode: currentDrawingMode !== 'cursor' ? currentDrawingMode : null,
+    mode: currentDrawingMode !== null && currentDrawingMode !== 'cursor' ? currentDrawingMode : null,
     onSelectionChange: handleTerraDrawSelection,
   })
   terraDrawRef.current = terraDrawApi
@@ -502,86 +518,280 @@ export function BaseMap({
 
     const sourceId = `${layerId}-source`
     const mainLayerId = `${layerId}-layer`
-    const hoverLayerId = `${layerId}-hover`
-    const selectedLayerId = `${layerId}-selected`
+    const hoverSourceId = `${layerId}-hover-source`
+    const hoverLayerId = `${layerId}-hover-layer`
+    const selectedSourceId = `${layerId}-selected-source`
+    const selectedLayerId = `${layerId}-selected-layer`
+    const stateSourceId = 'state-boundaries-source'
+    const stateLayerId = 'state-boundaries-layer'
 
-    // Check if source already exists
-    const existingSource = map.current.getSource(sourceId)
-    
-    if (existingSource) {
-      // Update existing source data
-      existingSource.setData(data)
+    // --- Robust source creation ---
+    // Always create all sources first
+    if (!map.current.getSource(sourceId)) {
+      map.current.addSource(sourceId, {
+        type: 'geojson',
+        data: data
+      })
     } else {
-      // Create new source and layers
-    map.current.addSource(sourceId, {
-      type: 'geojson',
-      data: data
-    })
-
-    // Add main layer
-    map.current.addLayer({
-        id: mainLayerId,
-      type: 'fill',
-      source: sourceId,
-      paint: {
-          'fill-color': '#627D98',
-        'fill-opacity': 0.4,
-          'fill-outline-color': '#102A43'
+      map.current.getSource(sourceId).setData(data)
+    }
+    if (!map.current.getSource(selectedSourceId)) {
+      map.current.addSource(selectedSourceId, {
+        type: 'geojson',
+        data: emptyFeatureCollection()
+      })
+    }
+    if (!map.current.getSource(hoverSourceId)) {
+      map.current.addSource(hoverSourceId, {
+        type: 'geojson',
+        data: emptyFeatureCollection()
+      })
+    }
+    const labelSourceId = `${layerId}-label-points`
+    if (!map.current.getSource(labelSourceId)) {
+      map.current.addSource(labelSourceId, {
+        type: 'geojson',
+        data: makeLabelPoints(data as FeatureCollection<Polygon | MultiPolygon>, 'PLZ')
+      })
+    } else {
+      map.current.getSource(labelSourceId).setData(makeLabelPoints(data as FeatureCollection<Polygon | MultiPolygon>, 'PLZ'))
+    }
+    if (statesData) {
+      if (!map.current.getSource(stateSourceId)) {
+        map.current.addSource(stateSourceId, {
+          type: 'geojson',
+          data: statesData
+        })
+      } else {
+        map.current.getSource(stateSourceId).setData(statesData)
       }
-    })
+      if (!map.current.getSource('state-boundaries-label-points')) {
+        map.current.addSource('state-boundaries-label-points', {
+          type: 'geojson',
+          data: makeLabelPoints(statesData as FeatureCollection<Polygon | MultiPolygon>, 'name')
+        })
+      } else {
+        map.current.getSource('state-boundaries-label-points').setData(makeLabelPoints(statesData as FeatureCollection<Polygon | MultiPolygon>, 'name'))
+      }
+    }
 
-      // Add hover layer
-    map.current.addLayer({
-        id: hoverLayerId,
-      type: 'fill',
-      source: sourceId,
-      paint: {
+    // --- Robust layer creation ---
+    // Helper to add a layer with beforeId if it exists
+    function safeAddLayer(layer: any, beforeId?: string) {
+      try {
+        if (beforeId && map.current.getLayer(beforeId)) {
+          map.current.addLayer(layer, beforeId)
+        } else {
+          map.current.addLayer(layer)
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Layer add failed:', layer.id, e)
+      }
+    }
+
+    // 1. Postal code fill (bottom)
+    if (!map.current.getLayer(mainLayerId)) {
+      safeAddLayer({
+        id: mainLayerId,
+        type: 'fill',
+        source: sourceId,
+        paint: {
           'fill-color': '#627D98',
-          'fill-opacity': 0.6,
+          'fill-opacity': 0.35,
           'fill-outline-color': '#102A43'
+        }
+      }, undefined)
+    }
+    // 2. State boundaries line (above fill)
+    if (statesData && !map.current.getLayer(stateLayerId)) {
+      safeAddLayer({
+        id: stateLayerId,
+        type: 'line',
+        source: stateSourceId,
+        paint: {
+          'line-color': [
+            'match',
+            ['get', 'name'],
+            'Baden-Württemberg', '#e57373',
+            'Bayern', '#64b5f6',
+            'Berlin', '#81c784',
+            'Brandenburg', '#ffd54f',
+            'Bremen', '#ba68c8',
+            'Hamburg', '#4dd0e1',
+            'Hessen', '#ffb74d',
+            'Mecklenburg-Vorpommern', '#a1887f',
+            'Niedersachsen', '#90a4ae',
+            'Nordrhein-Westfalen', '#f06292',
+            'Rheinland-Pfalz', '#9575cd',
+            'Saarland', '#4caf50',
+            'Sachsen', '#fbc02d',
+            'Sachsen-Anhalt', '#388e3c',
+            'Schleswig-Holstein', '#0288d1',
+            'Thüringen', '#d84315',
+            '#222' // default
+          ],
+          'line-width': 2,
+          'line-opacity': 0.8,
+          'line-dasharray': [6, 3]
         },
         layout: {
-          visibility: 'none'
+          'line-cap': 'round',
+          'line-join': 'round'
         }
-    })
-
-    // Add selected regions layer
-    map.current.addLayer({
-        id: selectedLayerId,
-      type: 'fill',
-      source: sourceId,
-      paint: {
-          'fill-color': '#2563EB',
-          'fill-opacity': 0.8,
-          'fill-outline-color': '#1D4ED8'
-      },
-      filter: ['in', 'id', ...selectedRegions]
-    })
-
-      setLayersLoaded(true)
+      }, mainLayerId)
     }
+    // 3. Postal code border (above state boundaries line)
+    if (!map.current.getLayer(`${layerId}-border`)) {
+      safeAddLayer({
+        id: `${layerId}-border`,
+        type: 'line',
+        source: sourceId,
+        paint: {
+          'line-color': '#2563EB',
+          'line-width': 0.7,
+          'line-opacity': 0.3
+        }
+      }, statesData ? stateLayerId : mainLayerId)
+    }
+    // 4. Selected postal code fill (above all static fills/lines)
+    if (!map.current.getLayer(selectedLayerId)) {
+      safeAddLayer({
+        id: selectedLayerId,
+        type: 'fill',
+        source: selectedSourceId,
+        paint: {
+          'fill-color': '#2563EB',
+          'fill-opacity': 0.5,
+          'fill-outline-color': '#1D4ED8'
+        }
+      }, `${layerId}-border`)
+    }
+    // 5. Hover line (above all static lines/fills)
+    if (!map.current.getLayer(hoverLayerId)) {
+      safeAddLayer({
+        id: hoverLayerId,
+        type: 'line',
+        source: hoverSourceId,
+        paint: {
+          'line-color': '#2563EB',
+          'line-width': 3,
+        },
+        layout: { visibility: 'none' }
+      }, selectedLayerId)
+    }
+    // 6. State label (above all lines/fills)
+    if (statesData && !map.current.getLayer('state-boundaries-label')) {
+      safeAddLayer({
+        id: 'state-boundaries-label',
+        type: 'symbol',
+        source: 'state-boundaries-label-points',
+        layout: {
+          'text-field': ['coalesce', ['get', 'name'], ['get', 'id'], ''],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': 9,
+          'text-anchor': 'center',
+          'text-allow-overlap': false
+        },
+        paint: {
+          'text-color': '#222',
+          'text-halo-color': '#fff',
+          'text-halo-width': 2.5
+        }
+      }, hoverLayerId)
+    }
+    // 7. Postal code label (above all lines/fills but below state label)
+    if (!map.current.getLayer(`${layerId}-label`)) {
+      safeAddLayer({
+        id: `${layerId}-label`,
+        type: 'symbol',
+        source: labelSourceId,
+        layout: {
+          'text-field': ['coalesce', ['get', 'PLZ'], ['get', 'plz'], ['get', 'id'], ''],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': 9,
+          'text-anchor': 'center',
+          'text-allow-overlap': false
+        },
+        paint: {
+          'text-color': '#222',
+          'text-halo-color': '#fff',
+          'text-halo-width': 2
+        }
+      }, statesData ? 'state-boundaries-label' : hoverLayerId)
+    }
+    setLayersLoaded(true)
+  }, [data, layerId, isMapLoaded, styleLoaded, statesData])
 
-  }, [data, layerId, isMapLoaded, styleLoaded])
-
-  // Update selected regions filter only after layers are loaded
+  // --- Update selected features source when selection changes ---
   useEffect(() => {
     if (!map.current || !layersLoaded) return
-    
-    const selectedLayerId = `${layerId}-selected`
-    const layerExists = map.current.getLayer(selectedLayerId)
-    
-    if (layerExists) {
-      map.current.setFilter(selectedLayerId, ['in', 'id', ...selectedRegions])
+    const selectedSourceId = `${layerId}-selected-source`
+    const src = map.current.getSource(selectedSourceId)
+    if (src) {
+      src.setData(featureCollectionFromIds(data, selectedRegions))
     }
-  }, [selectedRegions, layerId, layersLoaded])
+  }, [selectedRegions, data, layerId, layersLoaded])
 
-  // Stable click handler for cursor mode
+  // --- Hover handlers for cursor mode ---
+  const processHover = useCallback((e: any) => {
+    if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor') return
+    const hoverSourceId = `${layerId}-hover-source`
+    const hoverLayerId = `${layerId}-hover-layer`
+    if (e.features && e.features.length > 0) {
+      const feature = e.features[0]
+      const regionId = feature.properties?.id
+      if (regionId && hoveredRegionIdRef.current !== regionId) {
+        // Set hover source to just this feature
+        map.current.getSource(hoverSourceId).setData({
+          type: 'FeatureCollection',
+          features: [feature]
+        })
+        map.current.setLayoutProperty(hoverLayerId, 'visibility', 'visible')
+        map.current.getCanvas().style.cursor = 'pointer'
+        hoveredRegionIdRef.current = regionId
+      }
+    } else {
+      if (hoveredRegionIdRef.current !== null) {
+        map.current.getSource(hoverSourceId).setData(emptyFeatureCollection())
+        map.current.setLayoutProperty(hoverLayerId, 'visibility', 'none')
+        map.current.getCanvas().style.cursor = ''
+        hoveredRegionIdRef.current = null
+      }
+    }
+  }, [layerId, layersLoaded, currentDrawingMode])
+
+  // Throttle wrapper for mousemove
+  const handleMouseMove = useCallback((e: any) => {
+    if (hoverThrottleTimeout.current) {
+      pendingHoverEvent.current = e
+      return
+    }
+    processHover(e)
+    hoverThrottleTimeout.current = setTimeout(() => {
+      hoverThrottleTimeout.current = null
+      if (pendingHoverEvent.current) {
+        processHover(pendingHoverEvent.current)
+        pendingHoverEvent.current = null
+      }
+    }, 32)
+  }, [processHover])
+
+  const handleMouseLeave = useCallback(() => {
+    if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor') return
+    const hoverSourceId = `${layerId}-hover-source`
+    const hoverLayerId = `${layerId}-hover-layer`
+    map.current.getSource(hoverSourceId).setData(emptyFeatureCollection())
+    map.current.setLayoutProperty(hoverLayerId, 'visibility', 'none')
+    map.current.getCanvas().style.cursor = ''
+    hoveredRegionIdRef.current = null
+  }, [layerId, layersLoaded, currentDrawingMode])
+
+  // --- Click handler for cursor mode (selection) ---
   const handleClick = useCallback((e: any) => {
     if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor' || !e.features || e.features.length === 0) return
-
     const feature = e.features[0]
     const regionId = feature.properties?.id
-
     if (regionId) {
       if (selectedRegions.includes(regionId)) {
         removeSelectedRegion(regionId)
@@ -591,57 +801,28 @@ export function BaseMap({
     }
   }, [selectedRegions, addSelectedRegion, removeSelectedRegion, layersLoaded, currentDrawingMode])
 
-  // Stable hover handlers for cursor mode
-  const handleMouseMove = useCallback((e: any) => {
-    if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor') return
-
-    const hoverLayerId = `${layerId}-hover`
-    
-    if (e.features && e.features.length > 0) {
-      const feature = e.features[0]
-      const regionId = feature.properties?.id
-
-      if (regionId) {
-        map.current.setFilter(hoverLayerId, ['==', 'id', regionId])
-        map.current.setLayoutProperty(hoverLayerId, 'visibility', 'visible')
-        map.current.getCanvas().style.cursor = 'pointer'
-      }
-    } else {
-      map.current.setLayoutProperty(hoverLayerId, 'visibility', 'none')
-      map.current.getCanvas().style.cursor = ''
-    }
-  }, [layerId, layersLoaded, currentDrawingMode])
-
-  const handleMouseLeave = useCallback(() => {
-    if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor') return
-
-    const hoverLayerId = `${layerId}-hover`
-    map.current.getCanvas().style.cursor = ''
-    map.current.setLayoutProperty(hoverLayerId, 'visibility', 'none')
-  }, [layerId, layersLoaded, currentDrawingMode])
-
-  // Add event listeners only for cursor mode
+  // --- Add event listeners only for cursor mode ---
   useEffect(() => {
     if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor') return
-
     const mainLayerId = `${layerId}-layer`
-
-    // Remove any existing listeners first
     map.current.off('click', mainLayerId, handleClick)
     map.current.off('mousemove', mainLayerId, handleMouseMove)
     map.current.off('mouseleave', mainLayerId, handleMouseLeave)
-
-    // Add new listeners
     map.current.on('click', mainLayerId, handleClick)
     map.current.on('mousemove', mainLayerId, handleMouseMove)
     map.current.on('mouseleave', mainLayerId, handleMouseLeave)
-
     return () => {
       if (map.current) {
         map.current.off('click', mainLayerId, handleClick)
         map.current.off('mousemove', mainLayerId, handleMouseMove)
         map.current.off('mouseleave', mainLayerId, handleMouseLeave)
       }
+      if (hoverThrottleTimeout.current) {
+        clearTimeout(hoverThrottleTimeout.current)
+        hoverThrottleTimeout.current = null
+      }
+      pendingHoverEvent.current = null
+      hoveredRegionIdRef.current = null
     }
   }, [handleClick, handleMouseMove, handleMouseLeave, layerId, layersLoaded, currentDrawingMode])
 
@@ -662,6 +843,9 @@ export function BaseMap({
             onToggleVisibility={() => setIsDrawingToolsVisible(false)}
             isVisible={isDrawingToolsVisible}
             onSearch={handleSearch}
+            granularity={granularity}
+            onGranularityChange={onGranularityChange}
+            postalCodesData={data}
           />
         </div>
       )}
@@ -681,4 +865,50 @@ export function BaseMap({
       )}
     </div>
   )
+}
+
+function emptyFeatureCollection(): FeatureCollection {
+  return { type: 'FeatureCollection', features: [] }
+}
+
+function featureCollectionFromIds(data: MapData, ids: string[]): FeatureCollection {
+  if (!data || !data.features) return emptyFeatureCollection()
+  return {
+    type: 'FeatureCollection',
+    features: (data.features as any[]).filter((f) => ids.includes(f.properties?.id)).map(f => f as Feature)
+  }
+}
+
+// Utility: get centroid of largest polygon in a feature
+function getLargestPolygonCentroid(feature: Feature<Polygon | MultiPolygon, GeoJsonProperties>) {
+  if (feature.geometry.type === 'Polygon') {
+    return centroid(feature).geometry.coordinates
+  }
+  if (feature.geometry.type === 'MultiPolygon') {
+    let maxArea = 0
+    let maxPoly: Polygon | null = null
+    for (const coords of feature.geometry.coordinates) {
+      const poly: Polygon = { type: 'Polygon', coordinates: coords }
+      const polyArea = area(poly)
+      if (polyArea > maxArea) {
+        maxArea = polyArea
+        maxPoly = poly
+      }
+    }
+    if (maxPoly) {
+      return centroid(maxPoly).geometry.coordinates
+    }
+  }
+  return centroid(feature).geometry.coordinates
+}
+
+// Utility: create label point FeatureCollection from a polygon FeatureCollection
+function makeLabelPoints(features: FeatureCollection, labelProp: string) {
+  return {
+    type: 'FeatureCollection',
+    features: (features.features as any[]).map((f) => {
+      const coords = getLargestPolygonCentroid(f as Feature<Polygon | MultiPolygon, GeoJsonProperties>)
+      return point(coords, f.properties)
+    })
+  };
 } 

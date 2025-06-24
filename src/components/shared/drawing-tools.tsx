@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { 
@@ -18,10 +18,17 @@ import {
   Eye,
   EyeOff,
   Search,
-  X
+  X,
+  PieChart,
+  SquareStack,
+  Diamond,
+  FileSpreadsheet,
+  Copy
 } from "lucide-react"
 import { TerraDrawMode } from "@/lib/hooks/use-terradraw"
 import { useMapState } from "@/lib/url-state/map-state"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import * as XLSX from 'xlsx'
 
 interface DrawingToolsProps {
   currentMode: TerraDrawMode | null
@@ -30,7 +37,14 @@ interface DrawingToolsProps {
   onToggleVisibility: () => void
   isVisible: boolean
   onSearch?: (query: string) => void
+  granularity?: string
+  onGranularityChange?: (granularity: string) => void
+  postalCodesData?: any
 }
+
+const AngledRectangleIcon = (props: any) => (
+  <Square className={"rotate-45 scale-90 " + (props.className || "")} {...props} />
+)
 
 const drawingModes = [
   {
@@ -54,27 +68,11 @@ const drawingModes = [
     description: 'Draw circle to select regions',
     category: 'drawing'
   },
-  // Additional modes can be re-enabled later
-  /*
   {
     id: 'polygon' as const,
     name: 'Polygon',
     icon: Triangle,
     description: 'Draw polygon by clicking points',
-    category: 'drawing'
-  },
-  {
-    id: 'point' as const,
-    name: 'Point',
-    icon: Plus,
-    description: 'Add single points',
-    category: 'drawing'
-  },
-  {
-    id: 'linestring' as const,
-    name: 'Line',
-    icon: Minus,
-    description: 'Draw lines/paths',
     category: 'drawing'
   },
   {
@@ -87,25 +85,17 @@ const drawingModes = [
   {
     id: 'angled-rectangle' as const,
     name: 'Angled Rectangle',
-    icon: RotateCcw,
+    icon: Diamond,
     description: 'Draw angled rectangles',
     category: 'drawing'
   },
   {
     id: 'sector' as const,
     name: 'Sector',
-    icon: Circle,
+    icon: PieChart,
     description: 'Draw circle sectors',
     category: 'drawing'
-  },
-  {
-    id: 'select' as const,
-    name: 'Select',
-    icon: MousePointer,
-    description: 'Select and edit existing features',
-    category: 'selection'
   }
-  */
 ]
 
 export function DrawingTools({
@@ -114,10 +104,11 @@ export function DrawingTools({
   onClearAll,
   onToggleVisibility,
   isVisible,
-  onSearch
+  onSearch,
+  granularity,
+  onGranularityChange,
+  postalCodesData
 }: DrawingToolsProps) {
-  const [activeCategory, setActiveCategory] = useState<'selection' | 'drawing'>('selection')
-  const [searchQuery, setSearchQuery] = useState("")
   const { selectedRegions, clearSelectedRegions } = useMapState()
 
   const handleModeClick = (mode: TerraDrawMode) => {
@@ -128,80 +119,89 @@ export function DrawingTools({
     }
   }
 
-  const handleSearch = () => {
-    if (searchQuery.trim() && onSearch) {
-      onSearch(searchQuery.trim())
-      setSearchQuery("")
+  const allModes = drawingModes
+
+  // Helper: get all postal codes as array, prepending D-
+  const getPostalCodes = () => {
+    if (!postalCodesData || !postalCodesData.features) return []
+    // If any selected, only export those
+    const codes = postalCodesData.features
+      .map((f: any) => f.properties?.PLZ || f.properties?.plz || f.properties?.id)
+      .filter(Boolean)
+    if (selectedRegions && selectedRegions.length > 0) {
+      return codes
+        .filter((code: string) => selectedRegions.includes(code))
+        .map((code: string) => `D-${code}`)
     }
+    return codes.map((code: string) => `D-${code}`)
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch()
-    }
+  // Export as Excel
+  const handleExportExcel = () => {
+    const codes = getPostalCodes()
+    const ws = XLSX.utils.aoa_to_sheet([['Postal Code'], ...codes.map(code => [code])])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'PostalCodes')
+    XLSX.writeFile(wb, 'postal-codes.xlsx')
   }
 
-  const filteredModes = drawingModes.filter(mode => mode.category === activeCategory)
+  // Copy as CSV
+  const handleCopyCSV = async () => {
+    const codes = getPostalCodes()
+    const csv = codes.join(',')
+    await navigator.clipboard.writeText(csv)
+  }
 
   return (
-    <Card className="w-80">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Map Tools</CardTitle>
-        
-        {/* Search Section */}
-        {onSearch && (
-          <div className="space-y-2">
-            <div className="flex space-x-2">
-              <Input
-                placeholder="Search regions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="flex-1"
-              />
-              <Button size="sm" onClick={handleSearch}>
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Map Tools</CardTitle>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleVisibility}
+            title="Hide map tools panel"
+            aria-label="Hide map tools panel"
+            style={{ margin: '-8px' }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Granularity select (if provided) */}
+        {granularity && onGranularityChange && (
+          <div className="mb-2">
+            <Select value={granularity} onValueChange={onGranularityChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select granularity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="plz-1stellig">PLZ 1-stellig</SelectItem>
+                <SelectItem value="plz-2stellig">PLZ 2-stellig</SelectItem>
+                <SelectItem value="plz-3stellig">PLZ 3-stellig</SelectItem>
+                <SelectItem value="plz-5stellig">PLZ 5-stellig</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
-
-        {/* Category Tabs */}
-        <div className="flex gap-2">
-          <Button
-            variant={activeCategory === 'selection' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveCategory('selection')}
-          >
-            Selection
-          </Button>
-          <Button
-            variant={activeCategory === 'drawing' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveCategory('drawing')}
-          >
-            Drawing
-          </Button>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
         {/* Tools Grid */}
         <div className="grid grid-cols-2 gap-2">
-          {filteredModes.map((mode) => {
+          {allModes.map((mode) => {
             const Icon = mode.icon
             const isActive = currentMode === mode.id
-            
             return (
               <Button
                 key={mode.id}
                 variant={isActive ? 'default' : 'outline'}
                 size="sm"
-                className="h-auto p-3 flex flex-col items-center gap-1"
+                className="h-auto p-3 flex flex-col items-center gap-1 group"
                 onClick={() => handleModeClick(mode.id)}
                 title={mode.description}
+                aria-label={mode.name}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4 mb-1 group-hover:scale-110 transition-transform" />
                 <span className="text-xs">{mode.name}</span>
               </Button>
             )
@@ -218,7 +218,6 @@ export function DrawingTools({
               {selectedRegions.length} selected
             </span>
           </div>
-          
           {selectedRegions.length > 0 && (
             <div className="max-h-24 overflow-y-auto space-y-1">
               {selectedRegions.slice(0, 5).map((region: string) => (
@@ -237,45 +236,49 @@ export function DrawingTools({
             </div>
           )}
         </div>
-        
-        <Separator />
-        
+        {/* Only show separator if at least one action button is visible */}
+        {(currentMode && currentMode !== 'cursor') || selectedRegions.length > 0 ? <Separator /> : null}
         {/* Action Buttons */}
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearAll}
-            className="flex-1"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Clear All
-          </Button>
+          {currentMode && currentMode !== 'cursor' && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onClearAll}
+              className="flex-1"
+              title="Clear all drawings and selections"
+              aria-label="Clear all drawings and selections"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear All
+            </Button>
+          )}
           {selectedRegions.length > 0 && (
             <Button
               variant="outline"
               size="sm"
               onClick={clearSelectedRegions}
+              className="flex-1"
+              title="Clear selected regions"
+              aria-label="Clear selected regions"
             >
-              <X className="h-4 w-4" />
+              <EyeOff className="h-4 w-4 mr-2" />
+              Deselect
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onToggleVisibility}
-          >
-            {isVisible ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-          </Button>
         </div>
         
-        {currentMode && (
-          <div className="text-xs text-muted-foreground">
-            Active: {drawingModes.find(m => m.id === currentMode)?.name}
+        {/* Export/Copy Buttons at the bottom */}
+        {postalCodesData && (
+          <div className="flex gap-2 mt-6 pt-4 border-t">
+            <Button variant="outline" size="sm" onClick={handleExportExcel} title="Export as XLS">
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Export XLS
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleCopyCSV} title="Copy as CSV">
+              <Copy className="h-4 w-4 mr-2" />
+              Copy CSV
+            </Button>
           </div>
         )}
       </CardContent>

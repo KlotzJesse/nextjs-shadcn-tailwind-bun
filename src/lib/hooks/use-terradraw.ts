@@ -105,9 +105,15 @@ export function useTerraDraw({
           map
         }),
         modes: [
-          // Only include essential modes for now
           new TerraDrawFreehandMode(),
           new TerraDrawCircleMode(),
+          new TerraDrawPolygonMode(),
+          new TerraDrawPointMode(),
+          new TerraDrawLineStringMode(),
+          new TerraDrawRectangleMode(),
+          new TerraDrawAngledRectangleMode(),
+          new TerraDrawSectorMode(),
+          new TerraDrawSelectMode(),
         ],
       });
 

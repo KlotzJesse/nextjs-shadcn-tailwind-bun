@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { PostalCodesMap } from "./postal-codes-map"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useMapState } from "@/lib/url-state/map-state"
+import { useRouter } from "next/navigation"
 import type { MapData } from "@/lib/types/map-data"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 
 interface PostalCodesViewProps {
   initialData: MapData
@@ -13,31 +14,14 @@ interface PostalCodesViewProps {
 
 export function PostalCodesView({ initialData, defaultGranularity }: PostalCodesViewProps) {
   const [searchResults, setSearchResults] = useState<string[]>([])
-  const [data, setData] = useState<MapData>(initialData)
-  const [isLoading, setIsLoading] = useState(false)
-  const { selectedRegions, granularity } = useMapState()
+  const [data] = useState<MapData>(initialData)
+  const router = useRouter()
 
-  // Fetch data when granularity changes
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true)
-      try {
-        const response = await fetch(`/api/postal-codes?granularity=${granularity}`)
-        if (response.ok) {
-          const newData = await response.json()
-          setData(newData)
-        }
-      } catch (error) {
-        console.error('Failed to fetch postal codes data:', error)
-      } finally {
-        setIsLoading(false)
-      }
+  const handleGranularityChange = (newGranularity: string) => {
+    if (newGranularity !== defaultGranularity) {
+      router.push(`/postal-codes/${newGranularity}`)
     }
-
-    if (granularity !== defaultGranularity) {
-      fetchData()
-    }
-  }, [granularity, defaultGranularity])
+  }
 
   const handleSearch = (plz: string) => {
     // Simple search implementation - in a real app, you'd want more sophisticated search
@@ -86,20 +70,12 @@ export function PostalCodesView({ initialData, defaultGranularity }: PostalCodes
 
       {/* Map with integrated tools */}
       <div className="h-full">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>
-              German Postal Codes Map - {granularity.toUpperCase()}
-              {isLoading && <span className="text-sm text-muted-foreground ml-2">(Loading...)</span>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-full p-0">
-            <PostalCodesMap 
-              data={data} 
-              onSearch={handleSearch} 
-            />
-          </CardContent>
-        </Card>
+        <PostalCodesMap 
+          data={data} 
+          onSearch={handleSearch} 
+          granularity={defaultGranularity}
+          onGranularityChange={handleGranularityChange}
+        />
       </div>
     </div>
   )
