@@ -1,16 +1,14 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
-import maplibregl from "maplibre-gl"
-import "maplibre-gl/dist/maplibre-gl.css"
+import { useEffect, useRef, useState, useCallback, Suspense } from "react"
 import { useMapState } from "@/lib/url-state/map-state"
 import type { MapData } from "@/lib/types/map-data"
 import { useTerraDraw, TerraDrawMode } from "@/lib/hooks/use-terradraw"
 import { DrawingTools } from "./drawing-tools"
 import type { Feature, FeatureCollection, Polygon, MultiPolygon, GeoJsonProperties } from 'geojson'
-import centroid from '@turf/centroid'
-import area from '@turf/area'
-import { point } from '@turf/helpers'
+import { emptyFeatureCollection, featureCollectionFromIds, getLargestPolygonCentroid, makeLabelPoints } from '@/lib/utils/map-data'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorBoundary } from '@/components/ui/alert'
 
 interface BaseMapProps {
   data: MapData
@@ -48,100 +46,6 @@ export function BaseMap({
   const pendingHoverEvent = useRef<any>(null)
 
   // Helper functions for feature selection
-  const getFeatureCentroid = useCallback((feature: any): [number, number] | null => {
-    console.log(`\n--- CENTROID CALCULATION DEBUG ---`)
-    console.log(`Feature ID:`, feature.properties?.id)
-    console.log(`Geometry type:`, feature.geometry?.type)
-    console.log(`Geometry coordinates:`, feature.geometry?.coordinates)
-    
-    if (feature.geometry.type === 'Polygon') {
-      const coords = feature.geometry.coordinates[0]
-      console.log(`Polygon coordinates (first ring):`, coords)
-      console.log(`Number of points:`, coords.length)
-      
-      if (!coords || coords.length === 0) {
-        console.log(`❌ No coordinates found`)
-        return null
-      }
-      
-      const sumX = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0)
-      const sumY = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0)
-      const centroid = [sumX / coords.length, sumY / coords.length] as [number, number]
-      
-      console.log(`Sum X:`, sumX, `Sum Y:`, sumY)
-      console.log(`Centroid:`, centroid)
-      
-      // Validate centroid
-      if (isNaN(centroid[0]) || isNaN(centroid[1])) {
-        console.log(`❌ Invalid centroid (NaN)`)
-        return null
-      }
-      
-      if (centroid[0] < -180 || centroid[0] > 180 || centroid[1] < -90 || centroid[1] > 90) {
-        console.log(`❌ Centroid out of valid geographic range:`, centroid)
-        return null
-      }
-      
-      console.log(`✅ Valid centroid:`, centroid)
-      return centroid
-    }
-    
-    if (feature.geometry.type === 'MultiPolygon') {
-      console.log(`Processing MultiPolygon with ${feature.geometry.coordinates.length} polygons`)
-      
-      let totalSumX = 0
-      let totalSumY = 0
-      let totalPoints = 0
-      
-      // Process each polygon in the MultiPolygon
-      feature.geometry.coordinates.forEach((polygon: number[][][], polygonIndex: number) => {
-        console.log(`Processing polygon ${polygonIndex + 1}/${feature.geometry.coordinates.length}`)
-        
-        const coords = polygon[0] // First ring of the polygon
-        console.log(`Polygon ${polygonIndex + 1} coordinates:`, coords)
-        console.log(`Polygon ${polygonIndex + 1} points:`, coords.length)
-        
-        if (coords && coords.length > 0) {
-          const sumX = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0)
-          const sumY = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0)
-          
-          totalSumX += sumX
-          totalSumY += sumY
-          totalPoints += coords.length
-          
-          console.log(`Polygon ${polygonIndex + 1} sum:`, { sumX, sumY, points: coords.length })
-        }
-      })
-      
-      if (totalPoints === 0) {
-        console.log(`❌ No valid coordinates found in MultiPolygon`)
-        return null
-      }
-      
-      const centroid = [totalSumX / totalPoints, totalSumY / totalPoints] as [number, number]
-      
-      console.log(`MultiPolygon totals:`, { totalSumX, totalSumY, totalPoints })
-      console.log(`MultiPolygon centroid:`, centroid)
-      
-      // Validate centroid
-      if (isNaN(centroid[0]) || isNaN(centroid[1])) {
-        console.log(`❌ Invalid centroid (NaN)`)
-        return null
-      }
-      
-      if (centroid[0] < -180 || centroid[0] > 180 || centroid[1] < -90 || centroid[1] > 90) {
-        console.log(`❌ Centroid out of valid geographic range:`, centroid)
-        return null
-      }
-      
-      console.log(`✅ Valid MultiPolygon centroid:`, centroid)
-      return centroid
-    }
-    
-    console.log(`❌ Unsupported geometry type:`, feature.geometry.type)
-    return null
-  }, [])
-
   const isPointInPolygon = useCallback((point: [number, number], polygon: [number, number][]): boolean => {
     let inside = false
     const [x, y] = point
@@ -226,7 +130,7 @@ export function BaseMap({
         return
       }
       
-      const centroid = getFeatureCentroid(feature)
+      const centroid = getLargestPolygonCentroid(feature as Feature<Polygon | MultiPolygon, GeoJsonProperties>)
       console.log(`Centroid:`, centroid)
       
       if (!centroid) {
@@ -253,7 +157,7 @@ export function BaseMap({
     console.log(`Total selected: ${selectedFeatures.length}/${data.features.length}`)
     
     return selectedFeatures
-  }, [data, getFeatureCentroid, isPointInPolygon])
+  }, [data, isPointInPolygon])
 
   const findFeaturesInCircle = useCallback((center: [number, number], radiusDegrees: number): string[] => {
     if (!data) return []
@@ -275,7 +179,7 @@ export function BaseMap({
         return
       }
       
-      const centroid = getFeatureCentroid(feature)
+      const centroid = getLargestPolygonCentroid(feature as Feature<Polygon | MultiPolygon, GeoJsonProperties>)
       console.log(`Centroid:`, centroid)
       
       if (!centroid) {
@@ -314,7 +218,7 @@ export function BaseMap({
     console.log(`Total selected: ${selectedFeatures.length}/${data.features.length}`)
     
     return selectedFeatures
-  }, [data, getFeatureCentroid])
+  }, [data, isPointInPolygon])
 
   // Integrate TerraDraw for advanced drawing capabilities
   const terraDrawRef = useRef<{ getSnapshot: () => any[]; clearAll: () => void } | null>(null)
@@ -474,35 +378,49 @@ export function BaseMap({
     console.log('Search query:', query);
   }, [])
 
-  // Initialize map - ONLY ONCE
+  // Log data on first render
+  console.log('Map data on render:', data)
+
+  // Initialize map - ONLY ONCE, and only if data and container are ready
   useEffect(() => {
-    if (!mapContainer.current || map.current) return
+    if (!mapContainer.current) {
+      console.warn('Map container ref not ready')
+      return
+    }
+    if (!data || !data.features || data.features.length === 0) {
+      console.error('Map data missing or empty on first load:', data)
+      return
+    }
+    if (map.current) return
 
-    map.current = new (maplibregl as any).Map({
-      container: mapContainer.current,
-      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-      center: center,
-      zoom: zoom,
-      minZoom: 3,
-      maxZoom: 18
+    console.log('Initializing map with data:', data)
+    let isMounted = true
+    import('maplibre-gl').then((maplibregl) => {
+      if (!isMounted) return
+      map.current = new (maplibregl as any).Map({
+        container: mapContainer.current,
+        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+        center: center,
+        zoom: zoom,
+        minZoom: 3,
+        maxZoom: 18
+      })
+      map.current.on('load', () => {
+        setIsMapLoaded(true)
+      })
+      map.current.on('style.load', () => {
+        setStyleLoaded(true)
+      })
     })
-
-    map.current.on('load', () => {
-      setIsMapLoaded(true)
-    })
-
-    map.current.on('style.load', () => {
-      setStyleLoaded(true)
-    })
-
     return () => {
+      isMounted = false
       if (map.current) {
         map.current.remove()
         map.current = null
       }
       setLayersLoaded(false)
     }
-  }, []) // Empty dependency array - map is created only once
+  }, [mapContainer.current, data]) // Depend on container and data
 
   // Update map center and zoom when props change (without recreating map)
   useEffect(() => {
@@ -677,7 +595,9 @@ export function BaseMap({
           'line-color': '#2563EB',
           'line-width': 3,
         },
-        layout: { visibility: 'none' }
+        layout: { visibility: 'none' },
+        // @ts-ignore
+        interactive: false // prevent this layer from blocking pointer events
       }, selectedLayerId)
     }
     // 6. State label (above all lines/fills)
@@ -751,30 +671,16 @@ export function BaseMap({
         map.current.getCanvas().style.cursor = 'pointer'
         hoveredRegionIdRef.current = regionId
       }
-    } else {
-      if (hoveredRegionIdRef.current !== null) {
-        map.current.getSource(hoverSourceId).setData(emptyFeatureCollection())
-        map.current.setLayoutProperty(hoverLayerId, 'visibility', 'none')
-        map.current.getCanvas().style.cursor = ''
-        hoveredRegionIdRef.current = null
-      }
     }
   }, [layerId, layersLoaded, currentDrawingMode])
 
-  // Throttle wrapper for mousemove
-  const handleMouseMove = useCallback((e: any) => {
-    if (hoverThrottleTimeout.current) {
-      pendingHoverEvent.current = e
-      return
-    }
+  const handleMouseEnter = useCallback((e: any) => {
     processHover(e)
-    hoverThrottleTimeout.current = setTimeout(() => {
-      hoverThrottleTimeout.current = null
-      if (pendingHoverEvent.current) {
-        processHover(pendingHoverEvent.current)
-        pendingHoverEvent.current = null
-      }
-    }, 32)
+  }, [processHover])
+
+  const handleMouseMove = useCallback((e: any) => {
+    // Only update hover if regionId changes
+    processHover(e)
   }, [processHover])
 
   const handleMouseLeave = useCallback(() => {
@@ -783,7 +689,7 @@ export function BaseMap({
     const hoverLayerId = `${layerId}-hover-layer`
     map.current.getSource(hoverSourceId).setData(emptyFeatureCollection())
     map.current.setLayoutProperty(hoverLayerId, 'visibility', 'none')
-    map.current.getCanvas().style.cursor = ''
+    map.current.getCanvas().style.cursor = 'grab'
     hoveredRegionIdRef.current = null
   }, [layerId, layersLoaded, currentDrawingMode])
 
@@ -805,110 +711,99 @@ export function BaseMap({
   useEffect(() => {
     if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor') return
     const mainLayerId = `${layerId}-layer`
-    map.current.off('click', mainLayerId, handleClick)
+    const canvas = map.current.getCanvas()
+    // Set initial cursor
+    canvas.style.cursor = 'grab'
+    // Dragging logic
+    const handleMouseDown = () => { canvas.style.cursor = 'grabbing' }
+    const handleMouseUp = () => { canvas.style.cursor = 'grab' }
+    canvas.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('mouseup', handleMouseUp)
+    // Remove old listeners
+    map.current.off('mouseenter', mainLayerId, handleMouseEnter)
     map.current.off('mousemove', mainLayerId, handleMouseMove)
     map.current.off('mouseleave', mainLayerId, handleMouseLeave)
-    map.current.on('click', mainLayerId, handleClick)
+    map.current.off('click', mainLayerId, handleClick)
+    // Add new listeners
+    map.current.on('mouseenter', mainLayerId, handleMouseEnter)
     map.current.on('mousemove', mainLayerId, handleMouseMove)
     map.current.on('mouseleave', mainLayerId, handleMouseLeave)
+    map.current.on('click', mainLayerId, handleClick)
     return () => {
       if (map.current) {
-        map.current.off('click', mainLayerId, handleClick)
+        map.current.off('mouseenter', mainLayerId, handleMouseEnter)
         map.current.off('mousemove', mainLayerId, handleMouseMove)
         map.current.off('mouseleave', mainLayerId, handleMouseLeave)
+        map.current.off('click', mainLayerId, handleClick)
       }
+      canvas.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('mouseup', handleMouseUp)
       if (hoverThrottleTimeout.current) {
         clearTimeout(hoverThrottleTimeout.current)
         hoverThrottleTimeout.current = null
       }
       pendingHoverEvent.current = null
       hoveredRegionIdRef.current = null
+      // Always restore to default grab
+      canvas.style.cursor = 'grab'
     }
-  }, [handleClick, handleMouseMove, handleMouseLeave, layerId, layersLoaded, currentDrawingMode])
+  }, [handleMouseEnter, handleMouseMove, handleMouseLeave, handleClick, layerId, layersLoaded, currentDrawingMode])
+
+  // Show error if data is missing or empty
+  if (!data || !data.features || data.features.length === 0) {
+    return (
+      <div className="flex items-center justify-center w-full h-full min-h-[400px] text-destructive">
+        Map data is missing or empty. Please try reloading or select a different granularity.
+      </div>
+    )
+  }
 
   return (
-    <div className="relative w-full h-full">
-      <div 
-        ref={mapContainer} 
-        className="w-full h-full rounded-lg"
-        style={{ minHeight: '400px' }}
-      />
-      
-      {isDrawingToolsVisible && (
-        <div className="absolute top-4 left-4 z-10">
-          <DrawingTools
-            currentMode={currentDrawingMode}
-            onModeChange={handleDrawingModeChange}
-            onClearAll={clearAll}
-            onToggleVisibility={() => setIsDrawingToolsVisible(false)}
-            isVisible={isDrawingToolsVisible}
-            onSearch={handleSearch}
-            granularity={granularity}
-            onGranularityChange={onGranularityChange}
-            postalCodesData={data}
+    <ErrorBoundary>
+      <Suspense fallback={<Skeleton className="w-full h-full min-h-[400px] rounded-lg" />}>
+        <div className="relative w-full h-full">
+          <div 
+            ref={mapContainer} 
+            className="w-full h-full rounded-lg"
+            style={{ minHeight: '400px' }}
+            role="region"
+            aria-label="Interactive Map"
           />
+          {isDrawingToolsVisible && (
+            <div className="absolute top-4 left-4 z-10" role="region" aria-label="Map Tools Panel">
+              <ErrorBoundary>
+                <Suspense fallback={<Skeleton className="w-56 h-80 rounded-lg" />}>
+                  <DrawingTools
+                    currentMode={currentDrawingMode}
+                    onModeChange={handleDrawingModeChange}
+                    onClearAll={clearAll}
+                    onToggleVisibility={() => setIsDrawingToolsVisible(false)}
+                    isVisible={isDrawingToolsVisible}
+                    onSearch={handleSearch}
+                    granularity={granularity}
+                    onGranularityChange={onGranularityChange}
+                    postalCodesData={data}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            </div>
+          )}
+          {!isDrawingToolsVisible && (
+            <div className="absolute top-4 left-4 z-10" role="region" aria-label="Map Tools Panel">
+              <button
+                onClick={() => setIsDrawingToolsVisible(true)}
+                className="bg-white p-2 rounded-lg shadow-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary"
+                title="Show Map Tools"
+                aria-label="Show Map Tools Panel"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
-      )}
-      
-      {!isDrawingToolsVisible && (
-        <div className="absolute top-4 left-4 z-10">
-          <button
-            onClick={() => setIsDrawingToolsVisible(true)}
-            className="bg-white p-2 rounded-lg shadow-lg hover:bg-gray-50"
-            title="Show Map Tools"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          </button>
-        </div>
-      )}
-    </div>
+      </Suspense>
+    </ErrorBoundary>
   )
-}
-
-function emptyFeatureCollection(): FeatureCollection {
-  return { type: 'FeatureCollection', features: [] }
-}
-
-function featureCollectionFromIds(data: MapData, ids: string[]): FeatureCollection {
-  if (!data || !data.features) return emptyFeatureCollection()
-  return {
-    type: 'FeatureCollection',
-    features: (data.features as any[]).filter((f) => ids.includes(f.properties?.id)).map(f => f as Feature)
-  }
-}
-
-// Utility: get centroid of largest polygon in a feature
-function getLargestPolygonCentroid(feature: Feature<Polygon | MultiPolygon, GeoJsonProperties>) {
-  if (feature.geometry.type === 'Polygon') {
-    return centroid(feature).geometry.coordinates
-  }
-  if (feature.geometry.type === 'MultiPolygon') {
-    let maxArea = 0
-    let maxPoly: Polygon | null = null
-    for (const coords of feature.geometry.coordinates) {
-      const poly: Polygon = { type: 'Polygon', coordinates: coords }
-      const polyArea = area(poly)
-      if (polyArea > maxArea) {
-        maxArea = polyArea
-        maxPoly = poly
-      }
-    }
-    if (maxPoly) {
-      return centroid(maxPoly).geometry.coordinates
-    }
-  }
-  return centroid(feature).geometry.coordinates
-}
-
-// Utility: create label point FeatureCollection from a polygon FeatureCollection
-function makeLabelPoints(features: FeatureCollection, labelProp: string) {
-  return {
-    type: 'FeatureCollection',
-    features: (features.features as any[]).map((f) => {
-      const coords = getLargestPolygonCentroid(f as Feature<Polygon | MultiPolygon, GeoJsonProperties>)
-      return point(coords, f.properties)
-    })
-  };
 } 

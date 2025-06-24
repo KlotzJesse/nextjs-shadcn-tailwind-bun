@@ -28,7 +28,9 @@ import {
 import { TerraDrawMode } from "@/lib/hooks/use-terradraw"
 import { useMapState } from "@/lib/url-state/map-state"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import * as XLSX from 'xlsx'
+import { Suspense } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { exportPostalCodesXLSX, copyPostalCodesCSV } from '@/lib/utils/export-utils'
 
 interface DrawingToolsProps {
   currentMode: TerraDrawMode | null
@@ -98,7 +100,7 @@ const drawingModes = [
   }
 ]
 
-export function DrawingTools({
+function DrawingToolsImpl({
   currentMode,
   onModeChange,
   onClearAll,
@@ -137,23 +139,19 @@ export function DrawingTools({
   }
 
   // Export as Excel
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const codes = getPostalCodes()
-    const ws = XLSX.utils.aoa_to_sheet([['Postal Code'], ...codes.map(code => [code])])
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'PostalCodes')
-    XLSX.writeFile(wb, 'postal-codes.xlsx')
+    await exportPostalCodesXLSX(codes)
   }
 
   // Copy as CSV
   const handleCopyCSV = async () => {
     const codes = getPostalCodes()
-    const csv = codes.join(',')
-    await navigator.clipboard.writeText(csv)
+    await copyPostalCodesCSV(codes)
   }
 
   return (
-    <Card>
+    <Card role="region" aria-label="Map Tools Panel">
       <CardHeader>
         <CardTitle>Map Tools</CardTitle>
         <CardAction>
@@ -164,6 +162,7 @@ export function DrawingTools({
             title="Hide map tools panel"
             aria-label="Hide map tools panel"
             style={{ margin: '-8px' }}
+            className="focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -196,7 +195,7 @@ export function DrawingTools({
                 key={mode.id}
                 variant={isActive ? 'default' : 'outline'}
                 size="sm"
-                className="h-auto p-3 flex flex-col items-center gap-1 group"
+                className="h-auto p-3 flex flex-col items-center gap-1 group focus:outline-none focus:ring-2 focus:ring-primary"
                 onClick={() => handleModeClick(mode.id)}
                 title={mode.description}
                 aria-label={mode.name}
@@ -245,7 +244,7 @@ export function DrawingTools({
               variant="destructive"
               size="sm"
               onClick={onClearAll}
-              className="flex-1"
+              className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
               title="Clear all drawings and selections"
               aria-label="Clear all drawings and selections"
             >
@@ -258,7 +257,7 @@ export function DrawingTools({
               variant="outline"
               size="sm"
               onClick={clearSelectedRegions}
-              className="flex-1"
+              className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
               title="Clear selected regions"
               aria-label="Clear selected regions"
             >
@@ -271,11 +270,11 @@ export function DrawingTools({
         {/* Export/Copy Buttons at the bottom */}
         {postalCodesData && (
           <div className="flex gap-2 mt-6 pt-4 border-t">
-            <Button variant="outline" size="sm" onClick={handleExportExcel} title="Export as XLS">
+            <Button variant="outline" size="sm" onClick={handleExportExcel} title="Export as XLS" aria-label="Export as XLS" className="focus:outline-none focus:ring-2 focus:ring-primary">
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Export XLS
             </Button>
-            <Button variant="outline" size="sm" onClick={handleCopyCSV} title="Copy as CSV">
+            <Button variant="outline" size="sm" onClick={handleCopyCSV} title="Copy as CSV" aria-label="Copy as CSV" className="focus:outline-none focus:ring-2 focus:ring-primary">
               <Copy className="h-4 w-4 mr-2" />
               Copy CSV
             </Button>
@@ -283,5 +282,13 @@ export function DrawingTools({
         )}
       </CardContent>
     </Card>
+  )
+}
+
+export function DrawingTools(props: DrawingToolsProps) {
+  return (
+    <Suspense fallback={<Skeleton className="w-full h-full min-h-[200px] rounded-lg" />}>
+      <DrawingToolsImpl {...props} />
+    </Suspense>
   )
 } 

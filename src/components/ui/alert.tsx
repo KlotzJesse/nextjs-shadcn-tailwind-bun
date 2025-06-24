@@ -63,4 +63,60 @@ function AlertDescription({
   )
 }
 
+export function AlertError({ message, children }: { message?: string; children?: React.ReactNode }) {
+  return (
+    <Alert variant="destructive" role="alert">
+      <AlertTitle>Error</AlertTitle>
+      <AlertDescription>
+        {message || 'Something went wrong.'}
+        {children}
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+// --- ErrorBoundary component ---
+interface ErrorBoundaryProps {
+  children: React.ReactNode
+  fallback?: React.ReactNode
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    // You can log error to a service here
+    // console.error('ErrorBoundary caught:', error, errorInfo)
+  }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null })
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <AlertError message={this.state.error?.message}>
+          <button onClick={this.handleRetry} className="mt-2 underline text-primary">
+            Retry
+          </button>
+        </AlertError>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export { Alert, AlertTitle, AlertDescription }

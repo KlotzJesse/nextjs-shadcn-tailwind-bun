@@ -1,6 +1,9 @@
 import * as topojson from "topojson-client"
 import type { MapData } from "@/app/map/[granularity]/map-data"
-import type { Feature, FeatureCollection, Polygon, MultiPolygon } from "geojson"
+import type { Feature, FeatureCollection, Polygon, MultiPolygon, GeoJsonProperties } from "geojson"
+import centroid from '@turf/centroid'
+import area from '@turf/area'
+import { point } from '@turf/helpers'
 
 const TOPOJSON_URLS: Record<string, string> = {
   "plz-1stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-1stellig/topojson/plz-1stellig.topojson",
@@ -10,7 +13,7 @@ const TOPOJSON_URLS: Record<string, string> = {
   "plz-5stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-5stellig/topojson/plz-5stellig.topojson",
 };
 
-const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/1_sehr_hoch.geo.json";
+const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json";
 
 // Cache the fetch requests
 const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
@@ -91,5 +94,61 @@ export async function getMapData(granularity: string): Promise<{ geoData: MapDat
   } catch (error) {
     console.error('Error in getMapData:', error);
     throw error;
+  }
+}
+
+/**
+ * Returns an empty GeoJSON FeatureCollection.
+ */
+export function emptyFeatureCollection(): FeatureCollection {
+  return { type: 'FeatureCollection', features: [] }
+}
+
+/**
+ * Returns a FeatureCollection containing only features with the given IDs.
+ */
+export function featureCollectionFromIds(data: any, ids: string[]): FeatureCollection {
+  if (!data || !data.features) return emptyFeatureCollection()
+  return {
+    type: 'FeatureCollection',
+    features: (data.features as any[]).filter((f) => ids.includes(f.properties?.id)).map(f => f as Feature)
+  }
+}
+
+/**
+ * Returns the centroid of the largest polygon in a feature.
+ */
+export function getLargestPolygonCentroid(feature: Feature<Polygon | MultiPolygon, GeoJsonProperties>) {
+  if (feature.geometry.type === 'Polygon') {
+    return centroid(feature).geometry.coordinates
+  }
+  if (feature.geometry.type === 'MultiPolygon') {
+    let maxArea = 0
+    let maxPoly: Polygon | null = null
+    for (const coords of feature.geometry.coordinates) {
+      const poly: Polygon = { type: 'Polygon', coordinates: coords }
+      const polyArea = area(poly)
+      if (polyArea > maxArea) {
+        maxArea = polyArea
+        maxPoly = poly
+      }
+    }
+    if (maxPoly) {
+      return centroid(maxPoly).geometry.coordinates
+    }
+  }
+  return centroid(feature).geometry.coordinates
+}
+
+/**
+ * Creates a FeatureCollection of label points from a polygon FeatureCollection.
+ */
+export function makeLabelPoints(features: FeatureCollection, labelProp: string) {
+  return {
+    type: 'FeatureCollection',
+    features: (features.features as any[]).map((f) => {
+      const coords = getLargestPolygonCentroid(f as Feature<Polygon | MultiPolygon, GeoJsonProperties>)
+      return point(coords, f.properties)
+    })
   }
 } 

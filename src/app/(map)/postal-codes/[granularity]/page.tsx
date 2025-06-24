@@ -53,7 +53,10 @@ export default async function PostalCodesPage({ params }: PostalCodesPageProps) 
     notFound()
   }
 
-  const postalCodesData = await getPostalCodesDataForGranularityServer(granularity)
+  const postalCodesData = await getPostalCodesDataForGranularityServer(granularity, {
+    // bbox: [minLng, minLat, maxLng, maxLat], // TODO: pass viewport bbox for further optimization
+    simplifyTolerance: 0.001
+  })
 
   if (!postalCodesData) {
     notFound()

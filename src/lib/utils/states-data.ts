@@ -1,6 +1,6 @@
 import type { MapData } from "@/lib/types/map-data"
 
-const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/1_sehr_hoch.geo.json";
+const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json";
 
 export async function getStatesData(): Promise<MapData> {
   try {
