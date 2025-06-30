@@ -37,7 +37,7 @@ export function BaseMap({
   const [layersLoaded, setLayersLoaded] = useState(false)
   const [currentDrawingMode, setCurrentDrawingMode] = useState<TerraDrawMode | null>(null)
   const [isDrawingToolsVisible, setIsDrawingToolsVisible] = useState(true)
-  const { selectedRegions, addSelectedRegion, removeSelectedRegion, selectionMode, setSelectedRegions } = useMapState()
+  const { selectedRegions, addSelectedRegion, removeSelectedRegion, selectionMode, setSelectedRegions, setMapCenterZoom } = useMapState()
 
   // Track hovered regionId for hover source
   const hoveredRegionIdRef = useRef<string | null>(null)
@@ -422,14 +422,6 @@ export function BaseMap({
     }
   }, [mapContainer.current, data]) // Depend on container and data
 
-  // Update map center and zoom when props change (without recreating map)
-  useEffect(() => {
-    if (!map.current || !isMapLoaded) return
-
-    map.current.setCenter(center)
-    map.current.setZoom(zoom)
-  }, [center, zoom, isMapLoaded])
-
   // Create or update layers when data changes
   useEffect(() => {
     if (!map.current || !isMapLoaded || !styleLoaded || !data) return
@@ -748,6 +740,48 @@ export function BaseMap({
       canvas.style.cursor = 'grab'
     }
   }, [handleMouseEnter, handleMouseMove, handleMouseLeave, handleClick, layerId, layersLoaded, currentDrawingMode])
+
+  // Update map center and zoom when props change (without recreating map)
+  useEffect(() => {
+    if (!map.current || !isMapLoaded) return
+
+    const currentCenter = map.current.getCenter()
+    const currentZoom = map.current.getZoom()
+    // Only set center if different and valid
+    if (
+      Array.isArray(center) && center.length === 2 &&
+      typeof center[0] === 'number' && typeof center[1] === 'number' &&
+      (Math.abs(currentCenter.lng - center[0]) > 1e-6 ||
+      Math.abs(currentCenter.lat - center[1]) > 1e-6)
+    ) {
+      map.current.setCenter({ lng: center[0], lat: center[1] })
+    }
+    // Only set zoom if different
+    if (Math.abs(currentZoom - zoom) > 1e-6) {
+      map.current.setZoom(zoom)
+    }
+  }, [center, zoom, isMapLoaded])
+
+  // Persist map center and zoom in URL on user interaction
+  useEffect(() => {
+    if (!map.current || !isMapLoaded) return
+    const handleMoveEnd = () => {
+      const c = map.current.getCenter()
+      setMapCenterZoom([c.lng, c.lat], map.current.getZoom())
+    }
+    const handleZoomEnd = () => {
+      const c = map.current.getCenter()
+      setMapCenterZoom([c.lng, c.lat], map.current.getZoom())
+    }
+    map.current.on('moveend', handleMoveEnd)
+    map.current.on('zoomend', handleZoomEnd)
+    return () => {
+      if (map.current) {
+        map.current.off('moveend', handleMoveEnd)
+        map.current.off('zoomend', handleZoomEnd)
+      }
+    }
+  }, [isMapLoaded, setMapCenterZoom])
 
   // Show error if data is missing or empty
   if (!data || !data.features || data.features.length === 0) {

@@ -23,7 +23,8 @@ import {
   SquareStack,
   Diamond,
   FileSpreadsheet,
-  Copy
+  Copy,
+  Loader2Icon
 } from "lucide-react"
 import { TerraDrawMode } from "@/lib/hooks/use-terradraw"
 import { useMapState } from "@/lib/url-state/map-state"
@@ -31,6 +32,13 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Suspense } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { exportPostalCodesXLSX, copyPostalCodesCSV } from '@/lib/utils/export-utils'
+import { getLargestPolygonCentroid } from '@/lib/utils/map-data'
+import union from '@turf/union'
+import booleanContains from '@turf/boolean-contains'
+import { featureCollection } from '@turf/helpers'
+import combine from '@turf/combine'
+import booleanIntersects from '@turf/boolean-intersects'
+import { toast } from "sonner"
 
 interface DrawingToolsProps {
   currentMode: TerraDrawMode | null
@@ -100,6 +108,168 @@ const drawingModes = [
   }
 ]
 
+// Memoize polygons for each feature
+const polygonCache = new WeakMap<any, any[]>()
+function getPolygons(feature: any) {
+  if (!feature || !feature.geometry) return [];
+  if (polygonCache.has(feature)) return polygonCache.get(feature);
+  let result: any[] = [];
+  if (feature.geometry.type === 'Polygon') {
+    result = [feature];
+  } else if (feature.geometry.type === 'MultiPolygon') {
+    result = feature.geometry.coordinates.map((coords: any) => ({
+      type: 'Feature',
+      properties: feature.properties,
+      geometry: { type: 'Polygon', coordinates: coords },
+    }));
+  }
+  polygonCache.set(feature, result);
+  return result;
+}
+
+// Helper: check if any polygon in region intersects any polygon in combined
+function isRegionIntersected(combined: any, region: any) {
+  const combinedPolys = getPolygons(combined) || [];
+  const regionPolys = getPolygons(region) || [];
+  return regionPolys.some((regionPoly: any) =>
+    combinedPolys.some((combinedPoly: any) => {
+      try {
+        return booleanIntersects(combinedPoly, regionPoly);
+      } catch {
+        return false;
+      }
+    })
+  );
+}
+
+// Helper: check if region is adjacent to any selected region
+function isRegionAdjacent(region: any, selectedFeatures: any[]) {
+  const regionPolys = getPolygons(region) || [];
+  return selectedFeatures.some(sel => {
+    const selPolys = getPolygons(sel) || [];
+    return regionPolys.some((regionPoly: any) =>
+      selPolys.some((selPoly: any) => {
+        try {
+          return booleanIntersects(regionPoly, selPoly);
+        } catch {
+          return false;
+        }
+      })
+    );
+  });
+}
+
+// Helper: flood fill from outside to find holes
+function findHoles(postalCodesData: any, selectedIds: Set<string>) {
+  // Build adjacency graph
+  const features = postalCodesData.features;
+  const idMap = new Map<string, any>();
+  features.forEach((f: any) => {
+    const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
+    if (id) idMap.set(id, f);
+  });
+  // Build adjacency list
+  const adj = new Map<string, Set<string>>();
+  for (const f of features) {
+    const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
+    if (!id) continue;
+    adj.set(id, new Set());
+    for (const g of features) {
+      const gid = g.properties?.id || g.properties?.PLZ || g.properties?.plz;
+      if (!gid || gid === id) continue;
+      if (isRegionAdjacent(f, [g])) adj.get(id)!.add(gid);
+    }
+  }
+  // Find all regions on the edge (not selected, touching map boundary)
+  // For simplicity, treat all unselected regions as possible outside
+  const outside = new Set<string>();
+  for (const f of features) {
+    const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
+    if (!id || selectedIds.has(id)) continue;
+    // Heuristic: if region touches map boundary (min/max lat/lon), treat as outside
+    const coords = getPolygons(f).flatMap(poly => poly.geometry.coordinates.flat(1));
+    if (coords.some(([lng, lat]: [number, number]) => lat < 47.2 || lat > 55.1 || lng < 5.7 || lng > 15.1)) {
+      outside.add(id);
+    }
+  }
+  // Flood fill from outside
+  const visited = new Set(outside);
+  const queue = Array.from(outside);
+  while (queue.length) {
+    const curr = queue.pop()!;
+    for (const neighbor of adj.get(curr) ?? []) {
+      if (!selectedIds.has(neighbor) && !visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
+    }
+  }
+  // Any unselected region not visited is a hole
+  const holes: string[] = [];
+  for (const f of features) {
+    const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
+    if (!id || selectedIds.has(id)) continue;
+    if (!visited.has(id)) holes.push(id);
+  }
+  return holes;
+}
+
+// Fill logic (chunked for large datasets)
+async function fillRegions(mode: 'all' | 'holes' | 'expand', postalCodesData: any, selectedRegions: string[], setSelectedRegions: (ids: string[]) => void, setIsFilling: (b: boolean) => void) {
+  setIsFilling(true);
+  await new Promise(r => setTimeout(r, 10)); // allow UI update
+  const selectedIds = new Set(selectedRegions);
+  const features = postalCodesData.features;
+  let toAdd: string[] = [];
+  if (mode === 'all') {
+    const selectedFeatures = features.filter((f: any) => selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz));
+    if (selectedFeatures.length < 3) {
+      setIsFilling(false);
+      return;
+    }
+    const combined = combine({ type: 'FeatureCollection', features: selectedFeatures });
+    if (!combined || !combined.features || combined.features.length === 0) {
+      setIsFilling(false);
+      return;
+    }
+    const multiPoly = combined.features[0];
+    // Chunked processing for large datasets
+    const CHUNK_SIZE = 200;
+    let idx = 0;
+    while (idx < features.length) {
+      const chunk = features.slice(idx, idx + CHUNK_SIZE);
+      toAdd.push(...chunk
+        .filter((f: any) => !selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz))
+        .filter((f: any) => isRegionIntersected(multiPoly, f))
+        .map((f: any) => f.properties?.id || f.properties?.PLZ || f.properties?.plz)
+        .filter(Boolean));
+      idx += CHUNK_SIZE;
+      await new Promise(r => setTimeout(r, 0)); // yield to event loop
+    }
+  } else if (mode === 'expand') {
+    const selectedFeatures = features.filter((f: any) => selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz));
+    const CHUNK_SIZE = 200;
+    let idx = 0;
+    while (idx < features.length) {
+      const chunk = features.slice(idx, idx + CHUNK_SIZE);
+      toAdd.push(...chunk
+        .filter((f: any) => !selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz))
+        .filter((f: any) => isRegionAdjacent(f, selectedFeatures))
+        .map((f: any) => f.properties?.id || f.properties?.PLZ || f.properties?.plz)
+        .filter(Boolean));
+      idx += CHUNK_SIZE;
+      await new Promise(r => setTimeout(r, 0));
+    }
+  } else if (mode === 'holes') {
+    // Holes are usually much fewer, so no chunking needed
+    toAdd = findHoles(postalCodesData, selectedIds);
+  }
+  const newSelection = Array.from(new Set([...selectedRegions, ...toAdd]));
+  setSelectedRegions(newSelection);
+  setIsFilling(false);
+  toast.success(`Filled ${toAdd.length} region${toAdd.length === 1 ? '' : 's'} (${mode === 'all' ? 'all gaps' : mode === 'holes' ? 'holes' : 'one layer'})`);
+}
+
 function DrawingToolsImpl({
   currentMode,
   onModeChange,
@@ -111,7 +281,7 @@ function DrawingToolsImpl({
   onGranularityChange,
   postalCodesData
 }: DrawingToolsProps) {
-  const { selectedRegions, clearSelectedRegions } = useMapState()
+  const { selectedRegions, clearSelectedRegions, setSelectedRegions } = useMapState()
 
   const handleModeClick = (mode: TerraDrawMode) => {
     if (currentMode === mode) {
@@ -149,6 +319,9 @@ function DrawingToolsImpl({
     const codes = getPostalCodes()
     await copyPostalCodesCSV(codes)
   }
+
+  // --- UI State ---
+  const [isFilling, setIsFilling] = useState(false);
 
   return (
     <Card role="region" aria-label="Map Tools Panel">
@@ -238,7 +411,7 @@ function DrawingToolsImpl({
         {/* Only show separator if at least one action button is visible */}
         {(currentMode && currentMode !== 'cursor') || selectedRegions.length > 0 ? <Separator /> : null}
         {/* Action Buttons */}
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {currentMode && currentMode !== 'cursor' && (
             <Button
               variant="destructive"
@@ -265,6 +438,42 @@ function DrawingToolsImpl({
               Deselect
             </Button>
           )}
+          <Button
+            variant="default"
+            size="sm"
+            disabled={isFilling || selectedRegions.length < 3}
+            onClick={() => fillRegions('all', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+            className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
+            title="Fill all gaps (no holes)"
+            aria-label="Fill all gaps (no holes)"
+          >
+            {isFilling ? <Loader2Icon className="animate-spin mr-2" /> : <PieChart className="h-4 w-4 mr-2" />}
+            Fill All Gaps (No Holes)
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={isFilling || selectedRegions.length < 3}
+            onClick={() => fillRegions('holes', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+            className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
+            title="Fill only holes inside the selection"
+            aria-label="Fill only holes"
+          >
+            {isFilling ? <Loader2Icon className="animate-spin mr-2" /> : <Diamond className="h-4 w-4 mr-2" />}
+            Fill Only Holes
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isFilling || selectedRegions.length < 3}
+            onClick={() => fillRegions('expand', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+            className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
+            title="Expand selection by one layer"
+            aria-label="Expand by one layer"
+          >
+            {isFilling ? <Loader2Icon className="animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+            Expand by One Layer
+          </Button>
         </div>
         
         {/* Export/Copy Buttons at the bottom */}

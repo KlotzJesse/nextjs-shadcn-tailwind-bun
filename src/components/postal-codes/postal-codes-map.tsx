@@ -4,6 +4,7 @@ import { BaseMap } from "@/components/shared/base-map"
 import type { MapData } from "@/lib/types/map-data"
 import { getStatesData } from '@/lib/utils/states-data'
 import { useEffect, useState } from 'react'
+import { useMapState } from '@/lib/url-state/map-state'
 
 interface PostalCodesMapProps {
   data: MapData
@@ -14,6 +15,7 @@ interface PostalCodesMapProps {
 
 export function PostalCodesMap({ data, onSearch, granularity, onGranularityChange }: PostalCodesMapProps) {
   const [statesData, setStatesData] = useState<MapData | null>(null)
+  const { center, zoom } = useMapState()
 
   useEffect(() => {
     getStatesData().then(setStatesData).catch(() => setStatesData(null))
@@ -24,8 +26,8 @@ export function PostalCodesMap({ data, onSearch, granularity, onGranularityChang
       data={data} 
       layerId="postal-codes" 
       onSearch={onSearch}
-      center={[10.4515, 51.1657]}
-      zoom={5}
+      center={center}
+      zoom={zoom}
       statesData={statesData}
       granularity={granularity}
       onGranularityChange={onGranularityChange}

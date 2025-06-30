@@ -1,12 +1,26 @@
 import { useQueryState } from 'nuqs'
 
+// Helper for atomic map view state
+export function useMapView() {
+  const [mapView, setMapViewRaw] = useQueryState('mapView')
+  // mapView: { center: [lng, lat], zoom: number }
+  const defaultView = { center: [10.4515, 51.1657], zoom: 5 }
+  const parsed = mapView ? JSON.parse(mapView) : defaultView
+  const setMapView = (view: { center: [number, number]; zoom: number }) => setMapViewRaw(JSON.stringify(view))
+  return [
+    parsed as { center: [number, number]; zoom: number },
+    setMapView
+  ] as const
+}
+
 // Hook for managing all map state
 export function useMapState() {
+  // --- Atomic map view state ---
+  const [mapView, setMapView] = useMapView()
+  // ---
   const [selectedRegions, setSelectedRegions] = useQueryState('selectedRegions')
   const [selectionMode, setSelectionMode] = useQueryState('selectionMode')
   const [granularity, setGranularity] = useQueryState('granularity')
-  const [center, setCenter] = useQueryState('center')
-  const [zoom, setZoom] = useQueryState('zoom')
   const [radius, setRadius] = useQueryState('radius')
 
   // Helper functions for managing selected regions
@@ -30,16 +44,9 @@ export function useMapState() {
     setSelectedRegions(JSON.stringify(regions))
   }
 
-  const setCenterArray = (centerCoords: [number, number]) => {
-    setCenter(JSON.stringify(centerCoords))
-  }
-
-  const setZoomNumber = (zoomLevel: number) => {
-    setZoom(zoomLevel.toString())
-  }
-
-  const setRadiusNumber = (radiusValue: number) => {
-    setRadius(radiusValue.toString())
+  // --- Atomic map view helpers ---
+  const setMapCenterZoom = (center: [number, number], zoom: number) => {
+    setMapView({ center, zoom })
   }
 
   return {
@@ -47,18 +54,15 @@ export function useMapState() {
     selectedRegions: selectedRegions ? JSON.parse(selectedRegions) : [],
     selectionMode: selectionMode || 'cursor',
     granularity: granularity || 'plz-5stellig',
-    center: center ? JSON.parse(center) : [10.4515, 51.1657],
-    zoom: zoom ? parseInt(zoom, 10) : 5,
+    center: mapView.center,
+    zoom: mapView.zoom,
     radius: radius ? parseInt(radius, 10) : 10,
-    
     // Setters
     setSelectedRegions: setSelectedRegionsArray,
     setSelectionMode,
     setGranularity,
-    setCenter: setCenterArray,
-    setZoom: setZoomNumber,
-    setRadius: setRadiusNumber,
-    
+    setMapCenterZoom, // atomic
+    setRadius: (radiusValue: number) => setRadius(radiusValue.toString()),
     // Helper functions
     addSelectedRegion,
     removeSelectedRegion,
@@ -66,10 +70,9 @@ export function useMapState() {
   }
 }
 
-// Individual hooks for specific state
+// Individual hooks for specific state (deprecated for center/zoom)
 export function useSelectedRegions() {
   const [selectedRegions, setSelectedRegions] = useQueryState('selectedRegions')
-  
   return [
     selectedRegions ? JSON.parse(selectedRegions) : [],
     (regions: string[]) => setSelectedRegions(JSON.stringify(regions))
@@ -84,27 +87,18 @@ export function useGranularity() {
   return useQueryState('granularity')
 }
 
+// Deprecated: use useMapState().center/zoom instead
 export function useMapCenter() {
-  const [center, setCenter] = useQueryState('center')
-  
-  return [
-    center ? JSON.parse(center) : [10.4515, 51.1657],
-    (centerCoords: [number, number]) => setCenter(JSON.stringify(centerCoords))
-  ] as const
+  const [mapView] = useMapView()
+  return [mapView.center, () => {}] as const
 }
-
 export function useMapZoom() {
-  const [zoom, setZoom] = useQueryState('zoom')
-  
-  return [
-    zoom ? parseInt(zoom, 10) : 5,
-    (zoomLevel: number) => setZoom(zoomLevel.toString())
-  ] as const
+  const [mapView] = useMapView()
+  return [mapView.zoom, () => {}] as const
 }
 
 export function useRadius() {
   const [radius, setRadius] = useQueryState('radius')
-  
   return [
     radius ? parseInt(radius, 10) : 10,
     (radiusValue: number) => setRadius(radiusValue.toString())
