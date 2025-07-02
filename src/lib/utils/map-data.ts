@@ -1,25 +1,35 @@
-import * as topojson from "topojson-client"
-import type { MapData } from "@/app/map/[granularity]/map-data"
-import type { Feature, FeatureCollection, Polygon, MultiPolygon, GeoJsonProperties } from "geojson"
-import centroid from '@turf/centroid'
-import area from '@turf/area'
-import { point } from '@turf/helpers'
+import * as topojson from "topojson-client";
+import type { MapData } from "@/app/map/[granularity]/map-data";
+import type {
+  Feature,
+  FeatureCollection,
+  Polygon,
+  MultiPolygon,
+  GeoJsonProperties,
+} from "geojson";
+import centroid from "@turf/centroid";
+import area from "@turf/area";
+import { point } from "@turf/helpers";
 
 const TOPOJSON_URLS: Record<string, string> = {
-  "plz-1stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-1stellig/topojson/plz-1stellig.topojson",
-  "plz-2stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-2stellig/topojson/plz-2stellig.topojson",
-  "plz-3stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-3stellig/topojson/plz-3stellig.topojson",
-  "plz-4stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-4stellig/topojson/plz-4stellig.topojson",
-  "plz-5stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-5stellig/topojson/plz-5stellig.topojson",
+  "plz-1stellig":
+    "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-1stellig/topojson/plz-1stellig.topojson",
+  "plz-2stellig":
+    "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-2stellig/topojson/plz-2stellig.topojson",
+  "plz-3stellig":
+    "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-3stellig/topojson/plz-3stellig.topojson",
+  "plz-5stellig":
+    "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-5stellig/topojson/plz-5stellig.topojson",
 };
 
-const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json";
+const STATE_GEOJSON_URL =
+  "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json";
 
 // Cache the fetch requests
 const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
   try {
-    const response = await fetch(TOPOJSON_URLS[granularity], { 
-      next: { revalidate: 3600 }
+    const response = await fetch(TOPOJSON_URLS[granularity], {
+      next: { revalidate: 3600 },
     });
 
     if (!response.ok) {
@@ -27,72 +37,87 @@ const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
     }
 
     const topo = await response.json();
-    
+
     if (!topo || !topo.objects) {
-      throw new Error('Invalid TopoJSON data received');
+      throw new Error("Invalid TopoJSON data received");
     }
 
     const firstKey = Object.keys(topo.objects)[0];
     if (!firstKey) {
-      throw new Error('No objects found in TopoJSON data');
+      throw new Error("No objects found in TopoJSON data");
     }
 
     // Convert TopoJSON to GeoJSON FeatureCollection
-    const geoData = topojson.feature(topo, topo.objects[firstKey]) as Feature | FeatureCollection;
-    
+    const geoData = topojson.feature(topo, topo.objects[firstKey]) as
+      | Feature
+      | FeatureCollection;
+
     // Ensure it's a FeatureCollection with correct properties
-    const features = 'features' in geoData ? geoData.features : [geoData];
+    const features = "features" in geoData ? geoData.features : [geoData];
     const processedFeatures = features
-      .filter((feature: Feature): feature is Feature<Polygon | MultiPolygon> => 
-        feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon'
+      .filter(
+        (feature: Feature): feature is Feature<Polygon | MultiPolygon> =>
+          feature.geometry.type === "Polygon" ||
+          feature.geometry.type === "MultiPolygon"
       )
       .map((feature: Feature<Polygon | MultiPolygon>) => ({
         type: "Feature" as const,
         properties: {
-          id: feature.properties?.id || feature.properties?.PLZ || feature.properties?.plz || feature.properties?.PLZ99 || feature.properties?.plz99 || feature.properties?.code || String(Math.random()),
-          ...feature.properties
+          id:
+            feature.properties?.id ||
+            feature.properties?.PLZ ||
+            feature.properties?.plz ||
+            feature.properties?.PLZ99 ||
+            feature.properties?.plz99 ||
+            feature.properties?.code ||
+            String(Math.random()),
+          ...feature.properties,
         },
-        geometry: feature.geometry
+        geometry: feature.geometry,
       }));
 
     return {
       type: "FeatureCollection" as const,
-      features: processedFeatures
+      features: processedFeatures,
     };
   } catch (error) {
-    console.error('Error fetching TopoJSON:', error);
+    console.error("Error fetching TopoJSON:", error);
     throw error;
   }
 };
 
 const fetchStateGeo = async (): Promise<MapData> => {
   try {
-    const response = await fetch(STATE_GEOJSON_URL, { 
-      next: { revalidate: 3600 }
+    const response = await fetch(STATE_GEOJSON_URL, {
+      next: { revalidate: 3600 },
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch state GeoJSON data: ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch state GeoJSON data: ${response.statusText}`
+      );
     }
 
     const data = await response.json();
     return data as MapData;
   } catch (error) {
-    console.error('Error fetching state GeoJSON:', error);
+    console.error("Error fetching state GeoJSON:", error);
     throw error;
   }
 };
 
-export async function getMapData(granularity: string): Promise<{ geoData: MapData; stateGeo: MapData }> {
+export async function getMapData(
+  granularity: string
+): Promise<{ geoData: MapData; stateGeo: MapData }> {
   try {
     const [geoData, stateGeo] = await Promise.all([
       fetchTopoJSON(granularity),
-      fetchStateGeo()
+      fetchStateGeo(),
     ]);
 
     return { geoData, stateGeo };
   } catch (error) {
-    console.error('Error in getMapData:', error);
+    console.error("Error in getMapData:", error);
     throw error;
   }
 }
@@ -101,54 +126,74 @@ export async function getMapData(granularity: string): Promise<{ geoData: MapDat
  * Returns an empty GeoJSON FeatureCollection.
  */
 export function emptyFeatureCollection(): FeatureCollection {
-  return { type: 'FeatureCollection', features: [] }
+  return { type: "FeatureCollection", features: [] };
 }
 
 /**
  * Returns a FeatureCollection containing only features with the given IDs.
  */
-export function featureCollectionFromIds(data: any, ids: string[]): FeatureCollection {
-  if (!data || !data.features) return emptyFeatureCollection()
+export function featureCollectionFromIds(
+  data: any,
+  ids: string[]
+): FeatureCollection {
+  if (!data || !data.features) return emptyFeatureCollection();
   return {
-    type: 'FeatureCollection',
-    features: (data.features as any[]).filter((f) => ids.includes(f.properties?.id)).map(f => f as Feature)
-  }
+    type: "FeatureCollection",
+    features: (data.features as any[])
+      .filter((f) => ids.includes(f.properties?.id))
+      .map((f) => f as Feature),
+  };
 }
 
 /**
  * Returns the centroid of the largest polygon in a feature.
  */
-export function getLargestPolygonCentroid(feature: Feature<Polygon | MultiPolygon, GeoJsonProperties>) {
-  if (feature.geometry.type === 'Polygon') {
-    return centroid(feature).geometry.coordinates
+export function getLargestPolygonCentroid(
+  feature: Feature<Polygon | MultiPolygon, GeoJsonProperties>
+) {
+  if (feature.geometry.type === "Polygon") {
+    return centroid(feature).geometry.coordinates;
   }
-  if (feature.geometry.type === 'MultiPolygon') {
-    let maxArea = 0
-    let maxPoly: Polygon | null = null
+  if (feature.geometry.type === "MultiPolygon") {
+    let maxArea = 0;
+    let maxPoly: Polygon | null = null;
     for (const coords of feature.geometry.coordinates) {
-      const poly: Polygon = { type: 'Polygon', coordinates: coords }
-      const polyArea = area(poly)
+      const poly: Polygon = { type: "Polygon", coordinates: coords };
+      const polyArea = area(poly);
       if (polyArea > maxArea) {
-        maxArea = polyArea
-        maxPoly = poly
+        maxArea = polyArea;
+        maxPoly = poly;
       }
     }
     if (maxPoly) {
-      return centroid(maxPoly).geometry.coordinates
+      return centroid(maxPoly).geometry.coordinates;
     }
   }
-  return centroid(feature).geometry.coordinates
+  return centroid(feature).geometry.coordinates;
 }
 
 /**
  * Creates a FeatureCollection of label points from a polygon FeatureCollection.
  */
-export function makeLabelPoints(features: FeatureCollection, labelProp: string) {
-  return {
-    type: 'FeatureCollection',
-    features: (features.features as any[]).map((f) => {
-      const coords = getLargestPolygonCentroid(f as Feature<Polygon | MultiPolygon, GeoJsonProperties>)
-      return point(coords, f.properties)
-    })
+export function makeLabelPoints(
+  features: FeatureCollection,
+  labelProp: string
+) {
+  // Safety check for undefined or invalid features
+  if (!features || !features.features || !Array.isArray(features.features)) {
+    return {
+      type: "FeatureCollection",
+      features: [],
+    };
   }
-} 
+
+  return {
+    type: "FeatureCollection",
+    features: features.features.map((f) => {
+      const coords = getLargestPolygonCentroid(
+        f as Feature<Polygon | MultiPolygon, GeoJsonProperties>
+      );
+      return point(coords, f.properties);
+    }),
+  };
+}

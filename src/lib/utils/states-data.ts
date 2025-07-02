@@ -1,24 +1,14 @@
-import type { MapData } from "@/lib/types/map-data"
-
-const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json";
+import type { MapData } from "@/lib/types";
+import { promises as fs } from "fs";
 
 export async function getStatesData(): Promise<MapData> {
   try {
-    const response = await fetch(STATE_GEOJSON_URL, { 
-      next: { 
-        revalidate: 3600, // Cache for 1 hour
-        tags: ['states-data'] // Tag for cache invalidation
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch state GeoJSON data: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data as MapData;
+    // Read GeoJSON data from file system to avoid loading during compilation
+    const filePath = process.cwd() + "/src/data/states/german-states.geojson";
+    const fileContent = await fs.readFile(filePath, "utf-8");
+    return JSON.parse(fileContent) as MapData;
   } catch (error) {
-    console.error('Error fetching state GeoJSON:', error);
+    console.error("Error loading state GeoJSON:", error);
     throw error;
   }
 }
@@ -28,7 +18,7 @@ export async function getStatesDataServer(): Promise<MapData | null> {
   try {
     return await getStatesData();
   } catch (error) {
-    console.error('Error in getStatesDataServer:', error);
+    console.error("Error in getStatesDataServer:", error);
     return null;
   }
-} 
+}

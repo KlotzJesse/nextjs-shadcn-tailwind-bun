@@ -1,32 +1,39 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { StatesMap } from "./states-map"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useMapState } from "@/lib/url-state/map-state"
-import type { MapData } from "@/lib/types/map-data"
+import { useState } from "react";
+import { StatesMap } from "./states-map";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMapState } from "@/lib/url-state/map-state";
+import type { MapData } from "@/lib/types";
 
 interface StatesViewProps {
   data: MapData;
 }
 
 export function StatesView({ data }: StatesViewProps) {
-  const [searchResults, setSearchResults] = useState<string[]>([])
-  const { selectedRegions } = useMapState()
+  const [searchResults, setSearchResults] = useState<string[]>([]);
+  const { selectedRegions } = useMapState();
 
   const handleSearch = (stateName: string) => {
     // Simple search implementation - in a real app, you'd want more sophisticated search
     const results = data.features
-      .filter(feature => 
-        feature.properties?.name?.toLowerCase().includes(stateName.toLowerCase()) ||
-        feature.properties?.id?.toLowerCase().includes(stateName.toLowerCase())
+      .filter(
+        (feature) =>
+          feature.properties?.name
+            ?.toLowerCase()
+            .includes(stateName.toLowerCase()) ||
+          feature.properties?.id
+            ?.toLowerCase()
+            .includes(stateName.toLowerCase())
       )
-      .map(feature => feature.properties?.id || feature.properties?.name || '')
+      .map(
+        (feature) => feature.properties?.id || feature.properties?.name || ""
+      )
       .filter(Boolean)
-      .slice(0, 5) // Limit to 5 results
+      .slice(0, 5); // Limit to 5 results
 
-    setSearchResults(results)
-  }
+    setSearchResults(results);
+  };
 
   return (
     <div className="h-full relative">
@@ -45,8 +52,8 @@ export function StatesView({ data }: StatesViewProps) {
                     className="text-sm p-2 bg-muted rounded cursor-pointer hover:bg-muted/80"
                     onClick={() => {
                       // Handle result selection
-                      console.log('Selected result:', result)
-                      setSearchResults([]) // Clear results after selection
+                      console.log("Selected result:", result);
+                      setSearchResults([]); // Clear results after selection
                     }}
                   >
                     {result}
@@ -57,11 +64,11 @@ export function StatesView({ data }: StatesViewProps) {
           </Card>
         </div>
       )}
-      
+
       {/* Map with integrated tools */}
       <div className="h-full">
         <StatesMap data={data} onSearch={handleSearch} />
       </div>
     </div>
-  )
-} 
+  );
+}

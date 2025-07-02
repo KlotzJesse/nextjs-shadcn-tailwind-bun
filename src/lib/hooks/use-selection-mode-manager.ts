@@ -1,18 +1,23 @@
-import { useMapState } from "@/lib/url-state/map-state"
-import { useCursorSelection } from "./use-cursor-selection"
-import { useLassoSelection } from "./use-lasso-selection"
-import { useRadiusSelection } from "./use-radius-selection"
-import type { MapData } from "@/lib/types/map-data"
+import { useMapState } from "@/lib/url-state/map-state";
+import { useCursorSelection } from "./use-cursor-selection";
+import { useLassoSelection } from "./use-lasso-selection";
+import { useRadiusSelection } from "./use-radius-selection";
+import type { MapData } from "@/lib/types";
 
 interface SelectionModeManagerProps {
-  map: any
-  isMapLoaded: boolean
-  data: MapData
-  layerId: string
+  map: any;
+  isMapLoaded: boolean;
+  data: MapData;
+  layerId: string;
 }
 
-export function useSelectionModeManager({ map, isMapLoaded, data, layerId }: SelectionModeManagerProps) {
-  const { selectionMode } = useMapState()
+export function useSelectionModeManager({
+  map,
+  isMapLoaded,
+  data,
+  layerId,
+}: SelectionModeManagerProps) {
+  const { selectionMode } = useMapState();
 
   // Cursor selection (default)
   useCursorSelection({
@@ -20,8 +25,8 @@ export function useSelectionModeManager({ map, isMapLoaded, data, layerId }: Sel
     isMapLoaded,
     data,
     layerId,
-    enabled: selectionMode === 'cursor',
-  })
+    enabled: selectionMode === "cursor",
+  });
 
   // Lasso selection
   useLassoSelection({
@@ -29,8 +34,8 @@ export function useSelectionModeManager({ map, isMapLoaded, data, layerId }: Sel
     isMapLoaded,
     data,
     layerId,
-    enabled: selectionMode === 'lasso',
-  })
+    enabled: selectionMode === "lasso",
+  });
 
   // Radius selection
   useRadiusSelection({
@@ -38,6 +43,6 @@ export function useSelectionModeManager({ map, isMapLoaded, data, layerId }: Sel
     isMapLoaded,
     data,
     layerId,
-    enabled: selectionMode === 'radius',
-  })
-} 
+    enabled: selectionMode === "radius",
+  });
+}
