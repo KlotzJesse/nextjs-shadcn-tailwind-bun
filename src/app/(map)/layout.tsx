@@ -1,15 +1,10 @@
-import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
-export default function MapLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export const experimental_ppr = true;
+
+export default function MapLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider
       style={
@@ -31,5 +26,5 @@ export default function MapLayout({
         </div>
       </SidebarInset>
     </SidebarProvider>
-  )
-} 
+  );
+}

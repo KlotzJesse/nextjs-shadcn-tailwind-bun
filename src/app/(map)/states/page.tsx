@@ -1,24 +1,28 @@
-import { Suspense } from 'react';
-import { Metadata } from "next"
-import { StatesView } from '@/components/states/states-view';
-import { getStatesDataServer } from "@/lib/utils/states-data"
-import { notFound } from 'next/navigation'
+import { Suspense } from "react";
+import { Metadata } from "next";
+import { StatesView } from "@/components/states/states-view";
+import { getStatesDataServer } from "@/lib/utils/states-data";
+import { notFound } from "next/navigation";
+
+export const experimental_ppr = true;
 
 export const metadata: Metadata = {
   title: "KRAUSS Territory Management - German States",
-  description: "Interactive territory management for German states and federal regions",
+  description:
+    "Interactive territory management for German states and federal regions",
   openGraph: {
     title: "KRAUSS Territory Management - German States",
-    description: "Interactive territory management for German states and federal regions",
-    type: 'website',
+    description:
+      "Interactive territory management for German states and federal regions",
+    type: "website",
   },
-}
+};
 
 export default async function StatesPage() {
-  const statesData = await getStatesDataServer()
+  const statesData = await getStatesDataServer();
 
   if (!statesData) {
-    notFound()
+    notFound();
   }
 
   return (
@@ -27,7 +31,7 @@ export default async function StatesPage() {
         <StatesView data={statesData} />
       </Suspense>
     </div>
-  )
+  );
 }
 
 function StatesLoading() {
@@ -41,5 +45,5 @@ function StatesLoading() {
         <div className="h-full bg-muted animate-pulse rounded-lg" />
       </div>
     </div>
-  )
-} 
+  );
+}
