@@ -29,12 +29,13 @@ export async function POST(req: NextRequest) {
       // Find unselected regions adjacent to selected
       let expandRows = [];
       if (selectedCodes.length > 0) {
-        // Always treat codes as strings
-        const codeList = selectedCodes
-          .map((code) => `'${String(code).replace(/'/g, "''")}'`)
-          .join(", ");
-        const sqlString = `SELECT code FROM postal_codes WHERE granularity = '${granularity}' AND code NOT IN (${codeList}) AND ST_Touches(geometry, (SELECT ST_Union(geometry) AS geom FROM postal_codes WHERE code IN (${codeList})))`;
-        const { rows } = await db.execute(sqlString);
+        const { rows } = await db.execute(
+          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity} AND code NOT IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )}) AND ST_Touches(geometry, (SELECT ST_Union(geometry) AS geom FROM postal_codes WHERE code IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )}))`
+        );
         expandRows = rows;
       } else {
         const { rows } = await db.execute(
@@ -42,39 +43,43 @@ export async function POST(req: NextRequest) {
         );
         expandRows = rows;
       }
-      resultCodes = expandRows.map((r: any) => String(r.code));
+      resultCodes = expandRows.map((r) =>
+        String((r as Record<string, unknown>)["code"])
+      );
     } else if (mode === "holes") {
-      // Minimal convex hull mask: single subquery for performance
+      // Use a CTE for the convex hull to avoid recomputation and maximize performance
       if (selectedCodes.length > 0) {
-        const codeList = selectedCodes
-          .map((code) => `'${String(code).replace(/'/g, "''")}'`)
-          .join(", ");
-        const sqlString = `
-          SELECT code FROM postal_codes
-          WHERE granularity = '${granularity}'
-            AND code NOT IN (${codeList})
-            AND ST_Within(geometry, (
-              SELECT ST_ConvexHull(ST_Collect(geometry))
-              FROM postal_codes
-              WHERE granularity = '${granularity}' AND code IN (${codeList})
-            ))
-        `;
-        const { rows } = await db.execute(sqlString);
+        const { rows } = await db.execute(
+          sql`WITH hull AS (
+            SELECT ST_ConvexHull(ST_Collect(geometry)) AS geom
+            FROM postal_codes
+            WHERE granularity = ${granularity} AND code IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )})
+          )
+          SELECT code FROM postal_codes, hull
+          WHERE granularity = ${granularity}
+            AND code NOT IN (${sql.raw(selectedCodes.map(String).join(","))})
+            AND ST_Within(geometry, hull.geom)`
+        );
         resultCodes = rows.map((r) =>
           String((r as Record<string, unknown>)["code"])
         );
       } else {
         resultCodes = [];
       }
+      // For best performance, run ANALYZE postal_codes; after large data changes.
     } else if (mode === "all") {
       // Find all unselected regions that intersect the selected union
       let gapRows = [];
       if (selectedCodes.length > 0) {
-        const codeList = selectedCodes
-          .map((code) => `'${String(code).replace(/'/g, "''")}'`)
-          .join(", ");
-        const sqlString = `SELECT code FROM postal_codes WHERE granularity = '${granularity}' AND code NOT IN (${codeList}) AND ST_Intersects(geometry, (SELECT ST_Union(geometry) AS geom FROM postal_codes WHERE code IN (${codeList})))`;
-        const { rows } = await db.execute(sqlString);
+        const { rows } = await db.execute(
+          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity} AND code NOT IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )}) AND ST_Intersects(geometry, (SELECT ST_Union(geometry) AS geom FROM postal_codes WHERE code IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )}))`
+        );
         gapRows = rows;
       } else {
         const { rows } = await db.execute(
