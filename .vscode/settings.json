@@ -9,5 +9,6 @@
     "**/*tsconfig.json": true,
     ".cache": true,
     "retool.config.json": true
-  }
+  },
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

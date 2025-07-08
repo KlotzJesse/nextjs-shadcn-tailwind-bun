@@ -4,20 +4,6 @@ const BaseMap = dynamic(() =>
 );
 
 import { useMapState } from "@/lib/url-state/map-state";
-import {
-  FeatureCollection,
-  GeoJsonProperties,
-  MultiPolygon,
-  Polygon,
-} from "geojson";
-
-interface PostalCodesMapProps {
-  data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
-  statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
-  onSearch?: (plz: string) => void;
-  granularity?: string;
-  onGranularityChange?: (granularity: string) => void;
-}
 
 export function PostalCodesMap({
   data,
@@ -37,15 +23,7 @@ export function PostalCodesMap({
       zoom={zoom}
       statesData={statesData}
       granularity={granularity}
-      onGranularityChange={
-        onGranularityChange
-          ? () => {
-              if (granularity !== undefined) {
-                onGranularityChange(granularity);
-              }
-            }
-          : undefined
-      }
+      onGranularityChange={onGranularityChange}
     />
   );
 }
