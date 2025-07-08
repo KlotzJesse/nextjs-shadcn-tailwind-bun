@@ -466,6 +466,7 @@ export function BaseMap({
   // Handle search functionality
 
   // Initialize map - ONLY ONCE, on mount
+
   useEffect(() => {
     if (!mapContainer.current) return;
     if (!data || !data.features || data.features.length === 0) return;
@@ -488,7 +489,7 @@ export function BaseMap({
       }
       setLayersLoaded(false);
     };
-  }, [center, data, zoom]); // added missing dependencies
+  }, []); // Only run once on mount
 
   // Update sources/layers when data or state changes
   useEffect(() => {
