@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
-import type { MapData } from "@/lib/types/map-data";
 import { sql } from "drizzle-orm";
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
 
 // Fetch all postal codes for a given granularity from the Neon database as GeoJSON
-export async function getPostalCodesDataForGranularity(granularity: string): Promise<MapData> {
+export async function getPostalCodesDataForGranularity(granularity: string): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>> {
   try {
     const { rows } = await db.execute(
       sql`SELECT id, code, granularity, ST_AsGeoJSON(geometry) as geometry, properties, bbox, "created_at", "updated_at" FROM postal_codes WHERE granularity = ${granularity}`
@@ -28,7 +28,7 @@ export async function getPostalCodesDataForGranularity(granularity: string): Pro
   }
 }
 
-export async function getPostalCodesDataForGranularityServer(granularity: string): Promise<MapData | null> {
+export async function getPostalCodesDataForGranularityServer(granularity: string): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties> | null> {
   try {
     return await getPostalCodesDataForGranularity(granularity);
   } catch (error) {

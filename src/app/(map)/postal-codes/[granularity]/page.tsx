@@ -1,8 +1,7 @@
 import ServerPostalCodesView from "@/components/postal-codes/server-postal-codes-view";
 import { Metadata } from "next";
-import { Suspense } from "react";
-// import { getPostalCodesDataForGranularityServer } from "@/lib/utils/postal-codes-data";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 export const experimental_ppr = true;
 

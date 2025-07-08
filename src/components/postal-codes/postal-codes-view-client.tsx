@@ -1,26 +1,26 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { MapData } from "@/lib/types/map-data"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { PostalCodesMap } from "./postal-codes-map"
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { usePostalCodeSearch } from '@/lib/hooks/use-postal-code-search'
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson"
 import { ChevronsUpDownIcon } from 'lucide-react'
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { AddressAutocomplete } from './address-autocomplete'
+import { PostalCodesMap } from "./postal-codes-map"
 
 interface PostalCodesViewClientProps {
-  initialData: MapData
-  statesData: MapData
+  initialData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
+  statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
   defaultGranularity: string
 }
 
 export default function PostalCodesViewClient({ initialData, statesData, defaultGranularity }: PostalCodesViewClientProps) {
   const [searchResults, setSearchResults] = useState<string[]>([])
-  const [data] = useState<MapData>(initialData)
+  const [data] = useState<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>>(initialData)
   const router = useRouter()
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data })
   const [postalCodeQuery, setPostalCodeQuery] = useState('')

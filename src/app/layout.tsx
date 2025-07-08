@@ -1,8 +1,9 @@
+import { ThemeProvider } from "@/components/theme-provider";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 

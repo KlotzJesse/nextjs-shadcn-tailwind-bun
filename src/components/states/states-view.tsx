@@ -1,13 +1,13 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useState } from "react"
-import { StatesMap } from "./states-map"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import { useState } from "react";
+import { StatesMap } from "./states-map";
 
-import type { MapData } from "@/lib/types/map-data"
 
 interface StatesViewProps {
-  data: MapData;
+  data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
 }
 
 export function StatesView({ data }: StatesViewProps) {

@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
-import type { MapData } from "@/lib/types/map-data";
 import { sql } from "drizzle-orm";
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
 
-export async function getStatesData(): Promise<MapData> {
+export async function getStatesData(): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>> {
   try {
     // Select all columns, but geometry as GeoJSON
     const { rows } = await db.execute(
@@ -28,7 +28,7 @@ export async function getStatesData(): Promise<MapData> {
   }
 }
 
-export async function getStatesDataServer(): Promise<MapData | null> {
+export async function getStatesDataServer(): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties> | null> {
   try {
     return await getStatesData();
   } catch (error) {

@@ -53,7 +53,7 @@ export function useMapState() {
     // State
     selectedRegions: selectedRegions ? JSON.parse(selectedRegions) : [],
     selectionMode: selectionMode || 'cursor',
-    granularity: granularity || 'plz-5stellig',
+    granularity: granularity || '1digit',
     center: mapView.center,
     zoom: mapView.zoom,
     radius: radius ? parseInt(radius, 10) : 10,
@@ -103,4 +103,4 @@ export function useRadius() {
     radius ? parseInt(radius, 10) : 10,
     (radiusValue: number) => setRadius(radiusValue.toString())
   ] as const
-} 
+}

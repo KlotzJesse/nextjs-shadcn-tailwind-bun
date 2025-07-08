@@ -1,4 +1,4 @@
-import PostalCodesViewClient from "./postal-codes-view-client";
+import PostalCodesViewClient from "@/components/postal-codes/postal-codes-view-client";
 import { getPostalCodesDataForGranularity } from "@/lib/utils/postal-codes-data";
 import { getStatesData } from "@/lib/utils/states-data";
 
