@@ -42,7 +42,7 @@ interface BaseMapProps {
     GeoJsonProperties
   > | null;
   granularity?: string;
-  onGranularityChange?: () => void;
+  onGranularityChange?: (granularity: string) => void;
 }
 
 export function BaseMap({
