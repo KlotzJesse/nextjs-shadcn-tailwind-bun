@@ -44,28 +44,22 @@ export async function POST(req: NextRequest) {
       }
       resultCodes = expandRows.map((r: any) => String(r.code));
     } else if (mode === "holes") {
-      // Convex hull mask approach for robust hole detection
+      // Minimal convex hull mask: single subquery for performance
       if (selectedCodes.length > 0) {
         const codeList = selectedCodes
           .map((code) => `'${String(code).replace(/'/g, "''")}'`)
           .join(", ");
-        // Build convex hull of selected, find unselected fully within and not touching hull exterior
         const sqlString = `
-          WITH sel AS (
-            SELECT code, geometry FROM postal_codes WHERE granularity = '${granularity}' AND code IN (${codeList})
-          ),
-          hull AS (
-            SELECT ST_ConvexHull(ST_Collect(geometry)) AS geom FROM sel
-          ),
-          unselected AS (
-            SELECT code, geometry FROM postal_codes WHERE granularity = '${granularity}' AND code NOT IN (${codeList})
-          )
-          SELECT u.code FROM unselected u, hull h
-          WHERE ST_Within(u.geometry, h.geom)
-            AND NOT ST_Touches(u.geometry, h.geom)
+          SELECT code FROM postal_codes
+          WHERE granularity = '${granularity}'
+            AND code NOT IN (${codeList})
+            AND ST_Within(geometry, (
+              SELECT ST_ConvexHull(ST_Collect(geometry))
+              FROM postal_codes
+              WHERE granularity = '${granularity}' AND code IN (${codeList})
+            ))
         `;
         const { rows } = await db.execute(sqlString);
-        // Use explicit type for row mapping
         resultCodes = rows.map((r) =>
           String((r as Record<string, unknown>)["code"])
         );
