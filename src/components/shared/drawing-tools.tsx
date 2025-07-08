@@ -1,7 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -220,18 +226,20 @@ function DrawingToolsImpl({
   const [isFilling, setIsFilling] = useState(false);
 
   return (
-    <Card role="region" aria-label="Map Tools Panel">
+    <Card role="region" aria-label="Map Tools Panel" className="gap-2">
       <CardHeader>
         <CardTitle>Kartentools</CardTitle>
-        <button
-          type="button"
-          onClick={onToggleVisibility}
-          title="Werkzeugleiste ausblenden"
-          aria-label="Werkzeugleiste ausblenden"
-          className="ml-auto p-1 rounded hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <CardAction>
+          <button
+            type="button"
+            onClick={onToggleVisibility}
+            title="Werkzeugleiste ausblenden"
+            aria-label="Werkzeugleiste ausblenden"
+            className="ml-auto p-1 rounded hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </CardAction>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Granularität Auswahl */}
