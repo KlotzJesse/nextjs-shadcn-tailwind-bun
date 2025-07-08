@@ -75,9 +75,6 @@ export function BaseMap({
 
   // Track hovered regionId for hover source
   const hoveredRegionIdRef = useRef<string | null>(null);
-  // Throttle timer for hover
-  const hoverThrottleTimeout = useRef<NodeJS.Timeout | null>(null);
-  const pendingHoverEvent = useRef<unknown>(null);
 
   // Helper functions for feature selection
   const isPointInPolygon = useCallback(
@@ -286,7 +283,7 @@ export function BaseMap({
 
       return selectedFeatures;
     },
-    [data, isPointInPolygon]
+    [data]
   );
 
   // Integrate TerraDraw for advanced drawing capabilities
@@ -475,14 +472,13 @@ export function BaseMap({
   // Initialize map - ONLY ONCE, on mount
 
   useEffect(() => {
-    let isMounted = true;
     if (!mapContainer.current) return;
     if (!data || !data.features || data.features.length === 0) return;
     if (map.current) return;
 
     (async () => {
       const maplibre = await import("maplibre-gl");
-      if (!isMounted) return;
+
       map.current = new maplibre.Map({
         container: mapContainer.current!,
         style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -494,16 +490,7 @@ export function BaseMap({
       map.current.on("load", () => setIsMapLoaded(true));
       map.current.on("style.load", () => setStyleLoaded(true));
     })();
-
-    return () => {
-      isMounted = false;
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-      setLayersLoaded(false);
-    };
-  }, []); // Only run once on mount
+  }, [center, data, zoom]); // Only run once on mount
 
   // Update sources/layers when data or state changes
   useEffect(() => {
@@ -977,11 +964,7 @@ export function BaseMap({
       map.current?.off("styledata", onStyleData);
       canvas.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mouseup", handleMouseUp);
-      if (hoverThrottleTimeout.current) {
-        clearTimeout(hoverThrottleTimeout.current);
-        hoverThrottleTimeout.current = null;
-      }
-      pendingHoverEvent.current = null;
+
       hoveredRegionIdRef.current = null;
       canvas.style.cursor = "grab";
     };
