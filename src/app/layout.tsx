@@ -1,4 +1,5 @@
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -10,8 +11,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const experimental_ppr = true;
 
 export const metadata: Metadata = {
-  title: "Territory Manager",
-  description: "Manage and visualize territories on the Germany map",
+  title: "Gebietsmanager",
+  description:
+    "Verwalten und visualisieren Sie Gebiete auf der Deutschlandkarte",
 };
 
 export default function RootLayout({
@@ -20,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="de" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
@@ -28,7 +30,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NuqsAdapter>{children}</NuqsAdapter>
+          <NuqsAdapter>
+            {children}
+            <Toaster />
+          </NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>

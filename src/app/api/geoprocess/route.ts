@@ -50,12 +50,16 @@ export async function POST(req: NextRequest) {
       // Use a CTE for the convex hull to avoid recomputation and maximize performance
       if (selectedCodes.length > 0) {
         // Always treat codes as strings for SQL
-        const codeList = selectedCodes.map((code) => `'${String(code)}'`).join(",");
+        const codeList = selectedCodes
+          .map((code) => `'${String(code)}'`)
+          .join(",");
         const { rows } = await db.execute(
           sql`WITH hull AS (
             SELECT ST_ConvexHull(ST_Collect(geometry)) AS geom
             FROM postal_codes
-            WHERE granularity = ${granularity} AND code IN (${sql.raw(codeList)})
+            WHERE granularity = ${granularity} AND code IN (${sql.raw(
+            codeList
+          )})
           )
           SELECT code FROM postal_codes, hull
           WHERE granularity = ${granularity}

@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   IconDashboard,
@@ -8,11 +8,11 @@ import {
   IconInnerShadowTop,
   IconListDetails,
   IconReport,
-} from "@tabler/icons-react"
-import * as React from "react"
+} from "@tabler/icons-react";
+import * as React from "react";
 
-import { NavDocuments } from "@/components/nav-documents"
-import { NavMain } from "@/components/nav-main"
+import { NavDocuments } from "@/components/nav-documents";
+import { NavMain } from "@/components/nav-main";
 import {
   Sidebar,
   SidebarContent,
@@ -20,44 +20,44 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 const data = {
   navMain: [
     {
-      title: "Dashboard",
+      title: "Übersicht",
       url: "/",
       icon: IconDashboard,
     },
     {
-      title: "States",
+      title: "Bundesländer",
       url: "/states",
       icon: IconListDetails,
     },
     {
-      title: "Postal Codes",
+      title: "Postleitzahlen",
       url: "/postal-codes",
       icon: IconFolder,
     },
   ],
   documents: [
     {
-      name: "Territory Data",
+      name: "Gebiets-Daten",
       url: "#",
       icon: IconDatabase,
     },
     {
-      name: "Reports",
+      name: "Berichte",
       url: "#",
       icon: IconReport,
     },
     {
-      name: "Export Tools",
+      name: "Export-Werkzeuge",
       url: "#",
       icon: IconFileWord,
     },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -71,7 +71,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="#">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">KRAUSS Territory Management</span>
+                <span className="text-base font-semibold">
+                  KRAUSS Gebietsmanagement
+                </span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -82,5 +84,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavDocuments items={data.documents} />
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

@@ -1,6 +1,6 @@
-'use client'
+"use client";
 import { ErrorMessage } from "@/components/ui/error-message";
 
 export default function Error() {
-  return <ErrorMessage message="Failed to load map section." />;
+  return <ErrorMessage message="Fehler beim Laden des Kartenbereichs." />;
 }

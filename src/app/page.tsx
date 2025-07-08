@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -5,8 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { IconListDetails, IconFolder } from "@tabler/icons-react";
+import { IconFolder, IconListDetails } from "@tabler/icons-react";
 import Link from "next/link";
 
 export const experimental_ppr = true;
@@ -17,11 +17,11 @@ export default function HomePage() {
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
-            Welcome to KRAUSS Territory Management
+            Willkommen bei KRAUSS Gebietsmanagement
           </h1>
           <p className="text-muted-foreground">
-            Professional territory management and visualization platform for
-            Germany
+            Professionelle Plattform für Gebietsmanagement und Visualisierung in
+            Deutschland
           </p>
         </div>
 
@@ -30,19 +30,19 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <IconListDetails className="w-5 h-5" />
-                German States
+                Bundesländer
               </CardTitle>
               <CardDescription>
-                View and manage German federal states and regions
+                Übersicht und Verwaltung der deutschen Bundesländer und Regionen
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Interactive map for managing German states with selection tools
-                and search functionality.
+                Interaktive Karte zur Verwaltung der Bundesländer mit
+                Auswahlwerkzeugen und Suchfunktion.
               </p>
               <Button asChild className="w-full">
-                <Link href="/states">Open States Management</Link>
+                <Link href="/states">Bundesländer verwalten</Link>
               </Button>
             </CardContent>
           </Card>
@@ -51,19 +51,20 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <IconFolder className="w-5 h-5" />
-                Postal Codes
+                Postleitzahlen
               </CardTitle>
               <CardDescription>
-                Manage postal code regions with multiple granularity levels
+                Verwaltung von Postleitzahlgebieten mit verschiedenen
+                Granularitätsstufen
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Interactive postal code management with 1-5 digit granularity
-                options and search capabilities.
+                Interaktive Verwaltung der Postleitzahlen mit 1- bis 5-stelliger
+                Granularität und Suchfunktion.
               </p>
               <Button asChild className="w-full">
-                <Link href="/postal-codes">Open Postal Codes Management</Link>
+                <Link href="/postal-codes">Postleitzahlen verwalten</Link>
               </Button>
             </CardContent>
           </Card>
@@ -72,15 +73,15 @@ export default function HomePage() {
         <div className="mt-8">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle>Letzte Aktivitäten</CardTitle>
               <CardDescription>
-                Your recent territory management activities
+                Ihre letzten Aktivitäten im Gebietsmanagement
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-sm text-muted-foreground">
-                No recent activity to display. Start by exploring the states or
-                postal codes management tools.
+                Keine letzten Aktivitäten vorhanden. Starten Sie mit der
+                Verwaltung der Bundesländer oder Postleitzahlen.
               </div>
             </CardContent>
           </Card>

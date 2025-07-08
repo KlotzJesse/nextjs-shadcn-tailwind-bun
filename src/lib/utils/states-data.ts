@@ -1,26 +1,48 @@
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
-import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import {
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
 
-export async function getStatesData(): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>> {
+// Define the type for a state DB row
+interface StateRow {
+  id: string | number;
+  name: string;
+  code: string;
+  geometry: string;
+  properties?: GeoJsonProperties;
+  bbox?: number[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getStatesData(): Promise<
+  FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
+> {
   try {
     // Select all columns, but geometry as GeoJSON
     const { rows } = await db.execute(
       sql`SELECT id, name, code, ST_AsGeoJSON(geometry) as geometry, properties, bbox, "created_at", "updated_at" FROM states`
     );
-    const features = rows.map((row: any) => ({
-      type: "Feature" as const,
-      properties: {
-        id: row.id.toString(),
-        code: row.code,
-        name: row.name,
-        ...(row.properties ?? {})
-      },
-      geometry: JSON.parse(row.geometry)
-    }));
+    const features = rows.map((row) => {
+      const typedRow = row as unknown as StateRow;
+      return {
+        type: "Feature" as const,
+        properties: {
+          id: typedRow.id.toString(),
+          code: typedRow.code,
+          name: typedRow.name,
+          ...(typedRow.properties ?? {}),
+        },
+        geometry: JSON.parse(typedRow.geometry),
+      };
+    });
     return {
       type: "FeatureCollection",
-      features
+      features,
     };
   } catch (error) {
     console.error("Error fetching states from Neon:", error);
@@ -28,7 +50,10 @@ export async function getStatesData(): Promise<FeatureCollection<Polygon | Multi
   }
 }
 
-export async function getStatesDataServer(): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties> | null> {
+export async function getStatesDataServer(): Promise<FeatureCollection<
+  Polygon | MultiPolygon,
+  GeoJsonProperties
+> | null> {
   try {
     return await getStatesData();
   } catch (error) {
