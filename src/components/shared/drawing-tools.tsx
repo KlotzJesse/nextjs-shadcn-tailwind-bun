@@ -3,11 +3,11 @@
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -19,10 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TerraDrawMode } from "@/lib/hooks/use-terradraw";
 import { useMapState } from "@/lib/url-state/map-state";
-import {
-  copyPostalCodesCSV,
-  exportPostalCodesXLSX,
-} from "@/lib/utils/export-utils";
+import { exportPostalCodesXLSX, copyPostalCodesCSV } from "@/lib/utils/export-utils";
 import {
   FeatureCollection,
   GeoJsonProperties,
@@ -30,20 +27,16 @@ import {
   Polygon,
 } from "geojson";
 import {
-  Circle,
   Copy,
   Diamond,
-  EyeOff,
   FileSpreadsheet,
-  Lasso,
   Loader2Icon,
   MousePointer,
-  PieChart,
-  Plus,
-  Square,
-  Trash2,
+  Lasso,
+  Circle,
   Triangle,
-  X,
+  Square,
+  EyeOff
 } from "lucide-react";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
@@ -66,42 +59,42 @@ const drawingModes = [
     id: "cursor" as const,
     name: "Cursor",
     icon: MousePointer,
-    description: "Click to select regions",
+    description: "Klicken Sie, um Regionen auszuwählen",
     category: "selection",
   },
   {
     id: "freehand" as const,
     name: "Lasso",
     icon: Lasso,
-    description: "Draw freehand to select regions",
+    description: "Freihand zeichnen, um Regionen auszuwählen",
     category: "drawing",
   },
   {
     id: "circle" as const,
-    name: "Circle",
+    name: "Kreis",
     icon: Circle,
-    description: "Draw circle to select regions",
+    description: "Kreis zeichnen, um Regionen auszuwählen",
     category: "drawing",
   },
   {
     id: "polygon" as const,
     name: "Polygon",
     icon: Triangle,
-    description: "Draw polygon by clicking points",
+    description: "Polygon zeichnen, indem Sie Punkte klicken",
     category: "drawing",
   },
   {
     id: "rectangle" as const,
-    name: "Rectangle",
+    name: "Rechteck",
     icon: Square,
-    description: "Draw rectangles",
+    description: "Rechtecke zeichnen",
     category: "drawing",
   },
   {
     id: "angled-rectangle" as const,
-    name: "Angled Rectangle",
+    name: "Rechteck mit Winkel",
     icon: Diamond,
-    description: "Draw angled rectangles",
+    description: "Rechtecke mit Winkeln zeichnen",
     category: "drawing",
   },
   /*{
@@ -129,7 +122,7 @@ async function fillRegions(
   try {
     if (!granularity) {
       setIsFilling(false);
-      toast.error("Granularity is required for geoprocessing");
+      toast.error("Granularität ist erforderlich für die Geoverarbeitung");
       return;
     }
     console.log(
@@ -151,7 +144,7 @@ async function fillRegions(
     });
     if (!response.ok) {
       setIsFilling(false);
-      toast.error("Server geoprocessing failed");
+      toast.error("Server-Geoverarbeitung fehlgeschlagen");
       return;
     }
     const { resultCodes } = await response.json();
@@ -161,15 +154,15 @@ async function fillRegions(
     setSelectedRegions(newSelection);
     setIsFilling(false);
     toast.success(
-      `Filled ${(resultCodes || []).length} region${
-        (resultCodes || []).length === 1 ? "" : "s"
+      `Gefüllt ${(resultCodes || []).length} Region${
+        (resultCodes || []).length === 1 ? "" : "en"
       } (${
-        mode === "all" ? "all gaps" : mode === "holes" ? "holes" : "one layer"
+        mode === "all" ? "alle Lücken" : mode === "holes" ? "Lücken" : "eine Ebene"
       })`
     );
   } catch {
     setIsFilling(false);
-    toast.error("Error during geoprocessing");
+    toast.error("Fehler bei der Geoverarbeitung");
   }
 }
 
@@ -182,8 +175,7 @@ function DrawingToolsImpl({
   onGranularityChange,
   postalCodesData,
 }: DrawingToolsProps) {
-  const { selectedRegions, clearSelectedRegions, setSelectedRegions } =
-    useMapState();
+  const { selectedRegions, setSelectedRegions } = useMapState();
 
   const handleModeClick = (mode: TerraDrawMode) => {
     if (currentMode === mode) {
@@ -228,28 +220,24 @@ function DrawingToolsImpl({
   return (
     <Card role="region" aria-label="Map Tools Panel">
       <CardHeader>
-        <CardTitle>Map Tools</CardTitle>
-        <CardAction>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleVisibility}
-            title="Hide map tools panel"
-            aria-label="Hide map tools panel"
-            style={{ margin: "-8px" }}
-            className="focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </CardAction>
+        <CardTitle>Kartentools</CardTitle>
+        <button
+          type="button"
+          onClick={onToggleVisibility}
+          title="Werkzeugleiste ausblenden"
+          aria-label="Werkzeugleiste ausblenden"
+          className="ml-auto p-1 rounded hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Granularity select (if provided) */}
+        {/* Granularität Auswahl */}
         {granularity && onGranularityChange && (
           <div className="mb-2">
             <Select value={granularity} onValueChange={onGranularityChange}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select granularity" />
+                <SelectValue placeholder="Granularität wählen" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="1digit">PLZ 1-stellig</SelectItem>
@@ -260,7 +248,7 @@ function DrawingToolsImpl({
             </Select>
           </div>
         )}
-        {/* Tools Grid */}
+        {/* Werkzeuge Grid */}
         <div className="grid grid-cols-2 gap-2">
           {allModes.map((mode) => {
             const Icon = mode.icon;
@@ -284,12 +272,12 @@ function DrawingToolsImpl({
 
         <Separator />
 
-        {/* Selected Regions */}
+        {/* Ausgewählte Regionen */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Selected Regions</span>
+            <span className="text-sm font-medium">Ausgewählte Regionen</span>
             <span className="text-xs text-muted-foreground">
-              {selectedRegions.length} selected
+              {selectedRegions.length} ausgewählt
             </span>
           </div>
           {selectedRegions.length > 0 && (
@@ -304,7 +292,7 @@ function DrawingToolsImpl({
               ))}
               {selectedRegions.length > 5 && (
                 <div className="text-xs text-muted-foreground text-center">
-                  +{selectedRegions.length - 5} more
+                  +{selectedRegions.length - 5} weitere
                 </div>
               )}
             </div>
@@ -315,60 +303,34 @@ function DrawingToolsImpl({
         selectedRegions.length > 0 ? (
           <Separator />
         ) : null}
-        {/* Action Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* Aktionsbutton: Nur Löcher füllen */}
+        <div className="grid grid-cols-1 gap-2">
           {currentMode && currentMode !== "cursor" && (
             <Button
               variant="destructive"
               size="sm"
               onClick={onClearAll}
               className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
-              title="Clear all drawings and selections"
-              aria-label="Clear all drawings and selections"
+              title="Alle Zeichnungen und Auswahlen löschen"
+              aria-label="Alles löschen"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear All
+              <X className="h-4 w-4 mr-2" />
+              Alles löschen
             </Button>
           )}
           {selectedRegions.length > 0 && (
             <Button
               variant="outline"
               size="sm"
-              onClick={clearSelectedRegions}
+              onClick={() => setSelectedRegions([])}
               className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
-              title="Clear selected regions"
-              aria-label="Clear selected regions"
+              title="Auswahl aufheben"
+              aria-label="Deselektieren"
             >
               <EyeOff className="h-4 w-4 mr-2" />
-              Deselect
+              Deselektieren
             </Button>
           )}
-          <Button
-            variant="default"
-            size="sm"
-            disabled={isFilling || selectedRegions.length < 3}
-            onClick={() =>
-              postalCodesData &&
-              fillRegions(
-                "all",
-                postalCodesData,
-                selectedRegions,
-                setSelectedRegions,
-                setIsFilling,
-                granularity
-              )
-            }
-            className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
-            title="Fill all gaps (no holes)"
-            aria-label="Fill all gaps (no holes)"
-          >
-            {isFilling ? (
-              <Loader2Icon className="animate-spin mr-2" />
-            ) : (
-              <PieChart className="h-4 w-4 mr-2" />
-            )}
-            Fill All Gaps (No Holes)
-          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -385,68 +347,42 @@ function DrawingToolsImpl({
               )
             }
             className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
-            title="Fill only holes inside the selection"
-            aria-label="Fill only holes"
+            title="Nur vollständig umschlossene Regionen füllen"
+            aria-label="Nur Löcher füllen"
           >
             {isFilling ? (
               <Loader2Icon className="animate-spin mr-2" />
             ) : (
               <Diamond className="h-4 w-4 mr-2" />
             )}
-            Fill Only Holes
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isFilling || selectedRegions.length < 3}
-            onClick={() =>
-              postalCodesData &&
-              fillRegions(
-                "expand",
-                postalCodesData,
-                selectedRegions,
-                setSelectedRegions,
-                setIsFilling,
-                granularity
-              )
-            }
-            className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
-            title="Expand selection by one layer"
-            aria-label="Expand by one layer"
-          >
-            {isFilling ? (
-              <Loader2Icon className="animate-spin mr-2" />
-            ) : (
-              <Plus className="h-4 w-4 mr-2" />
-            )}
-            Expand by One Layer
+            Nur Löcher füllen
           </Button>
         </div>
 
-        {/* Export/Copy Buttons at the bottom */}
+        {/* Export/Copy Buttons unten */}
         {postalCodesData && (
           <div className="flex gap-2 mt-6 pt-4 border-t">
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportExcel}
-              title="Export as XLS"
-              aria-label="Export as XLS"
+              title="Als XLS exportieren"
+              aria-label="Als XLS exportieren"
               className="focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Export XLS
+              XLS exportieren
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleCopyCSV}
-              title="Copy as CSV"
-              aria-label="Copy as CSV"
+              title="Als CSV kopieren"
+              aria-label="Als CSV kopieren"
               className="focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <Copy className="h-4 w-4 mr-2" />
-              Copy CSV
+              CSV kopieren
             </Button>
           </div>
         )}
