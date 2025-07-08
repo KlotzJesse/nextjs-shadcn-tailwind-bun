@@ -22,9 +22,14 @@ import {
   LayerSpecification,
   Map as MapLibreMap,
 } from "maplibre-gl";
+import dynamic from "next/dynamic";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
-import { DrawingTools } from "./drawing-tools";
+
+const DrawingTools = dynamic(
+  () => import("./drawing-tools").then((m) => m.DrawingTools),
+  { ssr: false }
+);
 
 interface BaseMapProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -37,7 +42,7 @@ interface BaseMapProps {
     GeoJsonProperties
   > | null;
   granularity?: string;
-  onGranularityChange?: (granularity: string) => void;
+  onGranularityChange?: () => void;
 }
 
 export function BaseMap({
@@ -470,21 +475,28 @@ export function BaseMap({
   // Initialize map - ONLY ONCE, on mount
 
   useEffect(() => {
+    let isMounted = true;
     if (!mapContainer.current) return;
     if (!data || !data.features || data.features.length === 0) return;
     if (map.current) return;
 
-    map.current = new MapLibreMap({
-      container: mapContainer.current!,
-      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-      center: center,
-      zoom: zoom,
-      minZoom: 3,
-      maxZoom: 18,
-    });
-    map.current.on("load", () => setIsMapLoaded(true));
-    map.current.on("style.load", () => setStyleLoaded(true));
+    (async () => {
+      const maplibre = await import("maplibre-gl");
+      if (!isMounted) return;
+      map.current = new maplibre.Map({
+        container: mapContainer.current!,
+        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+        center: center,
+        zoom: zoom,
+        minZoom: 3,
+        maxZoom: 18,
+      });
+      map.current.on("load", () => setIsMapLoaded(true));
+      map.current.on("style.load", () => setStyleLoaded(true));
+    })();
+
     return () => {
+      isMounted = false;
       if (map.current) {
         map.current.remove();
         map.current = null;

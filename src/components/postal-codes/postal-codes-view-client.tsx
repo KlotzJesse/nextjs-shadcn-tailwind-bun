@@ -22,9 +22,15 @@ import {
   Polygon,
 } from "geojson";
 import { ChevronsUpDownIcon } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AddressAutocomplete } from "./address-autocomplete";
+
+const AddressAutocomplete = dynamic(
+  () => import("./address-autocomplete").then((m) => m.AddressAutocomplete),
+  { ssr: false }
+);
+
 import { PostalCodesMap } from "./postal-codes-map";
 
 interface PostalCodesViewClientProps {

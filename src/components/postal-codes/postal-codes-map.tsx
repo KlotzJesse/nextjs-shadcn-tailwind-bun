@@ -1,19 +1,32 @@
-"use client"
+import dynamic from "next/dynamic";
+const BaseMap = dynamic(() =>
+  import("@/components/shared/base-map").then((m) => m.BaseMap)
+);
 
-import { BaseMap } from "@/components/shared/base-map"
-import { useMapState } from "@/lib/url-state/map-state"
-import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson"
+import { useMapState } from "@/lib/url-state/map-state";
+import {
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
 
 interface PostalCodesMapProps {
-  data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
-  statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
-  onSearch?: (plz: string) => void
-  granularity?: string
-  onGranularityChange?: (granularity: string) => void
+  data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
+  statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
+  onSearch?: (plz: string) => void;
+  granularity?: string;
+  onGranularityChange?: (granularity: string) => void;
 }
 
-export function PostalCodesMap({ data, statesData, onSearch, granularity, onGranularityChange }: PostalCodesMapProps) {
-  const { center, zoom } = useMapState()
+export function PostalCodesMap({
+  data,
+  statesData,
+  onSearch,
+  granularity,
+  onGranularityChange,
+}: PostalCodesMapProps) {
+  const { center, zoom } = useMapState();
 
   return (
     <BaseMap
@@ -24,7 +37,15 @@ export function PostalCodesMap({ data, statesData, onSearch, granularity, onGran
       zoom={zoom}
       statesData={statesData}
       granularity={granularity}
-      onGranularityChange={onGranularityChange}
+      onGranularityChange={
+        onGranularityChange
+          ? () => {
+              if (granularity !== undefined) {
+                onGranularityChange(granularity);
+              }
+            }
+          : undefined
+      }
     />
-  )
+  );
 }
