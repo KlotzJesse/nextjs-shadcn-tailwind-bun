@@ -1,9 +1,12 @@
-
-export default {
-  schema: './src/lib/schema',
-  out: './drizzle',
-  driver: 'pg',
+import { defineConfig } from "drizzle-kit";
+export default defineConfig({
+  schema: "./src/lib/schema",
+  out: "./drizzle",
+  dialect: "postgresql",
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL ?? '',
+    url: process.env.DATABASE_URL ?? "",
   },
-};
+  extensionsFilters: ["postgis"],
+  schemaFilter: "public",
+  tablesFilter: "*",
+});
