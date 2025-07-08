@@ -1,16 +1,16 @@
-import { Suspense } from "react";
+import ServerPostalCodesView from "@/components/postal-codes/server-postal-codes-view";
 import { Metadata } from "next";
-import { PostalCodesView } from "@/components/postal-codes/postal-codes-view";
-import { getPostalCodesDataForGranularityServer } from "@/lib/utils/postal-codes-data";
+import { Suspense } from "react";
+// import { getPostalCodesDataForGranularityServer } from "@/lib/utils/postal-codes-data";
 import { notFound } from "next/navigation";
 
 export const experimental_ppr = true;
 
 const VALID_GRANULARITIES = [
-  "plz-1stellig",
-  "plz-2stellig",
-  "plz-3stellig",
-  "plz-5stellig",
+  "1digit",
+  "2digit",
+  "3digit",
+  "5digit",
 ] as const;
 
 type Granularity = (typeof VALID_GRANULARITIES)[number];
@@ -58,25 +58,10 @@ export default async function PostalCodesPage({
     notFound();
   }
 
-  const postalCodesData = await getPostalCodesDataForGranularityServer(
-    granularity,
-    {
-      // bbox: [minLng, minLat, maxLng, maxLat], // TODO: pass viewport bbox for further optimization
-      simplifyTolerance: 0.001,
-    }
-  );
-
-  if (!postalCodesData) {
-    notFound();
-  }
-
   return (
     <div className="h-full px-4 lg:px-6">
       <Suspense fallback={<PostalCodesLoading />}>
-        <PostalCodesView
-          initialData={postalCodesData}
-          defaultGranularity={granularity}
-        />
+        <ServerPostalCodesView defaultGranularity={granularity} />
       </Suspense>
     </div>
   );

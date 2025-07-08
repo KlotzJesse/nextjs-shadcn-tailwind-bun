@@ -2,24 +2,18 @@
 
 import { BaseMap } from "@/components/shared/base-map"
 import type { MapData } from "@/lib/types/map-data"
-import { getStatesData } from '@/lib/utils/states-data'
-import { useEffect, useState } from 'react'
 import { useMapState } from '@/lib/url-state/map-state'
 
 interface PostalCodesMapProps {
   data: MapData
+  statesData: MapData
   onSearch?: (plz: string) => void
   granularity?: string
   onGranularityChange?: (granularity: string) => void
 }
 
-export function PostalCodesMap({ data, onSearch, granularity, onGranularityChange }: PostalCodesMapProps) {
-  const [statesData, setStatesData] = useState<MapData | null>(null)
+export function PostalCodesMap({ data, statesData, onSearch, granularity, onGranularityChange }: PostalCodesMapProps) {
   const { center, zoom } = useMapState()
-
-  useEffect(() => {
-    getStatesData().then(setStatesData).catch(() => setStatesData(null))
-  }, [])
 
   return (
     <BaseMap 
@@ -33,4 +27,4 @@ export function PostalCodesMap({ data, onSearch, granularity, onGranularityChang
       onGranularityChange={onGranularityChange}
     />
   )
-} 
+}

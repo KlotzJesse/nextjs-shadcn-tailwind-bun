@@ -1,34 +1,38 @@
-import type { MapData } from "@/lib/types/map-data"
-
-const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json";
+import { db } from "@/lib/db";
+import type { MapData } from "@/lib/types/map-data";
+import { sql } from "drizzle-orm";
 
 export async function getStatesData(): Promise<MapData> {
   try {
-    const response = await fetch(STATE_GEOJSON_URL, { 
-      next: { 
-        revalidate: 3600, // Cache for 1 hour
-        tags: ['states-data'] // Tag for cache invalidation
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch state GeoJSON data: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data as MapData;
+    // Select all columns, but geometry as GeoJSON
+    const { rows } = await db.execute(
+      sql`SELECT id, name, code, ST_AsGeoJSON(geometry) as geometry, properties, bbox, "created_at", "updated_at" FROM states`
+    );
+    const features = rows.map((row: any) => ({
+      type: "Feature" as const,
+      properties: {
+        id: row.id.toString(),
+        code: row.code,
+        name: row.name,
+        ...(row.properties ?? {})
+      },
+      geometry: JSON.parse(row.geometry)
+    }));
+    return {
+      type: "FeatureCollection",
+      features
+    };
   } catch (error) {
-    console.error('Error fetching state GeoJSON:', error);
+    console.error("Error fetching states from Neon:", error);
     throw error;
   }
 }
 
-// Server-side function to get states data with proper error handling
 export async function getStatesDataServer(): Promise<MapData | null> {
   try {
     return await getStatesData();
   } catch (error) {
-    console.error('Error in getStatesDataServer:', error);
+    console.error("Error in getStatesDataServer:", error);
     return null;
   }
-} 
+}

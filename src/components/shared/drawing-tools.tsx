@@ -344,10 +344,10 @@ function DrawingToolsImpl({
                 <SelectValue placeholder="Select granularity" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="plz-1stellig">PLZ 1-stellig</SelectItem>
-                <SelectItem value="plz-2stellig">PLZ 2-stellig</SelectItem>
-                <SelectItem value="plz-3stellig">PLZ 3-stellig</SelectItem>
-                <SelectItem value="plz-5stellig">PLZ 5-stellig</SelectItem>
+                <SelectItem value="1digit">PLZ 1-stellig</SelectItem>
+                <SelectItem value="2digit">PLZ 2-stellig</SelectItem>
+                <SelectItem value="3digit">PLZ 3-stellig</SelectItem>
+                <SelectItem value="5digit">PLZ 5-stellig</SelectItem>
               </SelectContent>
             </Select>
           </div>
