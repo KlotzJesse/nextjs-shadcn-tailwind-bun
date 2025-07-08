@@ -1,4 +1,3 @@
-
 /**
  * Shared map utility functions for feature selection, adjacency, and region analysis.
  * Used by DrawingTools and potentially other map-related components.
@@ -9,22 +8,30 @@
  * - findHoles: Finds unselected regions that are "holes" (not reachable from the map edge).
  */
 
-import booleanIntersects from '@turf/boolean-intersects';
-import type { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from 'geojson';
+import booleanIntersects from "@turf/boolean-intersects";
+import type {
+  Feature,
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
 
 // Memoize polygons for each feature
 const polygonCache = new WeakMap<object, Feature<Polygon>[]>();
-export function getPolygons(feature: Feature<Polygon | MultiPolygon>): Feature<Polygon>[] {
+export function getPolygons(
+  feature: Feature<Polygon | MultiPolygon>
+): Feature<Polygon>[] {
   if (!feature || !feature.geometry) return [];
   if (polygonCache.has(feature)) return polygonCache.get(feature)!;
   let result: Feature<Polygon>[] = [];
-  if (feature.geometry.type === 'Polygon') {
+  if (feature.geometry.type === "Polygon") {
     result = [feature as Feature<Polygon>];
-  } else if (feature.geometry.type === 'MultiPolygon') {
+  } else if (feature.geometry.type === "MultiPolygon") {
     result = (feature.geometry.coordinates as number[][][][]).map((coords) => ({
-      type: 'Feature',
+      type: "Feature",
       properties: feature.properties,
-      geometry: { type: 'Polygon', coordinates: coords },
+      geometry: { type: "Polygon", coordinates: coords },
     }));
   }
   polygonCache.set(feature, result);
@@ -32,7 +39,10 @@ export function getPolygons(feature: Feature<Polygon | MultiPolygon>): Feature<P
 }
 
 // Helper: check if any polygon in region intersects any polygon in combined
-export function isRegionIntersected(combined: Feature<Polygon | MultiPolygon>, region: Feature<Polygon | MultiPolygon>) {
+export function isRegionIntersected(
+  combined: Feature<Polygon | MultiPolygon>,
+  region: Feature<Polygon | MultiPolygon>
+) {
   const combinedPolys = getPolygons(combined) || [];
   const regionPolys = getPolygons(region) || [];
   return regionPolys.some((regionPoly) =>
@@ -47,9 +57,12 @@ export function isRegionIntersected(combined: Feature<Polygon | MultiPolygon>, r
 }
 
 // Helper: check if region is adjacent to any selected region
-export function isRegionAdjacent(region: Feature<Polygon | MultiPolygon>, selectedFeatures: Feature<Polygon | MultiPolygon>[]) {
+export function isRegionAdjacent(
+  region: Feature<Polygon | MultiPolygon>,
+  selectedFeatures: Feature<Polygon | MultiPolygon>[]
+) {
   const regionPolys = getPolygons(region) || [];
-  return selectedFeatures.some(sel => {
+  return selectedFeatures.some((sel) => {
     const selPolys = getPolygons(sel) || [];
     return regionPolys.some((regionPoly) =>
       selPolys.some((selPoly) => {
@@ -64,36 +77,56 @@ export function isRegionAdjacent(region: Feature<Polygon | MultiPolygon>, select
 }
 
 // Helper: flood fill from outside to find holes
-export function findHoles(postalCodesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>, selectedIds: Set<string>) {
+export function findHoles(
+  postalCodesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>,
+  selectedCodes: Set<string>
+) {
   // Build adjacency graph
   const features = postalCodesData.features;
-  const idMap = new Map<string, Feature<Polygon | MultiPolygon>>();
+  const codeMap = new Map<string, Feature<Polygon | MultiPolygon>>();
   features.forEach((f) => {
-    const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
-    if (id) idMap.set(id, f);
+    const code = f.properties?.code || f.properties?.PLZ || f.properties?.plz;
+    if (code) codeMap.set(code, f);
   });
   // Build adjacency list
   const adj = new Map<string, Set<string>>();
   for (const f of features) {
-    const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
-    if (!id) continue;
-    adj.set(id, new Set());
+    const code = f.properties?.code || f.properties?.PLZ || f.properties?.plz;
+    if (!code) continue;
+    adj.set(code, new Set());
     for (const g of features) {
-      const gid = g.properties?.id || g.properties?.PLZ || g.properties?.plz;
-      if (!gid || gid === id) continue;
-      if (isRegionAdjacent(f, [g])) adj.get(id)!.add(gid);
+      const gcode =
+        g.properties?.code || g.properties?.PLZ || g.properties?.plz;
+      if (!gcode || gcode === code) continue;
+      if (isRegionAdjacent(f, [g])) adj.get(code)!.add(gcode);
     }
   }
   // Find all regions on the edge (not selected, touching map boundary)
   // For simplicity, treat all unselected regions as possible outside
   const outside = new Set<string>();
   for (const f of features) {
-    const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
-    if (!id || selectedIds.has(id)) continue;
+    const code = f.properties?.code || f.properties?.PLZ || f.properties?.plz;
+    if (!code || selectedCodes.has(code)) continue;
     // Heuristic: if region touches map boundary (min/max lat/lon), treat as outside
-    const coords = getPolygons(f).flatMap(poly => Array.isArray(poly.geometry.coordinates) ? poly.geometry.coordinates.flat(1) : []);
-    if (coords.some((coord) => Array.isArray(coord) && coord.length === 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number' && (coord[1] < 47.2 || coord[1] > 55.1 || coord[0] < 5.7 || coord[0] > 15.1))) {
-      outside.add(id);
+    const coords = getPolygons(f).flatMap((poly) =>
+      Array.isArray(poly.geometry.coordinates)
+        ? poly.geometry.coordinates.flat(1)
+        : []
+    );
+    if (
+      coords.some(
+        (coord) =>
+          Array.isArray(coord) &&
+          coord.length === 2 &&
+          typeof coord[0] === "number" &&
+          typeof coord[1] === "number" &&
+          (coord[1] < 47.2 ||
+            coord[1] > 55.1 ||
+            coord[0] < 5.7 ||
+            coord[0] > 15.1)
+      )
+    ) {
+      outside.add(code);
     }
   }
   // Flood fill from outside
@@ -102,7 +135,7 @@ export function findHoles(postalCodesData: FeatureCollection<Polygon | MultiPoly
   while (queue.length) {
     const curr = queue.pop()!;
     for (const neighbor of adj.get(curr) ?? []) {
-      if (!selectedIds.has(neighbor) && !visited.has(neighbor)) {
+      if (!selectedCodes.has(neighbor) && !visited.has(neighbor)) {
         visited.add(neighbor);
         queue.push(neighbor);
       }
@@ -111,9 +144,9 @@ export function findHoles(postalCodesData: FeatureCollection<Polygon | MultiPoly
   // Any unselected region not visited is a hole
   const holes: string[] = [];
   for (const f of features) {
-    const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
-    if (!id || selectedIds.has(id)) continue;
-    if (!visited.has(id)) holes.push(id);
+    const code = f.properties?.code || f.properties?.PLZ || f.properties?.plz;
+    if (!code || selectedCodes.has(code)) continue;
+    if (!visited.has(code)) holes.push(code);
   }
   return holes;
 }

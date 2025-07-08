@@ -1,9 +1,16 @@
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
-import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import {
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
 
 // Fetch all postal codes for a given granularity from the Neon database as GeoJSON
-export async function getPostalCodesDataForGranularity(granularity: string): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>> {
+export async function getPostalCodesDataForGranularity(
+  granularity: string
+): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>> {
   try {
     const { rows } = await db.execute(
       sql`SELECT id, code, granularity, ST_AsGeoJSON(geometry) as geometry, properties, bbox, "created_at", "updated_at" FROM postal_codes WHERE granularity = ${granularity}`
@@ -11,16 +18,15 @@ export async function getPostalCodesDataForGranularity(granularity: string): Pro
     const features = rows.map((row: any) => ({
       type: "Feature" as const,
       properties: {
-        id: row.id.toString(),
         code: row.code,
         granularity: row.granularity,
-        ...(row.properties ?? {})
+        ...(row.properties ?? {}),
       },
-      geometry: JSON.parse(row.geometry)
+      geometry: JSON.parse(row.geometry),
     }));
     return {
       type: "FeatureCollection",
-      features
+      features,
     };
   } catch (error) {
     console.error("Error fetching postal codes from Neon:", error);
@@ -28,7 +34,12 @@ export async function getPostalCodesDataForGranularity(granularity: string): Pro
   }
 }
 
-export async function getPostalCodesDataForGranularityServer(granularity: string): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties> | null> {
+export async function getPostalCodesDataForGranularityServer(
+  granularity: string
+): Promise<FeatureCollection<
+  Polygon | MultiPolygon,
+  GeoJsonProperties
+> | null> {
   try {
     return await getPostalCodesDataForGranularity(granularity);
   } catch (error) {
