@@ -1,12 +1,12 @@
 "use client"
 
 import { BaseMap } from "@/components/shared/base-map"
-import type { MapData } from "@/lib/types/map-data"
-import { useMapState } from '@/lib/url-state/map-state'
+import { useMapState } from "@/lib/url-state/map-state"
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson"
 
 interface PostalCodesMapProps {
-  data: MapData
-  statesData: MapData
+  data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
+  statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
   onSearch?: (plz: string) => void
   granularity?: string
   onGranularityChange?: (granularity: string) => void
@@ -16,9 +16,9 @@ export function PostalCodesMap({ data, statesData, onSearch, granularity, onGran
   const { center, zoom } = useMapState()
 
   return (
-    <BaseMap 
-      data={data} 
-      layerId="postal-codes" 
+    <BaseMap
+      data={data}
+      layerId="postal-codes"
       onSearch={onSearch}
       center={center}
       zoom={zoom}

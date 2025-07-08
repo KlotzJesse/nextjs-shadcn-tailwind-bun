@@ -3,7 +3,6 @@ import centroid from '@turf/centroid'
 import { point } from '@turf/helpers'
 import type { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson"
 import * as topojson from "topojson-client"
-import { MapData } from "../types/map-data"
 
 const TOPOJSON_URLS: Record<string, string> = {
   "plz-1stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-1stellig/topojson/plz-1stellig.topojson",
@@ -16,7 +15,7 @@ const TOPOJSON_URLS: Record<string, string> = {
 const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json";
 
 // Cache the fetch requests
-const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
+const fetchTopoJSON = async (granularity: string): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>> => {
   try {
     const response = await fetch(TOPOJSON_URLS[granularity], {
       next: { revalidate: 3600 }

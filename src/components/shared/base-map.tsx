@@ -1,39 +1,23 @@
-"use client"
-interface MinimalMap {
-  getZoom(): number;
-  unproject(coord: [number, number]): { lng: number; lat: number };
-  on(event: string, handler: (...args: unknown[]) => void): void;
-  off(event: string, handler: (...args: unknown[]) => void): void;
-  remove(): void;
-  getSource(id: string): { setData(data: unknown): void } | undefined;
-  addSource(id: string, source: unknown): void;
-  setCenter(center: { lng: number; lat: number }): void;
-  setZoom(zoom: number): void;
-  getCenter(): { lng: number; lat: number };
-  getLayer(id: string): unknown;
-  addLayer(layer: unknown, beforeId?: string): void;
-  setLayoutProperty(layerId: string, name: string, value: unknown): void;
-  getCanvas(): { style: { cursor: string }, addEventListener: (...args: unknown[]) => void, removeEventListener: (...args: unknown[]) => void };
-}
+
 
 
 import { ErrorBoundary } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TerraDrawMode, useTerraDraw } from "@/lib/hooks/use-terradraw";
-import type { MapData } from "@/lib/types/map-data";
-import { useMapState } from "@/lib/url-state/map-state";
+import { useMapState } from '@/lib/url-state/map-state';
 import { emptyFeatureCollection, featureCollectionFromIds, getLargestPolygonCentroid, makeLabelPoints } from '@/lib/utils/map-data';
 import type { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from 'geojson';
+import { Map as MapLibreMap } from "maplibre-gl";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { DrawingTools } from "./drawing-tools";
+import { DrawingTools } from './drawing-tools';
 
 interface BaseMapProps {
-  data: MapData
+  data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
   layerId: string
   onSearch?: (query: string) => void
   center?: [number, number]
   zoom?: number
-  statesData?: MapData | null
+  statesData?: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties> | null
   granularity?: string
   onGranularityChange?: (granularity: string) => void
 }
@@ -48,7 +32,7 @@ export function BaseMap({
   onGranularityChange
 }: BaseMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
-  const map = useRef<MinimalMap | null>(null)
+  const map = useRef<any>(null)
   const [isMapLoaded, setIsMapLoaded] = useState(false)
   const [styleLoaded, setStyleLoaded] = useState(false)
   const [layersLoaded, setLayersLoaded] = useState(false)
@@ -354,25 +338,23 @@ export function BaseMap({
 
     console.log('Initializing map with data:', data)
     let isMounted = true
-    import('maplibre-gl').then((maplibregl) => {
-      if (!isMounted) return
-      map.current = new (maplibregl as unknown as { Map: new (args: Record<string, unknown>) => MinimalMap }).Map({
-        container: mapContainer.current,
-        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-        center: center,
-        zoom: zoom,
-        minZoom: 3,
-        maxZoom: 18
+    if (!isMounted) return
+    map.current = new MapLibreMap({
+      container: mapContainer.current!,
+      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+      center: center,
+      zoom: zoom,
+      minZoom: 3,
+      maxZoom: 18
+    });
+    if (map.current) {
+      map.current.on('load', () => {
+        setIsMapLoaded(true)
       })
-      if (map.current) {
-        map.current.on('load', () => {
-          setIsMapLoaded(true)
-        })
-        map.current.on('style.load', () => {
-          setStyleLoaded(true)
-        })
-      }
-    })
+      map.current.on('style.load', () => {
+        setStyleLoaded(true)
+      })
+    }
     return () => {
       isMounted = false
       if (map.current) {
@@ -423,11 +405,11 @@ export function BaseMap({
     if (map.current && !map.current.getSource(labelSourceId)) {
       map.current.addSource(labelSourceId, {
         type: 'geojson',
-        data: makeLabelPoints(data as FeatureCollection<Polygon | MultiPolygon>, 'PLZ')
+        data: makeLabelPoints(data as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>)
       })
     } else if (map.current) {
       const src = map.current.getSource(labelSourceId);
-      if (src) src.setData(makeLabelPoints(data as FeatureCollection<Polygon | MultiPolygon>, 'PLZ'));
+      if (src) src.setData(makeLabelPoints(data as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>));
     }
     if (statesData) {
       if (map.current && !map.current.getSource(stateSourceId)) {
@@ -442,11 +424,11 @@ export function BaseMap({
       if (map.current && !map.current.getSource('state-boundaries-label-points')) {
         map.current.addSource('state-boundaries-label-points', {
           type: 'geojson',
-          data: makeLabelPoints(statesData as FeatureCollection<Polygon | MultiPolygon>, 'name')
+          data: makeLabelPoints(statesData as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>)
         })
       } else if (map.current) {
         const src = map.current.getSource('state-boundaries-label-points');
-        if (src) src.setData(makeLabelPoints(statesData as FeatureCollection<Polygon | MultiPolygon>, 'name'));
+        if (src) src.setData(makeLabelPoints(statesData as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>));
       }
     }
 
@@ -605,7 +587,7 @@ export function BaseMap({
     const selectedSourceId = `${layerId}-selected-source`
     const src = map.current.getSource(selectedSourceId)
     if (src) {
-      src.setData(featureCollectionFromIds(data, selectedRegions))
+      src.setData(featureCollectionFromIds(data as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>, selectedRegions))
     }
   }, [selectedRegions, data, layerId, layersLoaded])
 

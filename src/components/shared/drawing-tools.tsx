@@ -84,13 +84,13 @@ const drawingModes = [
     description: 'Draw angled rectangles',
     category: 'drawing'
   },
-  {
+  /*{
     id: 'sector' as const,
     name: 'Sector',
     icon: PieChart,
     description: 'Draw circle sectors',
     category: 'drawing'
-  }
+  }*/
 ]
 
 // Memoize polygons for each feature
