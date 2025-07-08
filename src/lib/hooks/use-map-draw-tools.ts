@@ -1,15 +1,15 @@
-import type { MapData } from "@/lib/types/map-data";
-import { useMapState } from "@/lib/url-state/map-state";
-import { useEffect } from "react";
 
-import type { MapboxMap } from "@/lib/types/mapbox";
+import { useMapState } from "@/lib/url-state/map-state";
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import type { Map as MapLibre } from 'maplibre-gl';
+import { useEffect } from "react";
 import { useLassoSelection } from "./use-lasso-selection";
 import { useRadiusSelection } from "./use-radius-selection";
 
 interface DrawToolsProps {
-  map: MapboxMap | null;
+  map: MapLibre | null;
   isMapLoaded: boolean;
-  data: MapData;
+  data: FeatureCollection<MultiPolygon | Polygon, GeoJsonProperties>;
   granularity: string;
   drawMode: 'lasso' | 'radius' | null;
   onRadiusSelect: (radius: number) => void;

@@ -1,15 +1,15 @@
-import type { MapData } from "@/lib/types/map-data";
-import type { GeoJSONFeature, MapboxMap } from "@/lib/types/mapbox";
 import { useMapState } from "@/lib/url-state/map-state";
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import type { GeoJSONFeature, Map as MapLibre } from 'maplibre-gl';
 import { useEffect, useRef } from "react";
 
 
 
 // Fixed: define LassoSelectionProps as a type
 type LassoSelectionProps = {
-  map: MapboxMap | null;
+  map: MapLibre | null;
   isMapLoaded: boolean;
-  data: MapData;
+  data: FeatureCollection<MultiPolygon | Polygon, GeoJsonProperties>;
   granularity: string;
   enabled: boolean;
 };

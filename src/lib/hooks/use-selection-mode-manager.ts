@@ -3,13 +3,14 @@ import { useCursorSelection } from "./use-cursor-selection"
 import { useLassoSelection } from "./use-lasso-selection"
 import { useRadiusSelection } from "./use-radius-selection"
 
-import type { MapData } from "@/lib/types/map-data"
-import type { MapboxMap } from "@/lib/types/mapbox"
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson"
+import type { Map as MapLibre } from 'maplibre-gl'
+
 
 interface SelectionModeManagerProps {
-  map: MapboxMap | null;
+  map: MapLibre | null;
   isMapLoaded: boolean;
-  data: MapData;
+  data: FeatureCollection<MultiPolygon | Polygon, GeoJsonProperties>;
   layerId: string;
 }
 

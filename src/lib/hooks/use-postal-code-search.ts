@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react"
-import type { MapData } from "@/lib/types/map-data"
-import { useMapState } from "@/lib/url-state/map-state"
+import { useMapState } from "@/lib/url-state/map-state";
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import { useCallback, useState } from "react";
 
 interface PostalCodeSearchProps {
-  data: MapData
+  data: FeatureCollection<MultiPolygon | Polygon, GeoJsonProperties>;
 }
 
 export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
@@ -28,9 +28,9 @@ export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
           const plz = feature.properties?.PLZ?.toLowerCase() || ''
           const plzAlt = feature.properties?.plz?.toLowerCase() || ''
           const name = feature.properties?.name?.toLowerCase() || ''
-          
-          return id.includes(searchTerm) || 
-                 plz.includes(searchTerm) || 
+
+          return id.includes(searchTerm) ||
+                 plz.includes(searchTerm) ||
                  plzAlt.includes(searchTerm) ||
                  name.includes(searchTerm)
         })
@@ -64,4 +64,4 @@ export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
     selectPostalCode,
     clearSearch
   }
-} 
+}

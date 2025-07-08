@@ -1,8 +1,9 @@
 
+import type { Map as MapLibre } from 'maplibre-gl';
 import { useCallback, useEffect, useRef } from 'react';
+import { GeoJSONStoreFeatures, TerraDraw, TerraDrawAngledRectangleMode, TerraDrawCircleMode, TerraDrawFreehandMode, TerraDrawLineStringMode, TerraDrawPointMode, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSectorMode, TerraDrawSelectMode } from 'terra-draw';
+import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 
-import type { MapboxMap } from '@/lib/types/mapbox';
-import type { Feature } from 'geojson';
 
 // Define all available drawing modes
 export type TerraDrawMode =
@@ -17,7 +18,7 @@ export type TerraDrawMode =
 
 // Props for useTerraDraw hook
 export type UseTerraDrawProps = {
-  map: MapboxMap | null;
+  map: MapLibre | null;
   isEnabled: boolean;
   mode: TerraDrawMode | null;
   onSelectionChange?: (features: (string | number)[]) => void;
@@ -122,13 +123,13 @@ export function useTerraDraw({
             console.log('All TerraDraw features:', allFeatures)
 
             // Extract feature IDs for selection
-            const featureIds = allFeatures.map((feature: { id: string | number }) => feature.id)
+            const featureIds = allFeatures.map((feature) => feature.id)
             console.log('Feature IDs for selection:', featureIds)
 
             // Only trigger selection if we have features
             if (featureIds.length > 0) {
               console.log('Triggering selection with feature IDs:', featureIds)
-              onSelectionChange?.(featureIds)
+              onSelectionChange?.(featureIds.filter(id => id !== undefined && id !== null));
             } else {
               console.log('No features found after drawing finish')
             }
@@ -194,7 +195,7 @@ export function useTerraDraw({
     return drawRef.current.getSnapshot();
   }, []);
 
-  const addFeatures = useCallback((features: Feature[]) => {
+  const addFeatures = useCallback((features: GeoJSONStoreFeatures[]) => {
     if (!drawRef.current) return [];
     return drawRef.current.addFeatures(features);
   }, []);

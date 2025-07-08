@@ -1,14 +1,14 @@
-
-import type { MapData } from "@/lib/types/map-data";
-import type { MapboxMap } from "@/lib/types/mapbox";
 import { useMapState } from "@/lib/url-state/map-state";
+import { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import type { Map as MapLibre } from 'maplibre-gl';
 import { useEffect, useRef } from "react";
 
 interface RadiusSelectionProps {
-  map: MapboxMap | null;
+  map: MapLibre | null;
   isMapLoaded: boolean;
-  data: MapData;
+  data: FeatureCollection<MultiPolygon | Polygon, GeoJsonProperties>;
   granularity: string;
+  onRadiusSelect?: (radius: number) => void;
   enabled: boolean;
 }
 
@@ -121,7 +121,7 @@ export function useRadiusSelection({
       const [cx, cy] = centerPoint.current
       const currentRadius: number = radiusRadius.current;
 
-      (data.features as import("@/lib/types/mapbox").GeoJSONFeature[]).forEach((feature: import("@/lib/types/mapbox").GeoJSONFeature) => {
+      data.features.forEach(feature => {
         // Check if feature centroid is within radius
         const centroid = getFeatureCentroid(feature)
         if (centroid) {
@@ -138,7 +138,7 @@ export function useRadiusSelection({
       return selectedFeatures
     }
 
-    const getFeatureCentroid = (feature: import("@/lib/types/mapbox").GeoJSONFeature): [number, number] | null => {
+    const getFeatureCentroid = ((feature: Feature<MultiPolygon | Polygon, GeoJsonProperties>) => {
       // Simple centroid calculation - in a real app, use a proper geometry library
       if (feature.geometry.type === 'Polygon') {
         const coords = (feature.geometry.coordinates as [number, number][][])[0]
@@ -147,7 +147,7 @@ export function useRadiusSelection({
         return [sumX / coords.length, sumY / coords.length]
       }
       return null
-    }
+    })
 
     // Add event listeners only when enabled
     canvas.addEventListener('mousedown', handleMouseDown)

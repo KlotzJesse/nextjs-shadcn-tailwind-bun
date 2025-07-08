@@ -1,10 +1,10 @@
 import { useMapState } from "@/lib/url-state/map-state";
 import { useEffect } from "react";
 
-import type { MapboxMap } from "@/lib/types/mapbox";
+import type { Map as MapLibre } from 'maplibre-gl';
 
 interface MapStyleProps {
-  map: MapboxMap | null;
+  map: MapLibre | null;
   isMapLoaded: boolean;
   granularity: string;
 }

@@ -1,12 +1,11 @@
+import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson"
+import type { Map as MapLibreMap } from "maplibre-gl"
 import { useEffect, useState } from "react"
-import { Map as MapLibreMap } from "maplibre-gl"
-import { MapData } from "@/app/map/[granularity]/map-data"
-import { FeatureCollection, Polygon, MultiPolygon } from "geojson"
 
 interface MapLayersProps {
   map: MapLibreMap | null
   isMapLoaded: boolean
-  data: MapData
+  data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties> | null
   granularity: string
   selectedRegions: string[]
 }
@@ -116,4 +115,4 @@ export function useMapLayers({ map, isMapLoaded, data, granularity, selectedRegi
   }, [map, isMapLoaded, data, granularity, selectedRegions])
 
   return layersInitialized
-} 
+}
