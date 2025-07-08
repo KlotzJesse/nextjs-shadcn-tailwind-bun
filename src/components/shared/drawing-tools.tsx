@@ -8,8 +8,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TerraDrawMode } from "@/lib/hooks/use-terradraw"
 import { useMapState } from "@/lib/url-state/map-state"
 import { copyPostalCodesCSV, exportPostalCodesXLSX } from '@/lib/utils/export-utils'
-import combine from '@turf/combine'
-import type { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from 'geojson'
 import {
   Circle,
   Copy,
@@ -28,7 +26,6 @@ import {
 } from "lucide-react"
 import { Suspense, useState } from "react"
 import { toast } from "sonner"
-import { findHoles, isRegionAdjacent, isRegionIntersected } from './map-utils'
 
 interface DrawingToolsProps {
   currentMode: TerraDrawMode | null
@@ -94,71 +91,42 @@ const drawingModes = [
 ]
 
 
-// Fill logic (chunked for large datasets)
+// Fill logic using server-side geoprocessing API
 async function fillRegions(
   mode: 'all' | 'holes' | 'expand',
   postalCodesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>,
   selectedRegions: string[],
   setSelectedRegions: (ids: string[]) => void,
-  setIsFilling: (b: boolean) => void
+  setIsFilling: (b: boolean) => void,
+  granularity?: string
 ) {
   setIsFilling(true);
   await new Promise(r => setTimeout(r, 10)); // allow UI update
-  const selectedIds = new Set(selectedRegions);
-  const features = postalCodesData.features;
-  let toAdd: string[] = [];
-  if (mode === 'all') {
-    const selectedFeatures = features.filter((f) => selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz));
-    if (selectedFeatures.length < 3) {
+  try {
+    if (!granularity) {
       setIsFilling(false);
+      toast.error('Granularity is required for geoprocessing');
       return;
     }
-    const combined = combine({ type: 'FeatureCollection', features: selectedFeatures });
-    if (!combined || !combined.features || combined.features.length === 0) {
+    const response = await fetch('/api/geoprocess', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, granularity, selectedIds: selectedRegions })
+    });
+    if (!response.ok) {
       setIsFilling(false);
+      toast.error('Server geoprocessing failed');
       return;
     }
-    // Only use the first feature if it is a Polygon or MultiPolygon
-    const multiPoly = combined.features[0];
-    if (!multiPoly || !(['Polygon', 'MultiPolygon'] as string[]).includes(multiPoly.geometry.type)) {
-      setIsFilling(false);
-      return;
-    }
-    // Chunked processing for large datasets
-    const CHUNK_SIZE = 200;
-    let idx = 0;
-    while (idx < features.length) {
-      const chunk = features.slice(idx, idx + CHUNK_SIZE);
-      toAdd.push(...chunk
-        .filter((f) => !selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz))
-        .filter((f) => isRegionIntersected(multiPoly as Feature<Polygon | MultiPolygon, GeoJsonProperties>, f as Feature<Polygon | MultiPolygon, GeoJsonProperties>))
-        .map((f) => f.properties?.id || f.properties?.PLZ || f.properties?.plz)
-        .filter(Boolean));
-      idx += CHUNK_SIZE;
-      await new Promise(r => setTimeout(r, 0)); // yield to event loop
-    }
-  } else if (mode === 'expand') {
-    const selectedFeatures = features.filter((f) => selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz));
-    const CHUNK_SIZE = 200;
-    let idx = 0;
-    while (idx < features.length) {
-      const chunk = features.slice(idx, idx + CHUNK_SIZE);
-      toAdd.push(...chunk
-        .filter((f) => !selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz))
-        .filter((f) => isRegionAdjacent(f, selectedFeatures))
-        .map((f) => f.properties?.id || f.properties?.PLZ || f.properties?.plz)
-        .filter(Boolean));
-      idx += CHUNK_SIZE;
-      await new Promise(r => setTimeout(r, 0));
-    }
-  } else if (mode === 'holes') {
-    // Holes are usually much fewer, so no chunking needed
-    toAdd = findHoles(postalCodesData, selectedIds);
+    const { resultIds } = await response.json();
+    const newSelection = Array.from(new Set([...selectedRegions, ...(resultIds || [])]));
+    setSelectedRegions(newSelection);
+    setIsFilling(false);
+    toast.success(`Filled ${(resultIds || []).length} region${(resultIds || []).length === 1 ? '' : 's'} (${mode === 'all' ? 'all gaps' : mode === 'holes' ? 'holes' : 'one layer'})`);
+  } catch (err) {
+    setIsFilling(false);
+    toast.error('Error during geoprocessing');
   }
-  const newSelection = Array.from(new Set([...selectedRegions, ...toAdd]));
-  setSelectedRegions(newSelection);
-  setIsFilling(false);
-  toast.success(`Filled ${toAdd.length} region${toAdd.length === 1 ? '' : 's'} (${mode === 'all' ? 'all gaps' : mode === 'holes' ? 'holes' : 'one layer'})`);
 }
 
 function DrawingToolsImpl({
@@ -331,7 +299,7 @@ function DrawingToolsImpl({
             variant="default"
             size="sm"
             disabled={isFilling || selectedRegions.length < 3}
-          onClick={() => postalCodesData && fillRegions('all', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+            onClick={() => postalCodesData && fillRegions('all', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling, granularity)}
             className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
             title="Fill all gaps (no holes)"
             aria-label="Fill all gaps (no holes)"
@@ -343,7 +311,7 @@ function DrawingToolsImpl({
             variant="secondary"
             size="sm"
             disabled={isFilling || selectedRegions.length < 3}
-          onClick={() => postalCodesData && fillRegions('holes', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+            onClick={() => postalCodesData && fillRegions('holes', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling, granularity)}
             className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
             title="Fill only holes inside the selection"
             aria-label="Fill only holes"
@@ -355,7 +323,7 @@ function DrawingToolsImpl({
             variant="outline"
             size="sm"
             disabled={isFilling || selectedRegions.length < 3}
-          onClick={() => postalCodesData && fillRegions('expand', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+            onClick={() => postalCodesData && fillRegions('expand', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling, granularity)}
             className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
             title="Expand selection by one layer"
             aria-label="Expand by one layer"
