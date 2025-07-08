@@ -37,6 +37,9 @@ export function BaseMap({
   const [styleLoaded, setStyleLoaded] = useState(false)
   const [layersLoaded, setLayersLoaded] = useState(false)
   const [currentDrawingMode, setCurrentDrawingMode] = useState<TerraDrawMode | null>(null)
+  useEffect(() => {
+    console.log('[BaseMap] currentDrawingMode changed:', currentDrawingMode)
+  }, [currentDrawingMode])
   const [isDrawingToolsVisible, setIsDrawingToolsVisible] = useState(true)
   const { selectedRegions, addSelectedRegion, removeSelectedRegion, setSelectedRegions, setMapCenterZoom } = useMapState()
 
@@ -213,6 +216,8 @@ export function BaseMap({
   }, [data, isPointInPolygon])
 
   // Integrate TerraDraw for advanced drawing capabilities
+  // Invariant: All hooks must always be called, and dependency arrays must be stable.
+  // Always call useTerraDraw, even if map is not ready, to preserve React hook order and avoid React warnings/errors.
   const terraDrawRef = useRef<{ getSnapshot: () => unknown[]; clearAll: () => void } | null>(null)
 
   // Handle TerraDraw selection changes
@@ -304,18 +309,20 @@ export function BaseMap({
     }
   }, [findFeaturesInPolygon, findFeaturesInCircle, selectedRegions, setSelectedRegions, convertRadiusToGeographic])
 
-  // Actually call useTerraDraw and assign to ref
+  // Always call useTerraDraw, passing null if map is not ready
   const terraDrawApi = useTerraDraw({
-    map: map.current,
-    isEnabled: currentDrawingMode !== null && currentDrawingMode !== 'cursor' && isMapLoaded && styleLoaded,
+    map: map.current && isMapLoaded && styleLoaded ? map.current : null,
+    isEnabled: currentDrawingMode !== null && currentDrawingMode !== 'cursor',
     mode: currentDrawingMode !== null && currentDrawingMode !== 'cursor' ? currentDrawingMode : null,
     onSelectionChange: handleTerraDrawSelection,
-  })
-  terraDrawRef.current = terraDrawApi
-  const { clearAll } = terraDrawApi
+  });
+  // Always assign terraDrawRef and clearAll, using no-ops if not ready
+  terraDrawRef.current = terraDrawApi;
+  const clearAll = terraDrawApi && terraDrawApi.clearAll ? terraDrawApi.clearAll : () => {};
 
   // Handle drawing mode changes
   const handleDrawingModeChange = useCallback((mode: TerraDrawMode | null) => {
+    console.log('[BaseMap] handleDrawingModeChange called. mode:', mode)
     setCurrentDrawingMode(mode)
   }, [])
 
@@ -671,48 +678,53 @@ export function BaseMap({
 
   // --- Add event listeners only for cursor mode ---
   useEffect(() => {
-    if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor') return
-    const canvas = map.current.getCanvas()
+    if (!map.current || !layersLoaded || currentDrawingMode !== 'cursor') return;
+    const canvas = map.current.getCanvas();
     // Set initial cursor
-    canvas.style.cursor = 'grab'
+    canvas.style.cursor = 'grab';
     // Dragging logic
-    const handleMouseDown = () => { canvas.style.cursor = 'grabbing' }
-    const handleMouseUp = () => { canvas.style.cursor = 'grab' }
-    canvas.addEventListener('mousedown', handleMouseDown)
-    window.addEventListener('mouseup', handleMouseUp)
-    // Remove old listeners
+    const handleMouseDown = () => { canvas.style.cursor = 'grabbing'; };
+    const handleMouseUp = () => { canvas.style.cursor = 'grab'; };
+    canvas.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    // Attach listeners to the postal code fill layer only
+    const targetLayer = `${layerId}-layer`;
+    // Remove old listeners (for robustness)
     if (map.current) {
-      map.current.off('mouseenter', handleMouseEnter)
-      map.current.off('mousemove', handleMouseMove)
-      map.current.off('mouseleave', handleMouseLeave)
-      map.current.off('click', handleClick)
+      map.current.off('mouseenter', targetLayer, handleMouseEnter);
+      map.current.off('mousemove', targetLayer, handleMouseMove);
+      map.current.off('mouseleave', targetLayer, handleMouseLeave);
+      map.current.off('click', targetLayer, handleClick);
     }
     // Add new listeners
     if (map.current) {
-      map.current.on('mouseenter', handleMouseEnter)
-      map.current.on('mousemove', handleMouseMove)
-      map.current.on('mouseleave', handleMouseLeave)
-      map.current.on('click', handleClick)
+      map.current.on('mouseenter', targetLayer, handleMouseEnter);
+      map.current.on('mousemove', targetLayer, handleMouseMove);
+      map.current.on('mouseleave', targetLayer, handleMouseLeave);
+      map.current.on('click', targetLayer, handleClick);
+      console.debug('[BaseMap] Cursor mode listeners attached to layer:', targetLayer);
     }
     return () => {
       if (map.current) {
-        map.current.off('mouseenter', handleMouseEnter)
-        map.current.off('mousemove', handleMouseMove)
-        map.current.off('mouseleave', handleMouseLeave)
-        map.current.off('click', handleClick)
+        map.current.off('mouseenter', targetLayer, handleMouseEnter);
+        map.current.off('mousemove', targetLayer, handleMouseMove);
+        map.current.off('mouseleave', targetLayer, handleMouseLeave);
+        map.current.off('click', targetLayer, handleClick);
+        console.debug('[BaseMap] Cursor mode listeners detached from layer:', targetLayer);
       }
-      canvas.removeEventListener('mousedown', handleMouseDown)
-      window.removeEventListener('mouseup', handleMouseUp)
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
       if (hoverThrottleTimeout.current) {
-        clearTimeout(hoverThrottleTimeout.current)
-        hoverThrottleTimeout.current = null
+        clearTimeout(hoverThrottleTimeout.current);
+        hoverThrottleTimeout.current = null;
       }
-      pendingHoverEvent.current = null
-      hoveredRegionIdRef.current = null
+      pendingHoverEvent.current = null;
+      hoveredRegionIdRef.current = null;
       // Always restore to default grab
-      canvas.style.cursor = 'grab'
-    }
-  }, [handleMouseEnter, handleMouseMove, handleMouseLeave, handleClick, layerId, layersLoaded, currentDrawingMode])
+      canvas.style.cursor = 'grab';
+    };
+  }, [handleMouseEnter, handleMouseMove, handleMouseLeave, handleClick, layerId, layersLoaded, currentDrawingMode]);
 
   // Update map center and zoom when props change (without recreating map)
   useEffect(() => {

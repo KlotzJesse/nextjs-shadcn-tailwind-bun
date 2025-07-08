@@ -1,6 +1,5 @@
 import ServerPostalCodesView from "@/components/postal-codes/server-postal-codes-view";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 export const experimental_ppr = true;
@@ -52,10 +51,6 @@ export default async function PostalCodesPage({
   params,
 }: PostalCodesPageProps) {
   const { granularity } = await params;
-
-  if (!VALID_GRANULARITIES.includes(granularity as Granularity)) {
-    notFound();
-  }
 
   return (
     <div className="h-full px-4 lg:px-6">

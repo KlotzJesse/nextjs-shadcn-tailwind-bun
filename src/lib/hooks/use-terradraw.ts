@@ -30,6 +30,8 @@ export type UseTerraDrawProps = {
   onStop?: () => void;
 };
 
+// Invariant: All hooks must always be called, and dependency arrays must be stable.
+// This hook must always be called unconditionally in the component tree, even if map is not ready (pass null).
 export function useTerraDraw({
   map,
   isEnabled,
@@ -44,128 +46,81 @@ export function useTerraDraw({
 }: UseTerraDrawProps) {
   const drawRef = useRef<TerraDraw | null>(null);
   const isInitializedRef = useRef(false);
+  useEffect(() => {
+    console.log('[TerraDraw] useTerraDraw hook mounted. map:', map, 'isEnabled:', isEnabled, 'mode:', mode);
+    return () => {
+      console.log('[TerraDraw] useTerraDraw hook unmounted.');
+    };
+  }, []);
 
-  const initializeTerraDraw = useCallback(() => {
+  // Only initialize TerraDraw once, after map style is loaded
+  useEffect(() => {
     if (!map || isInitializedRef.current) return;
-
-    console.log('TerraDraw initialization started')
-    console.log('Map exists:', !!map)
-    console.log('Map style loaded:', map.isStyleLoaded())
-    console.log('Map canvas exists:', !!map.getCanvas())
-
-    // Wait for style to load before initializing TerraDraw
-    if (!map.isStyleLoaded()) {
-      console.log('Map style not loaded, waiting...')
-      const onStyleLoad = () => {
-        console.log('Map style loaded, proceeding with TerraDraw initialization')
-        map.off('style.load', onStyleLoad);
-        // Add a small delay to ensure map is fully ready
-        setTimeout(() => {
-          initializeTerraDraw();
-        }, 200);
-      };
-      map.on('style.load', onStyleLoad);
-      return;
-    }
-
-    // Additional check to ensure map is fully loaded and ready
-    if (!map.getCanvas() || !map.getContainer()) {
-      console.log('Map not fully ready, retrying...')
-      setTimeout(() => {
-        initializeTerraDraw();
-      }, 200);
-      return;
-    }
-
-    // Check if map has all required properties
-    if (!map.getStyle() || !map.getCanvas().style) {
-      console.log('Map style or canvas not ready, retrying...')
-      setTimeout(() => {
-        initializeTerraDraw();
-      }, 200);
-      return;
-    }
-
-    try {
-      console.log('Initializing TerraDraw...')
-
-      // Create TerraDraw with minimal configuration to avoid errors
-      const draw = new TerraDraw({
-        adapter: new TerraDrawMapLibreGLAdapter({
-          map
-        }),
-        modes: [
-          new TerraDrawFreehandMode(),
-          new TerraDrawCircleMode(),
-          new TerraDrawPolygonMode(),
-          new TerraDrawPointMode(),
-          new TerraDrawLineStringMode(),
-          new TerraDrawRectangleMode(),
-          new TerraDrawAngledRectangleMode(),
-          new TerraDrawSectorMode(),
-          new TerraDrawSelectMode(),
-        ],
-      });
-
-      console.log('TerraDraw created successfully')
-
-      // Set up event listeners with defensive programming
-      // Use 'finish' event instead of 'change' to trigger selection only after drawing is complete
-      draw.on('finish', (id: string | number, context: { action: string, mode: string }) => {
-        try {
-          console.log('TerraDraw finish event received:', { id, context })
-
-          if (context.action === 'draw') {
-            console.log('Drawing finished, getting all features for selection')
-
-            // Get all current features from TerraDraw
-            const allFeatures = draw.getSnapshot()
-            console.log('All TerraDraw features:', allFeatures)
-
-            // Extract feature IDs for selection
-            const featureIds = allFeatures.map((feature) => feature.id)
-            console.log('Feature IDs for selection:', featureIds)
-
-            // Only trigger selection if we have features
-            if (featureIds.length > 0) {
-              console.log('Triggering selection with feature IDs:', featureIds)
-              onSelectionChange?.(featureIds.filter(id => id !== undefined && id !== null));
-            } else {
-              console.log('No features found after drawing finish')
+    let styleLoadHandler: (() => void) | null = null;
+    const initialize = () => {
+      try {
+        const draw = new TerraDraw({
+          adapter: new TerraDrawMapLibreGLAdapter({ map }),
+          modes: [
+            new TerraDrawFreehandMode(),
+            new TerraDrawCircleMode(),
+            new TerraDrawPolygonMode(),
+            new TerraDrawPointMode(),
+            new TerraDrawLineStringMode(),
+            new TerraDrawRectangleMode(),
+            new TerraDrawAngledRectangleMode(),
+            new TerraDrawSectorMode(),
+            new TerraDrawSelectMode(),
+          ],
+        });
+        draw.on('finish', (id: string | number, context: { action: string, mode: string }) => {
+          try {
+            if (context.action === 'draw') {
+              const allFeatures = draw.getSnapshot();
+              const featureIds = allFeatures.map((feature) => feature.id);
+              if (featureIds.length > 0) {
+                onSelectionChange?.(featureIds.filter(id => id !== undefined && id !== null));
+              }
             }
-          } else {
-            console.log('Finish event was not a draw action:', context.action)
+          } catch (error) {
+            console.error('[TerraDraw] Error in finish event:', error);
           }
-        } catch (error) {
-          console.error('Error in TerraDraw finish event:', error)
+        });
+        drawRef.current = draw;
+        isInitializedRef.current = true;
+        console.log('[TerraDraw] TerraDraw initialized successfully');
+      } catch (error) {
+        console.error('[TerraDraw] Failed to initialize TerraDraw:', error);
+        isInitializedRef.current = false;
+      }
+    };
+    if (map.isStyleLoaded()) {
+      initialize();
+    } else {
+      styleLoadHandler = () => {
+        map.off('style.load', styleLoadHandler!);
+        if (!isInitializedRef.current) {
+          initialize();
         }
-      })
-
-      // Keep change event for debugging but don't trigger selection
-      draw.on('change', (ids: (string | number)[], type: string) => {
-        console.log('TerraDraw change event received:', { ids, type })
-        // Don't trigger selection here - only on finish
-      })
-
-      drawRef.current = draw;
-      isInitializedRef.current = true;
-      console.log('TerraDraw initialized successfully')
-    } catch (error) {
-      console.error('Failed to initialize TerraDraw:', error)
-      // Reset initialization flag on error
-      isInitializedRef.current = false;
+      };
+      map.on('style.load', styleLoadHandler);
     }
+    // Cleanup: remove style.load listener if unmounting
+    return () => {
+      if (map && styleLoadHandler) map.off('style.load', styleLoadHandler);
+    };
   }, [map, onSelectionChange]);
 
   const startDrawing = useCallback(() => {
     if (!drawRef.current || !mode) return;
 
     try {
+      console.log('[TerraDraw] startDrawing called. mode:', mode);
       drawRef.current.start();
       drawRef.current.setMode(mode);
       onStart?.();
     } catch (error) {
-      console.error('Failed to start drawing:', error);
+      console.error('[TerraDraw] Failed to start drawing:', error);
     }
   }, [mode, onStart]);
 
@@ -173,10 +128,11 @@ export function useTerraDraw({
     if (!drawRef.current) return;
 
     try {
+      console.log('[TerraDraw] stopDrawing called.');
       drawRef.current.stop();
       onStop?.();
     } catch (error) {
-      console.error('Failed to stop drawing:', error);
+      console.error('[TerraDraw] Failed to stop drawing:', error);
     }
   }, [onStop]);
 
@@ -223,20 +179,32 @@ export function useTerraDraw({
   // Initialize TerraDraw when map is ready
   useEffect(() => {
     if (map && !isInitializedRef.current) {
-      initializeTerraDraw();
+      // No-op: removed old initializeTerraDraw references
     }
-  }, [map, initializeTerraDraw]);
+  }, [map, onSelectionChange]);
 
   // Handle mode changes
   useEffect(() => {
     if (!drawRef.current) return;
-
-    if (isEnabled && mode) {
-      startDrawing();
+    // If drawing mode is enabled and not cursor, start TerraDraw and set mode
+    if (isEnabled && mode && mode !== 'cursor') {
+      try {
+        drawRef.current.start();
+        drawRef.current.setMode(mode);
+        onStart?.();
+      } catch (error) {
+        console.error('[TerraDraw] Failed to start drawing:', error);
+      }
     } else {
-      stopDrawing();
+      // If switching to cursor mode or disabling, stop TerraDraw
+      try {
+        drawRef.current.stop();
+        onStop?.();
+      } catch (error) {
+        console.error('[TerraDraw] Failed to stop drawing:', error);
+      }
     }
-  }, [isEnabled, mode, startDrawing, stopDrawing]);
+  }, [isEnabled, mode, onStart, onStop]);
 
   // Cleanup on unmount
   useEffect(() => {
