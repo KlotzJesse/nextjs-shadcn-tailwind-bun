@@ -1,11 +1,11 @@
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import type { MapboxMap } from '@/lib/types/mapbox';
 import type { Feature } from 'geojson';
 
 // Define all available drawing modes
-export type TerraDrawMode = 
+export type TerraDrawMode =
   | 'cursor'        // Cursor selection (not a TerraDraw mode, but our custom mode)
   | 'freehand'      // Lasso selection
   | 'circle'        // Radius selection
@@ -87,10 +87,10 @@ export function useTerraDraw({
 
     try {
       console.log('Initializing TerraDraw...')
-      
+
       // Create TerraDraw with minimal configuration to avoid errors
       const draw = new TerraDraw({
-        adapter: new TerraDrawMapLibreGLAdapter({ 
+        adapter: new TerraDrawMapLibreGLAdapter({
           map
         }),
         modes: [
@@ -113,18 +113,18 @@ export function useTerraDraw({
       draw.on('finish', (id: string | number, context: { action: string, mode: string }) => {
         try {
           console.log('TerraDraw finish event received:', { id, context })
-          
+
           if (context.action === 'draw') {
             console.log('Drawing finished, getting all features for selection')
-            
+
             // Get all current features from TerraDraw
             const allFeatures = draw.getSnapshot()
             console.log('All TerraDraw features:', allFeatures)
-            
+
             // Extract feature IDs for selection
             const featureIds = allFeatures.map((feature: { id: string | number }) => feature.id)
             console.log('Feature IDs for selection:', featureIds)
-            
+
             // Only trigger selection if we have features
             if (featureIds.length > 0) {
               console.log('Triggering selection with feature IDs:', featureIds)
@@ -261,4 +261,4 @@ export function useTerraDraw({
     deselectFeature,
     getModeState,
   };
-} 
+}

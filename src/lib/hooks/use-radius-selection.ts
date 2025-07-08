@@ -1,8 +1,8 @@
 
-import { useEffect, useRef } from "react"
-import type { MapData } from "@/lib/types/map-data"
-import { useMapState } from "@/lib/url-state/map-state"
-import type { MapboxMap } from "@/lib/types/mapbox"
+import type { MapData } from "@/lib/types/map-data";
+import type { MapboxMap } from "@/lib/types/mapbox";
+import { useMapState } from "@/lib/url-state/map-state";
+import { useEffect, useRef } from "react";
 
 interface RadiusSelectionProps {
   map: MapboxMap | null;
@@ -12,12 +12,12 @@ interface RadiusSelectionProps {
   enabled: boolean;
 }
 
-export function useRadiusSelection({ 
-  map, 
-  isMapLoaded, 
-  data, 
-  granularity, 
-  enabled 
+export function useRadiusSelection({
+  map,
+  isMapLoaded,
+  data,
+  granularity,
+  enabled
 }: RadiusSelectionProps) {
   const { addSelectedRegion, removeSelectedRegion, radius, setRadius } = useMapState()
   const isDrawing = useRef(false)
@@ -51,16 +51,16 @@ export function useRadiusSelection({
 
     const handleMouseDown = (e: MouseEvent) => {
       if (!enabled) return
-      
+
       isDrawing.current = true
-      
+
       const rect = canvas.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
-      
+
       centerPoint.current = [x, y]
       radiusRadius.current = 0
-      
+
       // Start drawing
       ctx.beginPath()
       ctx.arc(x, y, 0, 0, 2 * Math.PI)
@@ -72,17 +72,17 @@ export function useRadiusSelection({
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDrawing.current || !enabled || !centerPoint.current) return
-      
+
       const rect = canvas.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
-      
+
       const [cx, cy] = centerPoint.current
       const currentRadius = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
-      
+
       // Clear previous drawing
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      
+
       // Draw new circle
       ctx.beginPath()
       ctx.arc(cx, cy, currentRadius, 0, 2 * Math.PI)
@@ -90,24 +90,24 @@ export function useRadiusSelection({
       ctx.lineWidth = 2
       ctx.setLineDash([5, 5])
       ctx.stroke()
-      
+
       // Update radius state
       setRadius(Math.round(currentRadius))
     }
 
     const handleMouseUp = () => {
       if (!isDrawing.current || !enabled || !centerPoint.current) return
-      
+
       isDrawing.current = false
-      
+
       // Find features within the radius
       const selectedFeatures = findFeaturesInRadius()
-      
+
       // Update selected regions
       selectedFeatures.forEach(featureId => {
         addSelectedRegion(featureId)
       })
-      
+
       // Clear the drawing
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       centerPoint.current = null
@@ -116,11 +116,11 @@ export function useRadiusSelection({
 
     const findFeaturesInRadius = (): string[] => {
       if (!centerPoint.current) return []
-      
+
       const selectedFeatures: string[] = []
       const [cx, cy] = centerPoint.current
       const currentRadius: number = radiusRadius.current;
-      
+
       (data.features as import("@/lib/types/mapbox").GeoJSONFeature[]).forEach((feature: import("@/lib/types/mapbox").GeoJSONFeature) => {
         // Check if feature centroid is within radius
         const centroid = getFeatureCentroid(feature)
@@ -134,7 +134,7 @@ export function useRadiusSelection({
           }
         }
       })
-      
+
       return selectedFeatures
     }
 
@@ -159,18 +159,18 @@ export function useRadiusSelection({
       canvas.removeEventListener('mousedown', handleMouseDown)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseup', handleMouseUp)
-      
+
       // Re-enable map interactions on cleanup
       map.dragPan.enable()
       map.dragRotate.enable()
       map.scrollZoom.enable()
       map.doubleClickZoom.enable()
       map.touchZoomRotate.enable()
-      
+
       // Clear any remaining drawing
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
       }
     }
   }, [map, isMapLoaded, data, granularity, enabled, radius, addSelectedRegion, removeSelectedRegion, setRadius])
-} 
+}

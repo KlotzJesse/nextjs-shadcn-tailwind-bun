@@ -16,4 +16,4 @@ export interface MapData {
       coordinates: number[][][] | number[][][][]
     }
   }>
-} 
+}

@@ -1,8 +1,9 @@
-import * as topojson from "topojson-client"
-import type { Feature, FeatureCollection, Polygon, MultiPolygon, GeoJsonProperties } from "geojson"
-import centroid from '@turf/centroid'
 import area from '@turf/area'
+import centroid from '@turf/centroid'
 import { point } from '@turf/helpers'
+import type { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson"
+import * as topojson from "topojson-client"
+import { MapData } from "../types/map-data"
 
 const TOPOJSON_URLS: Record<string, string> = {
   "plz-1stellig": "https://download-v2.suche-postleitzahl.org/wgs84/gering2/plz-1stellig/topojson/plz-1stellig.topojson",
@@ -17,7 +18,7 @@ const STATE_GEOJSON_URL = "https://raw.githubusercontent.com/isellsoap/deutschla
 // Cache the fetch requests
 const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
   try {
-    const response = await fetch(TOPOJSON_URLS[granularity], { 
+    const response = await fetch(TOPOJSON_URLS[granularity], {
       next: { revalidate: 3600 }
     });
 
@@ -26,7 +27,7 @@ const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
     }
 
     const topo = await response.json();
-    
+
     if (!topo || !topo.objects) {
       throw new Error('Invalid TopoJSON data received');
     }
@@ -38,11 +39,11 @@ const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
 
     // Convert TopoJSON to GeoJSON FeatureCollection
     const geoData = topojson.feature(topo, topo.objects[firstKey]) as Feature | FeatureCollection;
-    
+
     // Ensure it's a FeatureCollection with correct properties
     const features = 'features' in geoData ? geoData.features : [geoData];
     const processedFeatures = features
-      .filter((feature: Feature): feature is Feature<Polygon | MultiPolygon> => 
+      .filter((feature: Feature): feature is Feature<Polygon | MultiPolygon> =>
         feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon'
       )
       .map((feature: Feature<Polygon | MultiPolygon>) => ({
@@ -66,7 +67,7 @@ const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
 
 const fetchStateGeo = async (): Promise<FeatureCollection> => {
   try {
-    const response = await fetch(STATE_GEOJSON_URL, { 
+    const response = await fetch(STATE_GEOJSON_URL, {
       next: { revalidate: 3600 }
     });
 
@@ -150,4 +151,4 @@ export function makeLabelPoints(features: FeatureCollection) {
       return point(coords, f.properties);
     })
   }
-} 
+}

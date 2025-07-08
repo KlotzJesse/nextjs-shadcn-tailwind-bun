@@ -16,4 +16,4 @@ declare module 'maplibre-gl' {
     data?: string;
     url?: string;
   }
-} 
+}

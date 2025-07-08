@@ -1,7 +1,7 @@
-import { useEffect } from "react"
-import { useMapState } from "@/lib/url-state/map-state"
+import { useMapState } from "@/lib/url-state/map-state";
+import { useEffect } from "react";
 
-import type { MapboxMap } from "@/lib/types/mapbox"
+import type { MapboxMap } from "@/lib/types/mapbox";
 
 interface MapStyleProps {
   map: MapboxMap | null;
@@ -65,4 +65,4 @@ export function useMapStyle({ map, isMapLoaded, granularity }: MapStyleProps) {
 
     applyStyles()
   }, [map, isMapLoaded, granularity, selectedRegions])
-} 
+}

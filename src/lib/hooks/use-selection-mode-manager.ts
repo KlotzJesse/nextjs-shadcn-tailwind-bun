@@ -3,8 +3,8 @@ import { useCursorSelection } from "./use-cursor-selection"
 import { useLassoSelection } from "./use-lasso-selection"
 import { useRadiusSelection } from "./use-radius-selection"
 
-import type { MapboxMap } from "@/lib/types/mapbox"
 import type { MapData } from "@/lib/types/map-data"
+import type { MapboxMap } from "@/lib/types/mapbox"
 
 interface SelectionModeManagerProps {
   map: MapboxMap | null;
@@ -39,4 +39,4 @@ export function useSelectionModeManager({ map, isMapLoaded, data, layerId }: Sel
     granularity: layerId, // assuming granularity is layerId
     enabled: selectionMode === 'radius',
   })
-} 
+}

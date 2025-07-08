@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react"
-import type { MapData } from "@/lib/types/map-data"
-import type { MapboxMap, GeoJSONFeature } from "@/lib/types/mapbox"
-import { useMapState } from "@/lib/url-state/map-state"
+import type { MapData } from "@/lib/types/map-data";
+import type { GeoJSONFeature, MapboxMap } from "@/lib/types/mapbox";
+import { useMapState } from "@/lib/url-state/map-state";
+import { useEffect, useRef } from "react";
 
 
 
@@ -14,12 +14,12 @@ type LassoSelectionProps = {
   enabled: boolean;
 };
 
-export function useLassoSelection({ 
-  map, 
-  isMapLoaded, 
-  data, 
-  granularity, 
-  enabled 
+export function useLassoSelection({
+  map,
+  isMapLoaded,
+  data,
+  granularity,
+  enabled
 }: LassoSelectionProps) {
   const { addSelectedRegion, removeSelectedRegion } = useMapState()
   const isDrawing = useRef(false)
@@ -52,16 +52,16 @@ export function useLassoSelection({
 
     const handleMouseDown = (e: MouseEvent) => {
       if (!enabled) return
-      
+
       isDrawing.current = true
       lassoPoints.current = []
-      
+
       const rect = canvas.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
-      
+
       lassoPoints.current.push([x, y])
-      
+
       // Start drawing
       ctx.beginPath()
       ctx.moveTo(x, y)
@@ -72,13 +72,13 @@ export function useLassoSelection({
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDrawing.current || !enabled) return
-      
+
       const rect = canvas.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
-      
+
       lassoPoints.current.push([x, y])
-      
+
       // Continue drawing
       ctx.lineTo(x, y)
       ctx.stroke()
@@ -86,23 +86,23 @@ export function useLassoSelection({
 
     const handleMouseUp = () => {
       if (!isDrawing.current || !enabled) return
-      
+
       isDrawing.current = false
-      
+
       // Close the path
       if (lassoPoints.current.length > 2) {
         ctx.closePath()
         ctx.stroke()
-        
+
         // Find features within the lasso area
         const selectedFeatures = findFeaturesInLasso()
-        
+
         // Update selected regions
         selectedFeatures.forEach(featureId => {
           addSelectedRegion(featureId)
         })
       }
-      
+
       // Clear the drawing
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       lassoPoints.current = []
@@ -139,19 +139,19 @@ export function useLassoSelection({
     const isPointInLasso = (point: [number, number]): boolean => {
       // Simple point-in-polygon test using ray casting
       if (lassoPoints.current.length < 3) return false
-      
+
       let inside = false
       const [x, y] = point
-      
+
       for (let i = 0, j = lassoPoints.current.length - 1; i < lassoPoints.current.length; j = i++) {
         const [xi, yi] = lassoPoints.current[i]
         const [xj, yj] = lassoPoints.current[j]
-        
+
         if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
           inside = !inside
         }
       }
-      
+
       return inside
     }
 
@@ -165,18 +165,18 @@ export function useLassoSelection({
       canvas.removeEventListener('mousedown', handleMouseDown)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseup', handleMouseUp)
-      
+
       // Re-enable map interactions on cleanup
       map.dragPan.enable()
       map.dragRotate.enable()
       map.scrollZoom.enable()
       map.doubleClickZoom.enable()
       map.touchZoomRotate.enable()
-      
+
       // Clear any remaining drawing
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
       }
     }
   }, [map, isMapLoaded, data, granularity, enabled, addSelectedRegion, removeSelectedRegion])
-} 
+}

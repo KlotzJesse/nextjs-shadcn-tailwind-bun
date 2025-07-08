@@ -1,6 +1,6 @@
-import { useEffect, useCallback, useRef } from "react"
-import { useMapState } from "@/lib/url-state/map-state"
-import type { MapboxMap, MapboxEvent } from "@/lib/types/mapbox"
+import type { MapboxEvent, MapboxMap } from "@/lib/types/mapbox";
+import { useMapState } from "@/lib/url-state/map-state";
+import { useCallback, useEffect, useRef } from "react";
 
 
 interface CursorSelectionProps {
@@ -98,4 +98,4 @@ export function useCursorSelection({ map, isMapLoaded, layerId, enabled }: Curso
       lastRegionIdRef.current = null
     }
   }, [map, isMapLoaded, enabled, layerId, handleClick, handleMouseMove, handleMouseLeave])
-} 
+}

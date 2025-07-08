@@ -29,4 +29,4 @@ export async function copyPostalCodesCSV(codes: string[]) {
   } catch {
     toast.error('Failed to copy to clipboard')
   }
-} 
+}
