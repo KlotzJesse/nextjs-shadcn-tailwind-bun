@@ -16,12 +16,14 @@ import type {
   MultiPolygon,
   Polygon,
 } from "geojson";
+import { PlusIcon } from "lucide-react";
 import {
   GeoJSONSource,
   LayerSpecification,
   Map as MapLibreMap,
 } from "maplibre-gl";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "../ui/button";
 import { DrawingTools } from "./drawing-tools";
 
 interface BaseMapProps {
@@ -1075,26 +1077,14 @@ export function BaseMap({
           role="region"
           aria-label="Map Tools Panel"
         >
-          <button
+          <Button
+            variant="outline"
             onClick={() => setIsDrawingToolsVisible(true)}
-            className="bg-white p-2 rounded-lg shadow-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary"
             title="Show Map Tools"
             aria-label="Show Map Tools Panel"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-          </button>
+            <PlusIcon width={24} height={24} />
+          </Button>
         </div>
       )}
     </ErrorBoundary>
