@@ -6,10 +6,14 @@ interface ServerPostalCodesViewProps {
   defaultGranularity: string;
 }
 
-export default async function ServerPostalCodesView({ defaultGranularity }: ServerPostalCodesViewProps) {
+export const dynamic = "force-static";
+
+export default async function ServerPostalCodesView({
+  defaultGranularity,
+}: ServerPostalCodesViewProps) {
   const [postalCodesData, statesData] = await Promise.all([
     getPostalCodesDataForGranularity(defaultGranularity),
-    getStatesData()
+    getStatesData(),
   ]);
 
   return (

@@ -6,6 +6,7 @@ import {
   MultiPolygon,
   Polygon,
 } from "geojson";
+import { cache } from "react";
 
 // Define the type for a state DB row
 interface StateRow {
@@ -19,7 +20,7 @@ interface StateRow {
   updated_at?: string;
 }
 
-export async function getStatesData(): Promise<
+async function _getStatesData(): Promise<
   FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
 > {
   try {
@@ -49,6 +50,8 @@ export async function getStatesData(): Promise<
     throw error;
   }
 }
+
+export const getStatesData = cache(_getStatesData);
 
 export async function getStatesDataServer(): Promise<FeatureCollection<
   Polygon | MultiPolygon,

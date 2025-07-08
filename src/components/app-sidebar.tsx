@@ -2,16 +2,11 @@
 
 import {
   IconDashboard,
-  IconDatabase,
-  IconFileWord,
   IconFolder,
   IconInnerShadowTop,
-  IconListDetails,
-  IconReport,
 } from "@tabler/icons-react";
 import * as React from "react";
 
-import { NavDocuments } from "@/components/nav-documents";
 import { NavMain } from "@/components/nav-main";
 import {
   Sidebar,
@@ -30,17 +25,12 @@ const data = {
       icon: IconDashboard,
     },
     {
-      title: "Bundesländer",
-      url: "/states",
-      icon: IconListDetails,
-    },
-    {
       title: "Postleitzahlen",
       url: "/postal-codes",
       icon: IconFolder,
     },
   ],
-  documents: [
+  /*documents: [
     {
       name: "Gebiets-Daten",
       url: "#",
@@ -56,7 +46,7 @@ const data = {
       url: "#",
       icon: IconFileWord,
     },
-  ],
+  ],*/
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -81,7 +71,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
+        {/* <NavDocuments items={data.documents} />*/}
       </SidebarContent>
     </Sidebar>
   );

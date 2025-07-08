@@ -6,6 +6,7 @@ import {
   MultiPolygon,
   Polygon,
 } from "geojson";
+import { cache } from "react";
 
 // Define the type for a postal code DB row
 interface PostalCodeRow {
@@ -20,7 +21,7 @@ interface PostalCodeRow {
 }
 
 // Fetch all postal codes for a given granularity from the Neon database as GeoJSON
-export async function getPostalCodesDataForGranularity(
+async function _getPostalCodesDataForGranularity(
   granularity: string
 ): Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>> {
   try {
@@ -48,6 +49,10 @@ export async function getPostalCodesDataForGranularity(
     throw error;
   }
 }
+
+export const getPostalCodesDataForGranularity = cache(
+  _getPostalCodesDataForGranularity
+);
 
 export async function getPostalCodesDataForGranularityServer(
   granularity: string

@@ -3,13 +3,9 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 
 export const experimental_ppr = true;
+export const dynamic = "force-static";
 
-const VALID_GRANULARITIES = [
-  "1digit",
-  "2digit",
-  "3digit",
-  "5digit",
-] as const;
+const VALID_GRANULARITIES = ["1digit", "2digit", "3digit", "5digit"] as const;
 
 type Granularity = (typeof VALID_GRANULARITIES)[number];
 
