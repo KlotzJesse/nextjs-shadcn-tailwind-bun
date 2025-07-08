@@ -1,10 +1,12 @@
 import { useEffect } from "react"
 import { useMapState } from "@/lib/url-state/map-state"
 
+import type { MapboxMap } from "@/lib/types/mapbox"
+
 interface MapStyleProps {
-  map: any
-  isMapLoaded: boolean
-  granularity: string
+  map: MapboxMap | null;
+  isMapLoaded: boolean;
+  granularity: string;
 }
 
 export function useMapStyle({ map, isMapLoaded, granularity }: MapStyleProps) {

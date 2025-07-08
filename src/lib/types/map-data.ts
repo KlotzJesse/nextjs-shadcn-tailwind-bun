@@ -9,7 +9,7 @@ export interface MapData {
       PLZ?: string
       plz99?: string
       code?: string
-      [key: string]: any
+      [key: string]: unknown
     }
     geometry: {
       type: "Polygon" | "MultiPolygon"

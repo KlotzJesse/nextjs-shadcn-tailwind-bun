@@ -6,7 +6,7 @@ declare module 'maplibre-gl-vector-text-protocol' {
   }
 
   export const VectorTextProtocol: {
-    addProtocols: (maplibregl: any) => void;
+    addProtocols: (maplibregl: unknown) => void;
   };
 }
 

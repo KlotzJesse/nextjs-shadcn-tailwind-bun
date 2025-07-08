@@ -1,14 +1,14 @@
 "use client"
 
-import { IconCirclePlusFilled, IconMail, type Icon } from "@tabler/icons-react"
+import { IconCirclePlusFilled, type Icon } from "@tabler/icons-react"
 
-import { Button } from "@/components/ui/button"
+
 import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 
@@ -33,7 +33,7 @@ export function NavMain({
               <IconCirclePlusFilled />
               <span>Neues Gebiet erstellen</span>
             </SidebarMenuButton>
-            
+
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>

@@ -1,5 +1,4 @@
 import * as topojson from "topojson-client"
-import type { MapData } from "@/app/map/[granularity]/map-data"
 import type { Feature, FeatureCollection, Polygon, MultiPolygon, GeoJsonProperties } from "geojson"
 import centroid from '@turf/centroid'
 import area from '@turf/area'
@@ -65,7 +64,7 @@ const fetchTopoJSON = async (granularity: string): Promise<MapData> => {
   }
 };
 
-const fetchStateGeo = async (): Promise<MapData> => {
+const fetchStateGeo = async (): Promise<FeatureCollection> => {
   try {
     const response = await fetch(STATE_GEOJSON_URL, { 
       next: { revalidate: 3600 }
@@ -76,14 +75,14 @@ const fetchStateGeo = async (): Promise<MapData> => {
     }
 
     const data = await response.json();
-    return data as MapData;
+    return data as FeatureCollection;
   } catch (error) {
     console.error('Error fetching state GeoJSON:', error);
     throw error;
   }
 };
 
-export async function getMapData(granularity: string): Promise<{ geoData: MapData; stateGeo: MapData }> {
+export async function getMapData(granularity: string): Promise<{ geoData: FeatureCollection; stateGeo: FeatureCollection }> {
   try {
     const [geoData, stateGeo] = await Promise.all([
       fetchTopoJSON(granularity),
@@ -107,11 +106,11 @@ export function emptyFeatureCollection(): FeatureCollection {
 /**
  * Returns a FeatureCollection containing only features with the given IDs.
  */
-export function featureCollectionFromIds(data: any, ids: string[]): FeatureCollection {
-  if (!data || !data.features) return emptyFeatureCollection()
+export function featureCollectionFromIds(data: FeatureCollection, ids: string[]): FeatureCollection {
+  if (!data || !Array.isArray(data.features)) return emptyFeatureCollection();
   return {
     type: 'FeatureCollection',
-    features: (data.features as any[]).filter((f) => ids.includes(f.properties?.id)).map(f => f as Feature)
+    features: (data.features as Feature[]).filter((f) => ids.includes(f.properties?.id)).map(f => f)
   }
 }
 
@@ -143,12 +142,12 @@ export function getLargestPolygonCentroid(feature: Feature<Polygon | MultiPolygo
 /**
  * Creates a FeatureCollection of label points from a polygon FeatureCollection.
  */
-export function makeLabelPoints(features: FeatureCollection, labelProp: string) {
+export function makeLabelPoints(features: FeatureCollection) {
   return {
     type: 'FeatureCollection',
-    features: (features.features as any[]).map((f) => {
-      const coords = getLargestPolygonCentroid(f as Feature<Polygon | MultiPolygon, GeoJsonProperties>)
-      return point(coords, f.properties)
+    features: (features.features as Feature[]).map((f) => {
+      const coords = getLargestPolygonCentroid(f as Feature<Polygon | MultiPolygon, GeoJsonProperties>);
+      return point(coords, f.properties);
     })
   }
 } 

@@ -1,18 +1,8 @@
+
 import { useEffect, useRef, useCallback } from 'react';
-import { 
-  TerraDraw, 
-  TerraDrawFreehandMode,
-  TerraDrawCircleMode,
-  TerraDrawPolygonMode,
-  TerraDrawPointMode,
-  TerraDrawLineStringMode,
-  TerraDrawRectangleMode,
-  TerraDrawAngledRectangleMode,
-  TerraDrawSectorMode,
-  TerraDrawSelectMode,
-  TerraDrawRenderMode
-} from 'terra-draw';
-import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
+
+import type { MapboxMap } from '@/lib/types/mapbox';
+import type { Feature } from 'geojson';
 
 // Define all available drawing modes
 export type TerraDrawMode = 
@@ -24,31 +14,30 @@ export type TerraDrawMode =
   | 'linestring'    // Line/path
   | 'rectangle'     // Rectangle
   | 'angled-rectangle' // Angled rectangle
-  | 'sector'        // Sector/circle segment
-  | 'select';       // Selection mode
 
-interface UseTerraDrawProps {
-  map: any | null;
+// Props for useTerraDraw hook
+export type UseTerraDrawProps = {
+  map: MapboxMap | null;
   isEnabled: boolean;
   mode: TerraDrawMode | null;
   onSelectionChange?: (features: (string | number)[]) => void;
-  onFeatureCreate?: (feature: any) => void;
-  onFeatureUpdate?: (feature: any) => void;
-  onFeatureDelete?: (featureId: string) => void;
-  onModeChange?: (mode: TerraDrawMode) => void;
+  // onFeatureCreate?: (feature: { id: string | number }) => void;
+  // onFeatureUpdate?: (feature: { id: string | number }) => void;
+  // onFeatureDelete?: (featureId: string | number) => void;
+  // onModeChange?: (mode: TerraDrawMode) => void;
   onStart?: () => void;
   onStop?: () => void;
-}
+};
 
 export function useTerraDraw({
   map,
   isEnabled,
   mode,
   onSelectionChange,
-  onFeatureCreate,
-  onFeatureUpdate,
-  onFeatureDelete,
-  onModeChange,
+  // onFeatureCreate,
+  // onFeatureUpdate,
+  // onFeatureDelete,
+  // onModeChange,
   onStart,
   onStop,
 }: UseTerraDrawProps) {
@@ -133,7 +122,7 @@ export function useTerraDraw({
             console.log('All TerraDraw features:', allFeatures)
             
             // Extract feature IDs for selection
-            const featureIds = allFeatures.map((feature: any) => feature.id)
+            const featureIds = allFeatures.map((feature: { id: string | number }) => feature.id)
             console.log('Feature IDs for selection:', featureIds)
             
             // Only trigger selection if we have features
@@ -205,7 +194,7 @@ export function useTerraDraw({
     return drawRef.current.getSnapshot();
   }, []);
 
-  const addFeatures = useCallback((features: any[]) => {
+  const addFeatures = useCallback((features: Feature[]) => {
     if (!drawRef.current) return [];
     return drawRef.current.addFeatures(features);
   }, []);

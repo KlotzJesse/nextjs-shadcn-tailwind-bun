@@ -1,25 +1,25 @@
 import { useEffect, useCallback, useRef } from "react"
 import { useMapState } from "@/lib/url-state/map-state"
-import type { MapData } from "@/lib/types/map-data"
+import type { MapboxMap, MapboxEvent } from "@/lib/types/mapbox"
+
 
 interface CursorSelectionProps {
-  map: any
-  isMapLoaded: boolean
-  data: MapData
-  layerId: string
-  enabled: boolean
+  map: MapboxMap | null;
+  isMapLoaded: boolean;
+  layerId: string;
+  enabled: boolean;
 }
 
-export function useCursorSelection({ map, isMapLoaded, data, layerId, enabled }: CursorSelectionProps) {
+export function useCursorSelection({ map, isMapLoaded, layerId, enabled }: CursorSelectionProps) {
   const { selectedRegions, addSelectedRegion, removeSelectedRegion } = useMapState()
 
   // Track last hovered region to avoid redundant setFilter calls
   const lastRegionIdRef = useRef<string | null>(null)
   const throttleTimeout = useRef<NodeJS.Timeout | null>(null)
-  const pendingEvent = useRef<any>(null)
+  const pendingEvent = useRef<MapboxEvent | null>(null)
 
   // Click handler for selecting/deselecting regions
-  const handleClick = useCallback((e: any) => {
+  const handleClick = useCallback((e: MapboxEvent) => {
     if (!map || !enabled || !e.features || e.features.length === 0) return
     const feature = e.features[0]
     const regionId = feature.properties?.id
@@ -33,7 +33,7 @@ export function useCursorSelection({ map, isMapLoaded, data, layerId, enabled }:
   }, [map, enabled, selectedRegions, addSelectedRegion, removeSelectedRegion])
 
   // Throttled hover handler
-  const processHover = useCallback((e: any) => {
+  const processHover = useCallback((e: MapboxEvent) => {
     if (!map || !enabled) return
     const hoverLayerId = `${layerId}-hover`
     if (e.features && e.features.length > 0) {
@@ -55,7 +55,7 @@ export function useCursorSelection({ map, isMapLoaded, data, layerId, enabled }:
   }, [map, enabled, layerId])
 
   // Throttle wrapper
-  const handleMouseMove = useCallback((e: any) => {
+  const handleMouseMove = useCallback((e: MapboxEvent) => {
     if (throttleTimeout.current) {
       pendingEvent.current = e
       return

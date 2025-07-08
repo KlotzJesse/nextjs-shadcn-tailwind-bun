@@ -1,31 +1,15 @@
+
 import { useEffect, useRef } from "react"
 import type { MapData } from "@/lib/types/map-data"
 import { useMapState } from "@/lib/url-state/map-state"
-
-interface MapInstance {
-  on: (type: string, listener: (e: any) => void) => void;
-  off: (type: string, listener: (e: any) => void) => void;
-  addSource: (id: string, source: any) => void;
-  removeSource: (id: string) => void;
-  addLayer: (layer: any) => void;
-  removeLayer: (id: string) => void;
-  getSource: (id: string) => any;
-  setFilter: (layerId: string, filter: any[]) => void;
-  remove: () => void;
-  getCanvas: () => HTMLCanvasElement;
-  dragPan: { disable: () => void; enable: () => void };
-  dragRotate: { disable: () => void; enable: () => void };
-  scrollZoom: { disable: () => void; enable: () => void };
-  doubleClickZoom: { disable: () => void; enable: () => void };
-  touchZoomRotate: { disable: () => void; enable: () => void };
-}
+import type { MapboxMap } from "@/lib/types/mapbox"
 
 interface RadiusSelectionProps {
-  map: MapInstance | null
-  isMapLoaded: boolean
-  data: MapData
-  granularity: string
-  enabled: boolean
+  map: MapboxMap | null;
+  isMapLoaded: boolean;
+  data: MapData;
+  granularity: string;
+  enabled: boolean;
 }
 
 export function useRadiusSelection({ 
@@ -135,16 +119,16 @@ export function useRadiusSelection({
       
       const selectedFeatures: string[] = []
       const [cx, cy] = centerPoint.current
-      const currentRadius = radiusRadius.current
+      const currentRadius: number = radiusRadius.current;
       
-      data.features.forEach((feature: any) => {
+      (data.features as import("@/lib/types/mapbox").GeoJSONFeature[]).forEach((feature: import("@/lib/types/mapbox").GeoJSONFeature) => {
         // Check if feature centroid is within radius
         const centroid = getFeatureCentroid(feature)
         if (centroid) {
           const distance = Math.sqrt((centroid[0] - cx) ** 2 + (centroid[1] - cy) ** 2)
           if (distance <= currentRadius) {
             const featureId = feature.properties?.id || feature.properties?.PLZ || feature.properties?.plz
-            if (featureId) {
+            if (typeof featureId === 'string') {
               selectedFeatures.push(featureId)
             }
           }
@@ -154,12 +138,12 @@ export function useRadiusSelection({
       return selectedFeatures
     }
 
-    const getFeatureCentroid = (feature: any): [number, number] | null => {
+    const getFeatureCentroid = (feature: import("@/lib/types/mapbox").GeoJSONFeature): [number, number] | null => {
       // Simple centroid calculation - in a real app, use a proper geometry library
       if (feature.geometry.type === 'Polygon') {
-        const coords = feature.geometry.coordinates[0]
-        const sumX = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0)
-        const sumY = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0)
+        const coords = (feature.geometry.coordinates as [number, number][][])[0]
+        const sumX = coords.reduce((sum: number, coord: [number, number]) => sum + coord[0], 0)
+        const sumY = coords.reduce((sum: number, coord: [number, number]) => sum + coord[1], 0)
         return [sumX / coords.length, sumY / coords.length]
       }
       return null

@@ -1,17 +1,16 @@
 import { useEffect } from "react"
 import type { MapData } from "@/lib/types/map-data"
 import { useMapState } from "@/lib/url-state/map-state"
-import { useLassoSelection } from "./use-lasso-selection"
-import { useRadiusSelection } from "./use-radius-selection"
+
+import type { MapboxMap } from "@/lib/types/mapbox"
 
 interface DrawToolsProps {
-  map: any
-  isMapLoaded: boolean
-  data: MapData
-  granularity: string
-  drawMode: 'lasso' | 'radius' | null
-  onSearch: (plz: string) => void
-  onRadiusSelect: (radius: number) => void
+  map: MapboxMap | null;
+  isMapLoaded: boolean;
+  data: MapData;
+  granularity: string;
+  drawMode: 'lasso' | 'radius' | null;
+  onRadiusSelect: (radius: number) => void;
 }
 
 export function useMapDrawTools({ 
@@ -20,7 +19,6 @@ export function useMapDrawTools({
   data, 
   granularity, 
   drawMode, 
-  onSearch, 
   onRadiusSelect 
 }: DrawToolsProps) {
   const { selectionMode } = useMapState()
@@ -53,14 +51,12 @@ export function useMapDrawTools({
       map.dragPan.disable()
       map.dragRotate.disable()
       map.scrollZoom.disable()
-      map.keyboard.disable()
       map.doubleClickZoom.disable()
       map.touchZoomRotate.disable()
     } else {
       map.dragPan.enable()
       map.dragRotate.enable()
       map.scrollZoom.enable()
-      map.keyboard.enable()
       map.doubleClickZoom.enable()
       map.touchZoomRotate.enable()
     }
@@ -71,7 +67,6 @@ export function useMapDrawTools({
         map.dragPan.enable()
         map.dragRotate.enable()
         map.scrollZoom.enable()
-        map.keyboard.enable()
         map.doubleClickZoom.enable()
         map.touchZoomRotate.enable()
       }

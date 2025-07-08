@@ -1,8 +1,6 @@
 "use client"
 
-import * as React from "react"
 import {
-  IconChartBar,
   IconDashboard,
   IconDatabase,
   IconFileWord,
@@ -10,8 +8,8 @@ import {
   IconInnerShadowTop,
   IconListDetails,
   IconReport,
-  IconUsers,
 } from "@tabler/icons-react"
+import * as React from "react"
 
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"

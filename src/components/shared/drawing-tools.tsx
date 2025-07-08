@@ -1,43 +1,33 @@
 "use client"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Input } from "@/components/ui/input"
-import { 
-  MousePointer, 
-  Lasso, 
-  Circle, 
-  Square, 
-  Triangle, 
-  Minus, 
-  Plus,
-  RotateCcw,
-  Trash2,
-  Eye,
-  EyeOff,
-  Search,
-  X,
-  PieChart,
-  SquareStack,
-  Diamond,
-  FileSpreadsheet,
-  Copy,
-  Loader2Icon
-} from "lucide-react"
+import { Skeleton } from '@/components/ui/skeleton'
 import { TerraDrawMode } from "@/lib/hooks/use-terradraw"
 import { useMapState } from "@/lib/url-state/map-state"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { Suspense } from 'react'
-import { Skeleton } from '@/components/ui/skeleton'
-import { exportPostalCodesXLSX, copyPostalCodesCSV } from '@/lib/utils/export-utils'
-import { getLargestPolygonCentroid } from '@/lib/utils/map-data'
-import union from '@turf/union'
-import booleanContains from '@turf/boolean-contains'
-import { featureCollection } from '@turf/helpers'
-import combine from '@turf/combine'
+import { copyPostalCodesCSV, exportPostalCodesXLSX } from '@/lib/utils/export-utils'
 import booleanIntersects from '@turf/boolean-intersects'
+import combine from '@turf/combine'
+import type { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from 'geojson'
+import {
+  Circle,
+  Copy,
+  Diamond,
+  EyeOff,
+  FileSpreadsheet,
+  Lasso,
+  Loader2Icon,
+  MousePointer,
+  PieChart,
+  Plus,
+  Square,
+  Trash2,
+  Triangle,
+  X
+} from "lucide-react"
+import { Suspense, useState } from "react"
 import { toast } from "sonner"
 
 interface DrawingToolsProps {
@@ -45,16 +35,11 @@ interface DrawingToolsProps {
   onModeChange: (mode: TerraDrawMode | null) => void
   onClearAll: () => void
   onToggleVisibility: () => void
-  isVisible: boolean
-  onSearch?: (query: string) => void
   granularity?: string
   onGranularityChange?: (granularity: string) => void
-  postalCodesData?: any
+  postalCodesData?: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
 }
 
-const AngledRectangleIcon = (props: any) => (
-  <Square className={"rotate-45 scale-90 " + (props.className || "")} {...props} />
-)
 
 const drawingModes = [
   {
@@ -109,15 +94,15 @@ const drawingModes = [
 ]
 
 // Memoize polygons for each feature
-const polygonCache = new WeakMap<any, any[]>()
-function getPolygons(feature: any) {
+const polygonCache = new WeakMap<object, Feature<Polygon>[]>();
+function getPolygons(feature: Feature<Polygon | MultiPolygon>): Feature<Polygon>[] {
   if (!feature || !feature.geometry) return [];
-  if (polygonCache.has(feature)) return polygonCache.get(feature);
-  let result: any[] = [];
+  if (polygonCache.has(feature)) return polygonCache.get(feature)!;
+  let result: Feature<Polygon>[] = [];
   if (feature.geometry.type === 'Polygon') {
-    result = [feature];
+    result = [feature as Feature<Polygon>];
   } else if (feature.geometry.type === 'MultiPolygon') {
-    result = feature.geometry.coordinates.map((coords: any) => ({
+    result = (feature.geometry.coordinates as number[][][][]).map((coords) => ({
       type: 'Feature',
       properties: feature.properties,
       geometry: { type: 'Polygon', coordinates: coords },
@@ -128,11 +113,11 @@ function getPolygons(feature: any) {
 }
 
 // Helper: check if any polygon in region intersects any polygon in combined
-function isRegionIntersected(combined: any, region: any) {
+function isRegionIntersected(combined: Feature<Polygon | MultiPolygon>, region: Feature<Polygon | MultiPolygon>) {
   const combinedPolys = getPolygons(combined) || [];
   const regionPolys = getPolygons(region) || [];
-  return regionPolys.some((regionPoly: any) =>
-    combinedPolys.some((combinedPoly: any) => {
+  return regionPolys.some((regionPoly) =>
+    combinedPolys.some((combinedPoly) => {
       try {
         return booleanIntersects(combinedPoly, regionPoly);
       } catch {
@@ -143,12 +128,12 @@ function isRegionIntersected(combined: any, region: any) {
 }
 
 // Helper: check if region is adjacent to any selected region
-function isRegionAdjacent(region: any, selectedFeatures: any[]) {
+function isRegionAdjacent(region: Feature<Polygon | MultiPolygon>, selectedFeatures: Feature<Polygon | MultiPolygon>[]) {
   const regionPolys = getPolygons(region) || [];
   return selectedFeatures.some(sel => {
     const selPolys = getPolygons(sel) || [];
-    return regionPolys.some((regionPoly: any) =>
-      selPolys.some((selPoly: any) => {
+    return regionPolys.some((regionPoly) =>
+      selPolys.some((selPoly) => {
         try {
           return booleanIntersects(regionPoly, selPoly);
         } catch {
@@ -160,11 +145,11 @@ function isRegionAdjacent(region: any, selectedFeatures: any[]) {
 }
 
 // Helper: flood fill from outside to find holes
-function findHoles(postalCodesData: any, selectedIds: Set<string>) {
+function findHoles(postalCodesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>, selectedIds: Set<string>) {
   // Build adjacency graph
   const features = postalCodesData.features;
-  const idMap = new Map<string, any>();
-  features.forEach((f: any) => {
+  const idMap = new Map<string, Feature<Polygon | MultiPolygon>>();
+  features.forEach((f) => {
     const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
     if (id) idMap.set(id, f);
   });
@@ -187,8 +172,8 @@ function findHoles(postalCodesData: any, selectedIds: Set<string>) {
     const id = f.properties?.id || f.properties?.PLZ || f.properties?.plz;
     if (!id || selectedIds.has(id)) continue;
     // Heuristic: if region touches map boundary (min/max lat/lon), treat as outside
-    const coords = getPolygons(f).flatMap(poly => poly.geometry.coordinates.flat(1));
-    if (coords.some(([lng, lat]: [number, number]) => lat < 47.2 || lat > 55.1 || lng < 5.7 || lng > 15.1)) {
+    const coords = getPolygons(f).flatMap(poly => Array.isArray(poly.geometry.coordinates) ? poly.geometry.coordinates.flat(1) : []);
+    if (coords.some((coord) => Array.isArray(coord) && coord.length === 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number' && (coord[1] < 47.2 || coord[1] > 55.1 || coord[0] < 5.7 || coord[0] > 15.1))) {
       outside.add(id);
     }
   }
@@ -215,14 +200,20 @@ function findHoles(postalCodesData: any, selectedIds: Set<string>) {
 }
 
 // Fill logic (chunked for large datasets)
-async function fillRegions(mode: 'all' | 'holes' | 'expand', postalCodesData: any, selectedRegions: string[], setSelectedRegions: (ids: string[]) => void, setIsFilling: (b: boolean) => void) {
+async function fillRegions(
+  mode: 'all' | 'holes' | 'expand',
+  postalCodesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>,
+  selectedRegions: string[],
+  setSelectedRegions: (ids: string[]) => void,
+  setIsFilling: (b: boolean) => void
+) {
   setIsFilling(true);
   await new Promise(r => setTimeout(r, 10)); // allow UI update
   const selectedIds = new Set(selectedRegions);
   const features = postalCodesData.features;
   let toAdd: string[] = [];
   if (mode === 'all') {
-    const selectedFeatures = features.filter((f: any) => selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz));
+    const selectedFeatures = features.filter((f) => selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz));
     if (selectedFeatures.length < 3) {
       setIsFilling(false);
       return;
@@ -232,30 +223,35 @@ async function fillRegions(mode: 'all' | 'holes' | 'expand', postalCodesData: an
       setIsFilling(false);
       return;
     }
+    // Only use the first feature if it is a Polygon or MultiPolygon
     const multiPoly = combined.features[0];
+    if (!multiPoly || !(['Polygon', 'MultiPolygon'] as string[]).includes(multiPoly.geometry.type)) {
+      setIsFilling(false);
+      return;
+    }
     // Chunked processing for large datasets
     const CHUNK_SIZE = 200;
     let idx = 0;
     while (idx < features.length) {
       const chunk = features.slice(idx, idx + CHUNK_SIZE);
       toAdd.push(...chunk
-        .filter((f: any) => !selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz))
-        .filter((f: any) => isRegionIntersected(multiPoly, f))
-        .map((f: any) => f.properties?.id || f.properties?.PLZ || f.properties?.plz)
+        .filter((f) => !selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz))
+        .filter((f) => isRegionIntersected(multiPoly as Feature<Polygon | MultiPolygon, GeoJsonProperties>, f as Feature<Polygon | MultiPolygon, GeoJsonProperties>))
+        .map((f) => f.properties?.id || f.properties?.PLZ || f.properties?.plz)
         .filter(Boolean));
       idx += CHUNK_SIZE;
       await new Promise(r => setTimeout(r, 0)); // yield to event loop
     }
   } else if (mode === 'expand') {
-    const selectedFeatures = features.filter((f: any) => selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz));
+    const selectedFeatures = features.filter((f) => selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz));
     const CHUNK_SIZE = 200;
     let idx = 0;
     while (idx < features.length) {
       const chunk = features.slice(idx, idx + CHUNK_SIZE);
       toAdd.push(...chunk
-        .filter((f: any) => !selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz))
-        .filter((f: any) => isRegionAdjacent(f, selectedFeatures))
-        .map((f: any) => f.properties?.id || f.properties?.PLZ || f.properties?.plz)
+        .filter((f) => !selectedIds.has(f.properties?.id || f.properties?.PLZ || f.properties?.plz))
+        .filter((f) => isRegionAdjacent(f, selectedFeatures))
+        .map((f) => f.properties?.id || f.properties?.PLZ || f.properties?.plz)
         .filter(Boolean));
       idx += CHUNK_SIZE;
       await new Promise(r => setTimeout(r, 0));
@@ -275,8 +271,6 @@ function DrawingToolsImpl({
   onModeChange,
   onClearAll,
   onToggleVisibility,
-  isVisible,
-  onSearch,
   granularity,
   onGranularityChange,
   postalCodesData
@@ -298,7 +292,7 @@ function DrawingToolsImpl({
     if (!postalCodesData || !postalCodesData.features) return []
     // If any selected, only export those
     const codes = postalCodesData.features
-      .map((f: any) => f.properties?.PLZ || f.properties?.plz || f.properties?.id)
+      .map((f) => f.properties?.PLZ || f.properties?.plz || f.properties?.id)
       .filter(Boolean)
     if (selectedRegions && selectedRegions.length > 0) {
       return codes
@@ -379,9 +373,9 @@ function DrawingToolsImpl({
             )
           })}
         </div>
-        
+
         <Separator />
-        
+
         {/* Selected Regions */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
@@ -442,7 +436,7 @@ function DrawingToolsImpl({
             variant="default"
             size="sm"
             disabled={isFilling || selectedRegions.length < 3}
-            onClick={() => fillRegions('all', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+          onClick={() => postalCodesData && fillRegions('all', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
             className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
             title="Fill all gaps (no holes)"
             aria-label="Fill all gaps (no holes)"
@@ -454,7 +448,7 @@ function DrawingToolsImpl({
             variant="secondary"
             size="sm"
             disabled={isFilling || selectedRegions.length < 3}
-            onClick={() => fillRegions('holes', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+          onClick={() => postalCodesData && fillRegions('holes', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
             className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
             title="Fill only holes inside the selection"
             aria-label="Fill only holes"
@@ -466,7 +460,7 @@ function DrawingToolsImpl({
             variant="outline"
             size="sm"
             disabled={isFilling || selectedRegions.length < 3}
-            onClick={() => fillRegions('expand', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
+          onClick={() => postalCodesData && fillRegions('expand', postalCodesData, selectedRegions, setSelectedRegions, setIsFilling)}
             className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
             title="Expand selection by one layer"
             aria-label="Expand by one layer"
@@ -475,7 +469,7 @@ function DrawingToolsImpl({
             Expand by One Layer
           </Button>
         </div>
-        
+
         {/* Export/Copy Buttons at the bottom */}
         {postalCodesData && (
           <div className="flex gap-2 mt-6 pt-4 border-t">
@@ -500,4 +494,4 @@ export function DrawingTools(props: DrawingToolsProps) {
       <DrawingToolsImpl {...props} />
     </Suspense>
   )
-} 
+}

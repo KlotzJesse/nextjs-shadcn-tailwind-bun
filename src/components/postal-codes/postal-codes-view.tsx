@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { PostalCodesMap } from "./postal-codes-map"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useRouter } from "next/navigation"
 import type { MapData } from "@/lib/types/map-data"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { AddressAutocomplete } from './address-autocomplete'
-import { usePostalCodeSearch } from '@/lib/hooks/use-postal-code-search'
-import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from '@/components/ui/command'
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { PostalCodesMap } from "./postal-codes-map"
+
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { usePostalCodeSearch } from '@/lib/hooks/use-postal-code-search'
 import { ChevronsUpDownIcon } from 'lucide-react'
+import { AddressAutocomplete } from './address-autocomplete'
 
 interface PostalCodesViewProps {
   initialData: MapData
@@ -22,7 +22,7 @@ export function PostalCodesView({ initialData, defaultGranularity }: PostalCodes
   const [searchResults, setSearchResults] = useState<string[]>([])
   const [data] = useState<MapData>(initialData)
   const router = useRouter()
-  const { searchResults: autoResults, searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data })
+  const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data })
   const [postalCodeQuery, setPostalCodeQuery] = useState('')
   const [postalCodeOpen, setPostalCodeOpen] = useState(false)
   const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(null)
@@ -69,7 +69,7 @@ export function PostalCodesView({ initialData, defaultGranularity }: PostalCodes
   }
 
   // Handle address select
-  const handleAddressSelect = (coords: [number, number], label: string) => {
+  const handleAddressSelect = (coords: [number, number]) => {
     const [lng, lat] = coords
     const postalCode = findPostalCodeByCoords(lng, lat)
     if (postalCode) {
@@ -173,13 +173,13 @@ export function PostalCodesView({ initialData, defaultGranularity }: PostalCodes
       )}
       {/* Map with integrated tools */}
       <div className="h-full">
-        <PostalCodesMap 
-          data={data} 
-          onSearch={searchPostalCodes} 
+        <PostalCodesMap
+          data={data}
+          onSearch={searchPostalCodes}
           granularity={defaultGranularity}
           onGranularityChange={handleGranularityChange}
         />
       </div>
     </div>
   )
-} 
+}

@@ -12,7 +12,7 @@ export async function exportPostalCodesXLSX(codes: string[]) {
     XLSX.utils.book_append_sheet(wb, ws, 'PostalCodes')
     XLSX.writeFile(wb, 'postal-codes.xlsx')
     toast.success('Postal codes exported as XLSX!')
-  } catch (err) {
+  } catch {
     toast.error('Failed to export XLSX')
   }
 }
@@ -26,7 +26,7 @@ export async function copyPostalCodesCSV(codes: string[]) {
     const csv = codes.join(',')
     await navigator.clipboard.writeText(csv)
     toast.success('Postal codes copied to clipboard!')
-  } catch (err) {
+  } catch {
     toast.error('Failed to copy to clipboard')
   }
 } 

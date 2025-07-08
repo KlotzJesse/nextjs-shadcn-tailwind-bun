@@ -1,9 +1,9 @@
 "use client"
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useState } from "react"
 import { StatesMap } from "./states-map"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useMapState } from "@/lib/url-state/map-state"
+
 import type { MapData } from "@/lib/types/map-data"
 
 interface StatesViewProps {
@@ -12,12 +12,12 @@ interface StatesViewProps {
 
 export function StatesView({ data }: StatesViewProps) {
   const [searchResults, setSearchResults] = useState<string[]>([])
-  const { selectedRegions } = useMapState()
+  // Removed unused selectedRegions from useMapState
 
   const handleSearch = (stateName: string) => {
     // Simple search implementation - in a real app, you'd want more sophisticated search
     const results = data.features
-      .filter(feature => 
+      .filter(feature =>
         feature.properties?.name?.toLowerCase().includes(stateName.toLowerCase()) ||
         feature.properties?.id?.toLowerCase().includes(stateName.toLowerCase())
       )
@@ -57,11 +57,11 @@ export function StatesView({ data }: StatesViewProps) {
           </Card>
         </div>
       )}
-      
+
       {/* Map with integrated tools */}
       <div className="h-full">
         <StatesMap data={data} onSearch={handleSearch} />
       </div>
     </div>
   )
-} 
+}

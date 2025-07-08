@@ -2,13 +2,15 @@ import { useMapState } from "@/lib/url-state/map-state"
 import { useCursorSelection } from "./use-cursor-selection"
 import { useLassoSelection } from "./use-lasso-selection"
 import { useRadiusSelection } from "./use-radius-selection"
+
+import type { MapboxMap } from "@/lib/types/mapbox"
 import type { MapData } from "@/lib/types/map-data"
 
 interface SelectionModeManagerProps {
-  map: any
-  isMapLoaded: boolean
-  data: MapData
-  layerId: string
+  map: MapboxMap | null;
+  isMapLoaded: boolean;
+  data: MapData;
+  layerId: string;
 }
 
 export function useSelectionModeManager({ map, isMapLoaded, data, layerId }: SelectionModeManagerProps) {
@@ -18,26 +20,23 @@ export function useSelectionModeManager({ map, isMapLoaded, data, layerId }: Sel
   useCursorSelection({
     map,
     isMapLoaded,
-    data,
     layerId,
     enabled: selectionMode === 'cursor',
   })
 
-  // Lasso selection
   useLassoSelection({
     map,
     isMapLoaded,
     data,
-    layerId,
+    granularity: layerId, // assuming granularity is layerId
     enabled: selectionMode === 'lasso',
   })
 
-  // Radius selection
   useRadiusSelection({
     map,
     isMapLoaded,
     data,
-    layerId,
+    granularity: layerId, // assuming granularity is layerId
     enabled: selectionMode === 'radius',
   })
 } 
