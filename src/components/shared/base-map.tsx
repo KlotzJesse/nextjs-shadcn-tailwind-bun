@@ -1,6 +1,7 @@
 import { ErrorBoundary } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMapInitialization } from "@/lib/hooks/use-map-initialization";
+import { useMapLayers } from "@/lib/hooks/use-map-layers";
 import { TerraDrawMode, useTerraDraw } from "@/lib/hooks/use-terradraw";
 import { useMapState } from "@/lib/url-state/map-state";
 import {
@@ -17,7 +18,7 @@ import type {
   Polygon,
 } from "geojson";
 import { PlusIcon } from "lucide-react";
-import { GeoJSONSource, LayerSpecification } from "maplibre-gl";
+import { GeoJSONSource } from "maplibre-gl";
 import dynamic from "next/dynamic";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/button";
@@ -67,7 +68,7 @@ export function BaseMap({
     zoom: memoizedZoom,
     style: memoizedStyle,
   });
-  const [layersLoaded, setLayersLoaded] = useState(false);
+  // Remove local layersLoaded state, use from hook
   const [currentDrawingMode, setCurrentDrawingMode] =
     useState<TerraDrawMode | null>(null);
 
@@ -276,295 +277,38 @@ export function BaseMap({
 
   // ...map initialization is now handled by useMapInitialization...
 
-  // Update sources/layers when data or state changes
-  useEffect(() => {
-    if (!map.current || !isMapLoaded || !styleLoaded || !data) return;
 
-    const sourceId = `${layerId}-source`;
-    const hoverSourceId = `${layerId}-hover-source`;
-    const hoverLayerId = `${layerId}-hover-layer`;
-    const selectedSourceId = `${layerId}-selected-source`;
-    const selectedLayerId = `${layerId}-selected-layer`;
-    const stateSourceId = "state-boundaries-source";
-    const stateLayerId = "state-boundaries-layer";
+  // --- Use new useMapLayers hook for all layer/source logic ---
+  // Type-safe wrapper: only return Polygon/MultiPolygon features for selected
+  const getSelectedFeatureCollection = () => {
+    const fc = featureCollectionFromIds(
+      data as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>,
+      selectedRegions
+    );
+    return {
+      ...fc,
+      features: fc.features.filter(
+        (f): f is Feature<Polygon | MultiPolygon, GeoJsonProperties> =>
+          f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon"
+      ),
+    };
+  };
+  // Type assertion for label points (always returns FeatureCollection<Geometry, GeoJsonProperties>)
+  const getLabelPoints = (d: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>) =>
+    makeLabelPoints(d) as FeatureCollection<Geometry, GeoJsonProperties>;
 
-    // --- Robust source creation ---
-    // Always create all sources first
-    if (map.current && !map.current.getSource(sourceId)) {
-      map.current.addSource(sourceId, {
-        type: "geojson",
-        data: data,
-      });
-    } else if (map.current) {
-      const src = map.current.getSource(sourceId) as GeoJSONSource | undefined;
-      if (src && typeof src.setData === "function") src.setData(data);
-    }
-    if (map.current && !map.current.getSource(selectedSourceId)) {
-      map.current.addSource(selectedSourceId, {
-        type: "geojson",
-        data: emptyFeatureCollection(),
-      });
-    }
-    if (map.current && !map.current.getSource(hoverSourceId)) {
-      map.current.addSource(hoverSourceId, {
-        type: "geojson",
-        data: emptyFeatureCollection(),
-      });
-    }
-    const labelSourceId = `${layerId}-label-points`;
-    if (map.current && !map.current.getSource(labelSourceId)) {
-      map.current.addSource(labelSourceId, {
-        type: "geojson",
-        data: makeLabelPoints(
-          data as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
-        ) as FeatureCollection<Geometry, GeoJsonProperties>,
-      });
-    } else if (map.current) {
-      const src = map.current.getSource(labelSourceId) as
-        | GeoJSONSource
-        | undefined;
-      if (src && typeof src.setData === "function")
-        src.setData(
-          makeLabelPoints(
-            data as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
-          ) as FeatureCollection<Geometry, GeoJsonProperties>
-        );
-    }
-    if (statesData) {
-      if (map.current && !map.current.getSource(stateSourceId)) {
-        map.current.addSource(stateSourceId, {
-          type: "geojson",
-          data: statesData,
-        });
-      } else if (map.current) {
-        const src = map.current.getSource(stateSourceId) as
-          | GeoJSONSource
-          | undefined;
-        if (src && typeof src.setData === "function") src.setData(statesData);
-      }
-      if (
-        map.current &&
-        !map.current.getSource("state-boundaries-label-points")
-      ) {
-        map.current.addSource("state-boundaries-label-points", {
-          type: "geojson",
-          data: makeLabelPoints(
-            statesData as FeatureCollection<
-              Polygon | MultiPolygon,
-              GeoJsonProperties
-            >
-          ) as FeatureCollection<Geometry, GeoJsonProperties>,
-        });
-      } else if (map.current) {
-        const src = map.current.getSource("state-boundaries-label-points") as
-          | GeoJSONSource
-          | undefined;
-        if (src && typeof src.setData === "function")
-          src.setData(
-            makeLabelPoints(
-              statesData as FeatureCollection<
-                Polygon | MultiPolygon,
-                GeoJsonProperties
-              >
-            ) as FeatureCollection<Geometry, GeoJsonProperties>
-          );
-      }
-    }
-
-    // --- Robust layer creation ---
-    // Helper to add a layer with beforeId if it exists
-    function safeAddLayer(layer: LayerSpecification, beforeId?: string) {
-      try {
-        if (map.current && beforeId && map.current.getLayer(beforeId)) {
-          map.current.addLayer(layer, beforeId);
-        } else if (map.current) {
-          map.current.addLayer(layer);
-        }
-      } catch (e) {
-        console.warn("Layer add failed:", layer.id, e);
-      }
-    }
-
-    // 1. Postal code fill (bottom)
-    if (!map.current.getLayer(`${layerId}-layer`)) {
-      safeAddLayer(
-        {
-          id: `${layerId}-layer`,
-          type: "fill",
-          source: sourceId,
-          paint: {
-            "fill-color": "#627D98",
-            "fill-opacity": 0.35,
-            "fill-outline-color": "#102A43",
-          },
-        },
-        undefined
-      );
-    }
-    // 2. State boundaries line (above fill)
-    if (
-      statesData &&
-      map.current.getSource(stateSourceId) &&
-      !map.current.getLayer(stateLayerId)
-    ) {
-      safeAddLayer(
-        {
-          id: stateLayerId,
-          type: "line",
-          source: stateSourceId,
-          paint: {
-            "line-color": [
-              "match",
-              ["get", "name"],
-              "Baden-Württemberg",
-              "#e57373",
-              "Bayern",
-              "#64b5f6",
-              "Berlin",
-              "#81c784",
-              "Brandenburg",
-              "#ffd54f",
-              "Bremen",
-              "#ba68c8",
-              "Hamburg",
-              "#4dd0e1",
-              "Hessen",
-              "#ffb74d",
-              "Mecklenburg-Vorpommern",
-              "#a1887f",
-              "Niedersachsen",
-              "#90a4ae",
-              "Nordrhein-Westfalen",
-              "#f06292",
-              "Rheinland-Pfalz",
-              "#9575cd",
-              "Saarland",
-              "#4caf50",
-              "Sachsen",
-              "#fbc02d",
-              "Sachsen-Anhalt",
-              "#388e3c",
-              "Schleswig-Holstein",
-              "#0288d1",
-              "Thüringen",
-              "#d84315",
-              "#222", // default
-            ],
-            "line-width": 2,
-            "line-opacity": 0.8,
-            "line-dasharray": [6, 3],
-          },
-          layout: {
-            "line-cap": "round",
-            "line-join": "round",
-          },
-        },
-        `${layerId}-layer`
-      );
-    }
-    // 3. Postal code border (above state boundaries line)
-    if (!map.current.getLayer(`${layerId}-border`)) {
-      safeAddLayer(
-        {
-          id: `${layerId}-border`,
-          type: "line",
-          source: sourceId,
-          paint: {
-            "line-color": "#2563EB",
-            "line-width": 0.7,
-            "line-opacity": 0.3,
-          },
-        },
-        statesData ? stateLayerId : `${layerId}-layer`
-      );
-    }
-    // 4. Selected postal code fill (above all static fills/lines)
-    if (!map.current.getLayer(selectedLayerId)) {
-      safeAddLayer(
-        {
-          id: selectedLayerId,
-          type: "fill",
-          source: selectedSourceId,
-          paint: {
-            "fill-color": "#2563EB",
-            "fill-opacity": 0.5,
-            "fill-outline-color": "#1D4ED8",
-          },
-        },
-        `${layerId}-border`
-      );
-    }
-    // 5. Hover line (above all static lines/fills)
-    if (!map.current.getLayer(hoverLayerId)) {
-      safeAddLayer(
-        {
-          id: hoverLayerId,
-          type: "line",
-          source: hoverSourceId,
-          paint: {
-            "line-color": "#2563EB",
-            "line-width": 3,
-          },
-          layout: { visibility: "none" },
-        } as LayerSpecification,
-        selectedLayerId
-      );
-    }
-    // 6. State label (above all lines/fills)
-    if (statesData && !map.current.getLayer("state-boundaries-label")) {
-      safeAddLayer(
-        {
-          id: "state-boundaries-label",
-          type: "symbol",
-          source: "state-boundaries-label-points",
-          layout: {
-            "text-field": ["coalesce", ["get", "name"], ["get", "code"], ""],
-            "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-            "text-size": 9,
-            "text-anchor": "center",
-            "text-allow-overlap": false,
-          },
-          paint: {
-            "text-color": "#222",
-            "text-halo-color": "#fff",
-            "text-halo-width": 2.5,
-          },
-        },
-        hoverLayerId
-      );
-    }
-    // 7. Postal code label (above all lines/fills but below state label)
-    if (!map.current.getLayer(`${layerId}-label`)) {
-      safeAddLayer(
-        {
-          id: `${layerId}-label`,
-          type: "symbol",
-          source: labelSourceId,
-          layout: {
-            "text-field": [
-              "coalesce",
-              ["get", "PLZ"],
-              ["get", "plz"],
-              ["get", "code"],
-              "",
-            ],
-            "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-            "text-size": 9,
-            "text-anchor": "center",
-            "text-allow-overlap": false,
-          },
-          paint: {
-            "text-color": "#222",
-            "text-halo-color": "#fff",
-            "text-halo-width": 2,
-          },
-        },
-        statesData ? "state-boundaries-label" : hoverLayerId
-      );
-    }
-    // Only set layersLoaded after all layers are created
-    setLayersLoaded(true);
-  }, [data, layerId, isMapLoaded, styleLoaded, statesData]);
+  const { layersLoaded } = useMapLayers({
+    map: map.current,
+    isMapLoaded,
+    styleLoaded,
+    layerId,
+    data,
+    statesData,
+    selectedRegions,
+    hoveredRegionId: hoveredRegionIdRef.current,
+    getSelectedFeatureCollection,
+    getLabelPoints,
+  });
 
   // --- Update selected features source when selection changes ---
   useEffect(() => {
