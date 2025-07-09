@@ -61,9 +61,7 @@ export function BaseMap({
   const [layersLoaded, setLayersLoaded] = useState(false);
   const [currentDrawingMode, setCurrentDrawingMode] =
     useState<TerraDrawMode | null>(null);
-  useEffect(() => {
-    console.log("[BaseMap] currentDrawingMode changed:", currentDrawingMode);
-  }, [currentDrawingMode]);
+
   const [isDrawingToolsVisible, setIsDrawingToolsVisible] = useState(true);
   const {
     selectedRegions,
