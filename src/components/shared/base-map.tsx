@@ -1,5 +1,6 @@
 import { ErrorBoundary } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMapInitialization } from "@/lib/hooks/use-map-initialization";
 import { TerraDrawMode, useTerraDraw } from "@/lib/hooks/use-terradraw";
 import { useMapState } from "@/lib/url-state/map-state";
 import {
@@ -16,13 +17,9 @@ import type {
   Polygon,
 } from "geojson";
 import { PlusIcon } from "lucide-react";
-import {
-  GeoJSONSource,
-  LayerSpecification,
-  Map as MapLibreMap,
-} from "maplibre-gl";
+import { GeoJSONSource, LayerSpecification } from "maplibre-gl";
 import dynamic from "next/dynamic";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { useConvertRadiusToGeographic, useFindFeaturesInCircle, useFindFeaturesInPolygon } from "./hooks/use-feature-selection";
 
@@ -55,9 +52,21 @@ export function BaseMap({
   onGranularityChange,
 }: BaseMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<MapLibreMap | null>(null);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [styleLoaded, setStyleLoaded] = useState(false);
+  // Modularized map initialization and state
+  // Memoize map config for stable references
+  const memoizedCenter = useMemo(() => center, [center]);
+  const memoizedZoom = useMemo(() => zoom, [zoom]);
+  const memoizedStyle = useMemo(
+    () => "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+    []
+  );
+  const { mapRef: map, isMapLoaded, styleLoaded } = useMapInitialization({
+    mapContainer,
+    data,
+    center: memoizedCenter,
+    zoom: memoizedZoom,
+    style: memoizedStyle,
+  });
   const [layersLoaded, setLayersLoaded] = useState(false);
   const [currentDrawingMode, setCurrentDrawingMode] =
     useState<TerraDrawMode | null>(null);
@@ -265,28 +274,7 @@ export function BaseMap({
 
   // Handle search functionality
 
-  // Initialize map - ONLY ONCE, on mount
-
-  useEffect(() => {
-    if (!mapContainer.current) return;
-    if (!data || !data.features || data.features.length === 0) return;
-    if (map.current) return;
-
-    (async () => {
-      const maplibre = await import("maplibre-gl");
-
-      map.current = new maplibre.Map({
-        container: mapContainer.current!,
-        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-        center: center,
-        zoom: zoom,
-        minZoom: 3,
-        maxZoom: 18,
-      });
-      map.current.on("load", () => setIsMapLoaded(true));
-      map.current.on("style.load", () => setStyleLoaded(true));
-    })();
-  }, [center, data, zoom]); // Only run once on mount
+  // ...map initialization is now handled by useMapInitialization...
 
   // Update sources/layers when data or state changes
   useEffect(() => {
@@ -642,21 +630,21 @@ export function BaseMap({
         }
       }
     },
-    [layerId, layersLoaded, currentDrawingMode]
+    [layerId, layersLoaded, currentDrawingMode, map]
   );
 
   const handleMouseEnter = useCallback(
     (...args: unknown[]) => {
       processHover(...args);
     },
-    [processHover]
+    [processHover, map]
   );
 
   const handleMouseMove = useCallback(
     (...args: unknown[]) => {
       processHover(...args);
     },
-    [processHover]
+    [processHover, map]
   );
 
   const handleMouseLeave = useCallback(() => {
