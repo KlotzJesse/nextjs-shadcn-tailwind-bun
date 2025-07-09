@@ -6,6 +6,7 @@ import { useMapTerraDrawSelection } from "@/lib/hooks/use-map-terradraw-selectio
 import { useTerraDraw } from "@/lib/hooks/use-terradraw";
 import type { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
+import { RefObject, useEffect } from "react";
 
 interface UseMapInteractionsProps {
   mapRef: RefObject<MapLibreMap | null>;
@@ -49,6 +50,18 @@ export function useMapInteractions({
     hideTools,
   } = useMapDrawingTools();
 
+  // Debug logging for drawing mode changes
+  useEffect(() => {
+    console.log("[useMapInteractions] Drawing mode state:", {
+      currentDrawingMode,
+      isCursorMode,
+      isDrawingActive,
+      isMapLoaded,
+      styleLoaded,
+      layersLoaded,
+    });
+  }, [currentDrawingMode, isCursorMode, isDrawingActive, isMapLoaded, styleLoaded, layersLoaded]);
+
   // Memoize map reference for stability - use the actual map instance, not the ref
   const map = mapRef.current;
 
@@ -62,11 +75,26 @@ export function useMapInteractions({
 
   // TerraDraw integration
   const terraDrawApi = useTerraDraw({
-    map: map && isMapLoaded && styleLoaded ? map : null,
-    isEnabled: isDrawingActive,
+    map: map && isMapLoaded && styleLoaded && layersLoaded ? map : null,
+    isEnabled: isDrawingActive && layersLoaded,
     mode: isDrawingActive ? currentDrawingMode : null,
     onSelectionChange: handleTerraDrawSelection,
   });
+
+  // Debug logging for TerraDraw parameters
+  useEffect(() => {
+    console.log("[useMapInteractions] TerraDraw parameters:", {
+      map: !!map,
+      isMapLoaded,
+      styleLoaded,
+      layersLoaded,
+      mapReady: !!(map && isMapLoaded && styleLoaded && layersLoaded),
+      isEnabled: isDrawingActive && layersLoaded,
+      mode: isDrawingActive ? currentDrawingMode : null,
+      currentDrawingMode,
+      isDrawingActive,
+    });
+  }, [map, isMapLoaded, styleLoaded, layersLoaded, isDrawingActive, currentDrawingMode]);
 
   // Always assign terraDrawRef for stability
   terraDrawRef.current = terraDrawApi;

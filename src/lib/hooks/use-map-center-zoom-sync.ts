@@ -19,7 +19,7 @@ export function useMapCenterZoomSync({
   zoom,
   setMapCenterZoom,
 }: {
-  mapRef: React.RefObject<MapLibreMap>;
+  mapRef: React.RefObject<MapLibreMap | null>;
   isMapLoaded: boolean;
   center: [number, number];
   zoom: number;

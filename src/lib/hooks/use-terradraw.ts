@@ -47,15 +47,12 @@ export function useTerraDraw({
   isEnabled,
   mode,
   onSelectionChange,
-  // onFeatureCreate,
-  // onFeatureUpdate,
-  // onFeatureDelete,
-  // onModeChange,
   onStart,
   onStop,
 }: UseTerraDrawProps) {
   const drawRef = useRef<TerraDraw | null>(null);
   const isInitializedRef = useRef(false);
+  
   useEffect(() => {
     console.log(
       "[TerraDraw] useTerraDraw hook mounted. map:",
@@ -68,37 +65,64 @@ export function useTerraDraw({
     return () => {
       console.log("[TerraDraw] useTerraDraw hook unmounted.");
     };
-
   }, [map, isEnabled, mode]);
 
   // Only initialize TerraDraw once, after map style is loaded
   useEffect(() => {
     if (!map || isInitializedRef.current) return;
+    
     let styleLoadHandler: (() => void) | null = null;
+    
     const initialize = () => {
       try {
+        console.log("[TerraDraw] Initializing TerraDraw...");
+        console.log("[TerraDraw] Map instance:", map);
+        console.log("[TerraDraw] Map container:", map?.getContainer());
+        console.log("[TerraDraw] Map style loaded:", map?.isStyleLoaded());
+        
+        // Create adapter with explicit configuration
+        const adapter = new TerraDrawMapLibreGLAdapter({ 
+          map,
+          // Ensure the adapter can access map events
+          coordinatePrecision: 9
+        });
+        console.log("[TerraDraw] Adapter created:", adapter);
+        
         const draw = new TerraDraw({
-          adapter: new TerraDrawMapLibreGLAdapter({ map }),
+          adapter,
           modes: [
-            new TerraDrawFreehandMode(),
+            new TerraDrawSelectMode(),
+            new TerraDrawFreehandMode({
+              pointerDistance: 40,
+              minDistance: 10,
+            }),
             new TerraDrawCircleMode(),
-            new TerraDrawPolygonMode(),
+            new TerraDrawPolygonMode({
+              pointerDistance: 40,
+            }),
             new TerraDrawPointMode(),
-            new TerraDrawLineStringMode(),
+            new TerraDrawLineStringMode({
+              pointerDistance: 40,
+            }),
             new TerraDrawRectangleMode(),
             new TerraDrawAngledRectangleMode(),
             new TerraDrawSectorMode(),
-            new TerraDrawSelectMode(),
           ],
         });
+        
+        console.log("[TerraDraw] TerraDraw instance created:", draw);
+        
         draw.on(
           "finish",
           (_id: string | number, context: { action: string; mode: string }) => {
             try {
+              console.log("[TerraDraw] Finish event:", { _id, context });
               if (context.action === "draw") {
                 const allFeatures = draw.getSnapshot();
+                console.log("[TerraDraw] All features after draw:", allFeatures);
                 const featureIds = allFeatures.map((feature) => feature.id);
                 if (featureIds.length > 0) {
+                  console.log("[TerraDraw] Calling onSelectionChange with:", featureIds);
                   onSelectionChange?.(
                     featureIds.filter((id) => id !== undefined && id !== null)
                   );
@@ -109,6 +133,17 @@ export function useTerraDraw({
             }
           }
         );
+        
+        // Add change event listener for debugging
+        draw.on("change", (features: unknown[], type: string) => {
+          console.log("[TerraDraw] Change event:", { features, type });
+        });
+        
+        // Add ready event listener
+        draw.on("ready", () => {
+          console.log("[TerraDraw] TerraDraw is ready");
+        });
+        
         drawRef.current = draw;
         isInitializedRef.current = true;
         console.log("[TerraDraw] TerraDraw initialized successfully");
@@ -117,10 +152,14 @@ export function useTerraDraw({
         isInitializedRef.current = false;
       }
     };
+    
     if (map.isStyleLoaded()) {
+      console.log("[TerraDraw] Map style already loaded, initializing immediately");
       initialize();
     } else {
+      console.log("[TerraDraw] Waiting for map style to load...");
       styleLoadHandler = () => {
+        console.log("[TerraDraw] Map style loaded, initializing TerraDraw");
         map.off("style.load", styleLoadHandler!);
         if (!isInitializedRef.current) {
           initialize();
@@ -128,9 +167,12 @@ export function useTerraDraw({
       };
       map.on("style.load", styleLoadHandler);
     }
+    
     // Cleanup: remove style.load listener if unmounting
     return () => {
-      if (map && styleLoadHandler) map.off("style.load", styleLoadHandler);
+      if (map && styleLoadHandler) {
+        map.off("style.load", styleLoadHandler);
+      }
     };
   }, [map, onSelectionChange]);
 
@@ -174,49 +216,127 @@ export function useTerraDraw({
     return drawRef.current.getModeState();
   }, []);
 
-  // Initialize TerraDraw when map is ready
-  useEffect(() => {
-    if (map && !isInitializedRef.current) {
-      // No-op: removed old initializeTerraDraw references
-    }
-  }, [map, onSelectionChange]);
-
   // Handle mode changes
   useEffect(() => {
-    if (!drawRef.current) return;
+    console.log("[TerraDraw] Mode change effect triggered:", { 
+      drawRef: !!drawRef.current, 
+      isInitialized: isInitializedRef.current, 
+      isEnabled, 
+      mode 
+    });
+    
+    if (!drawRef.current || !isInitializedRef.current) {
+      console.log("[TerraDraw] Mode change skipped - not initialized");
+      return;
+    }
+    
+    console.log("[TerraDraw] Processing mode change:", { isEnabled, mode });
+    
     // If drawing mode is enabled and not cursor, start TerraDraw and set mode
     if (isEnabled && mode && mode !== "cursor") {
       try {
-        drawRef.current.start();
+        console.log("[TerraDraw] Enabling drawing mode:", mode);
+        
+        // Check if TerraDraw is already started
+        const currentMode = drawRef.current.getModeState();
+        console.log("[TerraDraw] Current mode state before:", currentMode);
+        
+        // Start TerraDraw if not already started
+        if (!currentMode) {
+          console.log("[TerraDraw] Starting TerraDraw");
+          drawRef.current.start();
+        }
+        
+        // Set the mode
+        console.log("[TerraDraw] Setting mode to:", mode);
         drawRef.current.setMode(mode);
+        
+        // Verify the mode was set correctly
+        const newMode = drawRef.current.getModeState();
+        console.log("[TerraDraw] Verified mode state after set:", newMode);
+        
+        // Additional debugging: test if TerraDraw is actually working
+        console.log("[TerraDraw] TerraDraw instance methods:", {
+          start: typeof drawRef.current.start,
+          stop: typeof drawRef.current.stop,
+          setMode: typeof drawRef.current.setMode,
+          getModeState: typeof drawRef.current.getModeState,
+          getSnapshot: typeof drawRef.current.getSnapshot,
+        });
+        
+        // Test if the adapter is working
+        console.log("[TerraDraw] Testing adapter state");
+        const snapshot = drawRef.current.getSnapshot();
+        console.log("[TerraDraw] Current snapshot:", snapshot);
+        
+        // Disable map interaction to prevent conflicts
+        if (map) {
+          console.log("[TerraDraw] Disabling map interactions for drawing");
+          map.dragPan.disable();
+          map.scrollZoom.disable();
+          map.boxZoom.disable();
+          map.doubleClickZoom.disable();
+          map.keyboard.disable();
+          // Change cursor to indicate drawing mode
+          map.getContainer().style.cursor = 'crosshair';
+        }
+        
         onStart?.();
+        console.log("[TerraDraw] Drawing mode enabled successfully");
       } catch (error) {
-        console.error("[TerraDraw] Failed to start drawing:", error);
+        console.error("[TerraDraw] Failed to enable drawing:", error);
       }
     } else {
-      // If switching to cursor mode or disabling, stop TerraDraw
+      // If switching to cursor mode or disabling, set to select mode but keep TerraDraw active
       try {
-        drawRef.current.stop();
+        console.log("[TerraDraw] Switching to cursor/select mode");
+        
+        // Set to select mode instead of stopping completely
+        if (drawRef.current.getModeState()) {
+          drawRef.current.setMode("select");
+          console.log("[TerraDraw] Set to select mode");
+        }
+        
+        // Re-enable map interaction
+        if (map) {
+          console.log("[TerraDraw] Re-enabling map interactions");
+          map.dragPan.enable();
+          map.scrollZoom.enable();
+          map.boxZoom.enable();
+          map.doubleClickZoom.enable();
+          map.keyboard.enable();
+          // Reset cursor
+          map.getContainer().style.cursor = '';
+        }
+        
         onStop?.();
+        console.log("[TerraDraw] Cursor mode enabled successfully");
       } catch (error) {
-        console.error("[TerraDraw] Failed to stop drawing:", error);
+        console.error("[TerraDraw] Failed to switch to cursor mode:", error);
       }
     }
-  }, [isEnabled, mode, onStart, onStop]);
+  }, [isEnabled, mode, map, onStart, onStop]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (drawRef.current) {
+      if (drawRef.current && map) {
         try {
           drawRef.current.stop();
           drawRef.current.clear();
+          // Re-enable all map interactions
+          map.dragPan.enable();
+          map.scrollZoom.enable();
+          map.boxZoom.enable();
+          map.doubleClickZoom.enable();
+          map.keyboard.enable();
+          map.getContainer().style.cursor = '';
         } catch (error) {
           console.error("Error during TerraDraw cleanup:", error);
         }
       }
     };
-  }, []);
+  }, [map]);
 
   return {
     isInitialized: isInitializedRef.current,

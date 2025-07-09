@@ -1,4 +1,5 @@
 import { useConvertRadiusToGeographic, useFindFeaturesInCircle, useFindFeaturesInPolygon } from "@/components/shared/hooks/use-feature-selection";
+import type { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useRef, type RefObject } from "react";
 
