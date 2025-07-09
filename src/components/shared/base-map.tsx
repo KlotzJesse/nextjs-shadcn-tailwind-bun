@@ -1,5 +1,6 @@
 import { ErrorBoundary } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMapCenterZoomSync } from "@/lib/hooks/use-map-center-zoom-sync";
 import { useMapInitialization } from "@/lib/hooks/use-map-initialization";
 import { useMapLayers } from "@/lib/hooks/use-map-layers";
 import { TerraDrawMode, useTerraDraw } from "@/lib/hooks/use-terradraw";
@@ -506,53 +507,14 @@ export function BaseMap({
     currentDrawingMode,
   ]);
 
-  // Update map center and zoom when props change (without recreating map)
-  useEffect(() => {
-    if (!map.current || !isMapLoaded) return;
-
-    const currentCenter = map.current.getCenter();
-    const currentZoom = map.current.getZoom();
-    // Only set center if different and valid
-    if (
-      Array.isArray(center) &&
-      center.length === 2 &&
-      typeof center[0] === "number" &&
-      typeof center[1] === "number" &&
-      (Math.abs(currentCenter.lng - center[0]) > 1e-6 ||
-        Math.abs(currentCenter.lat - center[1]) > 1e-6)
-    ) {
-      map.current.setCenter({ lng: center[0], lat: center[1] });
-    }
-    // Only set zoom if different
-    if (Math.abs(currentZoom - zoom) > 1e-6) {
-      map.current.setZoom(zoom);
-    }
-  }, [center, zoom, isMapLoaded]);
-
-  // Persist map center and zoom in URL on user interaction
-  useEffect(() => {
-    if (!map.current || !isMapLoaded) return;
-    const handleMoveEnd = () => {
-      if (map.current) {
-        const c = map.current.getCenter();
-        setMapCenterZoom([c.lng, c.lat], map.current.getZoom());
-      }
-    };
-    const handleZoomEnd = () => {
-      if (map.current) {
-        const c = map.current.getCenter();
-        setMapCenterZoom([c.lng, c.lat], map.current.getZoom());
-      }
-    };
-    map.current.on("moveend", handleMoveEnd);
-    map.current.on("zoomend", handleZoomEnd);
-    return () => {
-      if (map.current) {
-        map.current.off("moveend", handleMoveEnd);
-        map.current.off("zoomend", handleZoomEnd);
-      }
-    };
-  }, [isMapLoaded, setMapCenterZoom]);
+  // Modularized: persist and sync map center/zoom with custom hook
+  useMapCenterZoomSync({
+    mapRef: map,
+    isMapLoaded,
+    center,
+    zoom,
+    setMapCenterZoom,
+  });
 
   // Show error if data is missing or empty
   if (!data || !data.features || data.features.length === 0) {
