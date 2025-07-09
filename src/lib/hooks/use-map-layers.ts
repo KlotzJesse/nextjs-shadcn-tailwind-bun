@@ -1,5 +1,5 @@
 import type { FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Polygon } from "geojson";
-import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import type { GeoJSONSource, LayerSpecification, Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useMemo, useState } from "react";
 
 interface UseMapLayersProps {
@@ -98,7 +98,7 @@ export function useMapLayers({
 
     // --- Robust layer creation ---
     // Helper to add a layer with beforeId if it exists
-    function safeAddLayer(layer: any, beforeId?: string) {
+    function safeAddLayer(layer: LayerSpecification, beforeId?: string) {
       if (!map) return;
       try {
         if (beforeId && map.getLayer(beforeId)) {
@@ -106,7 +106,7 @@ export function useMapLayers({
         } else {
           map.addLayer(layer);
         }
-      } catch (e) {
+      } catch {
         // Layer may already exist
       }
     }
@@ -268,7 +268,7 @@ export function useMapLayers({
       }, statesData ? "state-boundaries-label" : ids.hoverLayerId);
     }
     setLayersLoaded(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [map, isMapLoaded, styleLoaded, data, statesData, selectedRegions, hoveredRegionId, getSelectedFeatureCollection, getLabelPoints, ids, layerId]);
 
   // Update selected features source when selection changes
@@ -313,7 +313,7 @@ export function useMapLayers({
       });
       setLayersLoaded(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [map, ids]);
 
   return { layersLoaded };

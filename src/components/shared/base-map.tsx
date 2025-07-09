@@ -89,7 +89,7 @@ export function BaseMap({
   });
 
   // Business logic and validation rules
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const {
     // Note: These are available for future use and debugging
     // layerIds, sourceIds, selectionStats, validateFeature, validateCoordinates,

@@ -1,3 +1,4 @@
+import { MapLibreMap } from "@/types/map";
 import { useCallback, useEffect } from "react";
 
 /**
@@ -18,7 +19,7 @@ export function useMapCenterZoomSync({
   zoom,
   setMapCenterZoom,
 }: {
-  mapRef: React.MutableRefObject<any>;
+  mapRef: React.RefObject<MapLibreMap>;
   isMapLoaded: boolean;
   center: [number, number];
   zoom: number;
@@ -60,12 +61,13 @@ export function useMapCenterZoomSync({
   // Attach/detach event listeners for moveend/zoomend
   useEffect(() => {
     if (!mapRef.current || !isMapLoaded) return;
+    const map = mapRef.current;
     mapRef.current.on('moveend', handleMoveOrZoomEnd);
     mapRef.current.on('zoomend', handleMoveOrZoomEnd);
     return () => {
-      if (mapRef.current) {
-        mapRef.current.off('moveend', handleMoveOrZoomEnd);
-        mapRef.current.off('zoomend', handleMoveOrZoomEnd);
+      if (map) {
+       map.off('moveend', handleMoveOrZoomEnd);
+        map.off('zoomend', handleMoveOrZoomEnd);
       }
     };
   }, [isMapLoaded, handleMoveOrZoomEnd, mapRef]);

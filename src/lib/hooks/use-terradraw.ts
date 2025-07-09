@@ -68,7 +68,8 @@ export function useTerraDraw({
     return () => {
       console.log("[TerraDraw] useTerraDraw hook unmounted.");
     };
-  }, []);
+
+  }, [map, isEnabled, mode]);
 
   // Only initialize TerraDraw once, after map style is loaded
   useEffect(() => {
