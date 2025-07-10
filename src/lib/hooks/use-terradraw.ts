@@ -391,7 +391,7 @@ export function useTerraDraw({
     } catch (error) {
       console.error("[TerraDraw] Error in mode change:", error);
     }
-  }, [isEnabled, mode, stableOnStart, stableOnStop]); // Use stable callbacks
+  }, [isEnabled, mode, stableOnStart, stableOnStop, mapRef]); // Use stable callbacks
 
   // Cleanup on unmount
   useEffect(() => {
@@ -413,7 +413,7 @@ export function useTerraDraw({
         }
       }
     };
-  }, []); // Empty dependency array for cleanup on unmount only
+  }, [mapRef]); // Include mapRef dependency for cleanup
 
   return {
     isInitialized: isInitializedRef.current,

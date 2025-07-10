@@ -89,7 +89,6 @@ export function useMapInteractions({
     handleMouseEnter,
     handleMouseMove,
     handleMouseLeave,
-    isFeatureWithCode,
   } = useMapHoverInteraction(mapRef.current, layerId, layersLoaded, isCursorMode);
 
   // Click interaction management
@@ -99,8 +98,7 @@ export function useMapInteractions({
     isCursorMode,
     selectedRegions,
     addSelectedRegion,
-    removeSelectedRegion,
-    isFeatureWithCode
+    removeSelectedRegion
   );
 
   // Event listeners management

@@ -1,4 +1,5 @@
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
+import { isFeatureWithCode } from "@/lib/utils/map-feature-utils";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useRef } from "react";
 import { flushSync } from "react-dom";
@@ -16,20 +17,6 @@ export function useMapHoverInteraction(
   // Use ref to avoid re-renders when hover state changes
   const hoveredRegionIdRef = useRef<string | null>(null);
 
-  // Memoized helper to check if feature has code property
-  const isFeatureWithCode = useStableCallback((
-    obj: unknown
-  ): obj is { properties?: { code?: string } } => {
-    return (
-      typeof obj === "object" &&
-      obj !== null &&
-      "properties" in obj &&
-      typeof (obj as { properties?: unknown }).properties === "object" &&
-      (obj as { properties?: unknown }).properties !== null &&
-      "code" in (obj as { properties: { code?: unknown } }).properties
-    );
-  });
-
   // Core hover processing logic
   const processHover = useStableCallback(
     (...args: unknown[]) => {
@@ -42,17 +29,19 @@ export function useMapHoverInteraction(
       if (e && Array.isArray(e.features) && e.features.length > 0) {
         const feature = e.features[0];
         if (isFeatureWithCode(feature)) {
-          const regionCode = feature.properties?.code;
+          // TypeScript narrowing workaround - explicit type assertion after type guard
+          const typedFeature = feature as { properties?: { code?: string } };
+          const regionCode = typedFeature.properties?.code;
           if (regionCode && hoveredRegionIdRef.current !== regionCode) {
             const src = map.getSource(hoverSourceId);
             if (src && "setData" in src && typeof src.setData === "function") {
               src.setData({
                 type: "FeatureCollection",
-                features: [feature],
+                features: [typedFeature],
               });
             }
             map.setLayoutProperty(hoverLayerId, "visibility", "visible");
-            
+
             // Use flushSync for synchronous cursor updates to prevent visual lag
             flushSync(() => {
               const canvas = map.getCanvas();
@@ -111,6 +100,5 @@ export function useMapHoverInteraction(
     handleMouseEnter,
     handleMouseMove,
     handleMouseLeave,
-    isFeatureWithCode,
   } as const;
 }

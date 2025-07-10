@@ -7,15 +7,11 @@ import { useCallback, useRef } from "react";
  *
  * This is the standard "useEvent" pattern recommended by React team
  */
-export function useStableCallback<T extends (...args: any[]) => any>(
-  callback: T
-): T {
-  const callbackRef = useRef<T | undefined>(undefined);
-  callbackRef.current = callback;
-
-  // Return a stable callback that always calls the latest version
-  return useCallback(
-    ((...args: Parameters<T>) => callbackRef.current!(...args)) as T,
-    []
-  );
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function useStableCallback<T extends any[], U>(
+    callback: (...args: T) => U,
+): (...args: T) => U {
+    const callbackRef = useRef(callback);
+    callbackRef.current = callback;
+    return useCallback((...args: T) => callbackRef.current(...args), []);
 }
