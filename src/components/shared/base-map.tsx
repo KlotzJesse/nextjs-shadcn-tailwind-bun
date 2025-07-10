@@ -26,7 +26,7 @@ const DrawingTools = dynamic(
   () => import("./drawing-tools").then((m) => m.DrawingTools),
   {
     ssr: false,
-    loading: () => <Skeleton className="w-56 h-80 rounded-lg" />
+    loading: () => <Skeleton className="w-56 h-80 rounded-lg" />,
   }
 );
 
@@ -39,21 +39,13 @@ const MapErrorMessage = memo(({ message }: MapErrorMessageProps) => (
 MapErrorMessage.displayName = "MapErrorMessage";
 
 // Memoized toggle button component to prevent re-renders
-const ToggleButton = memo(({
-  onClick,
-  title,
-  ariaLabel,
-  children
-}: ToggleButtonProps) => (
-  <Button
-    variant="outline"
-    onClick={onClick}
-    title={title}
-    aria-label={ariaLabel}
-  >
-    {children}
-  </Button>
-));
+const ToggleButton = memo(
+  ({ onClick, title, ariaLabel, children }: ToggleButtonProps) => (
+    <Button onClick={onClick} title={title} aria-label={ariaLabel}>
+      {children}
+    </Button>
+  )
+);
 ToggleButton.displayName = "ToggleButton";
 
 // Main BaseMap component with performance optimizations
@@ -104,7 +96,10 @@ const BaseMapComponent = ({
   // Business logic with stable references (available for future use)
 
   // Memoized hovered region ref to prevent layer re-initialization
-  const hoveredRegionIdRef = useMemo(() => ({ current: null as string | null }), []);
+  const hoveredRegionIdRef = useMemo(
+    () => ({ current: null as string | null }),
+    []
+  );
 
   // Map layers management with stable dependencies
   const { layersLoaded } = useMapLayers({
@@ -195,13 +190,13 @@ const BaseMapComponent = ({
         className="w-full h-full min-h-[400px] rounded-lg"
         style={{ minHeight: mapConfig.minHeight }}
         role="region"
-        aria-label="Interactive Map"
+        aria-label="Interaktive Karte"
       />
       {interactions.isDrawingToolsVisible && (
         <div
           className="absolute top-4 left-4 z-10"
           role="region"
-          aria-label="Map Tools Panel"
+          aria-label="Kartentools-Panel"
         >
           <ErrorBoundary>
             <Suspense>
@@ -222,12 +217,12 @@ const BaseMapComponent = ({
         <div
           className="absolute top-4 left-4 z-10"
           role="region"
-          aria-label="Map Tools Panel"
+          aria-label="Kartentools-Panel"
         >
           <ToggleButton
             onClick={handleShowTools}
-            title="Show Map Tools"
-            ariaLabel="Show Map Tools Panel"
+            title="Kartentools anzeigen"
+            ariaLabel="Kartentools-Panel anzeigen"
           >
             <PlusIcon width={24} height={24} />
           </ToggleButton>

@@ -7,13 +7,13 @@ import { toast } from 'sonner'
 export async function exportPostalCodesXLSX(codes: string[]) {
   try {
     const XLSX = await import('xlsx')
-    const ws = XLSX.utils.aoa_to_sheet([['Postal Code'], ...codes.map((code: string) => [code])])
+    const ws = XLSX.utils.aoa_to_sheet([['Postleitzahl'], ...codes.map((code: string) => [code])])
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'PostalCodes')
-    XLSX.writeFile(wb, 'postal-codes.xlsx')
-    toast.success('Postal codes exported as XLSX!')
+    XLSX.utils.book_append_sheet(wb, ws, 'Postleitzahlen')
+    XLSX.writeFile(wb, 'postleitzahlen.xlsx')
+    toast.success('Postleitzahlen als XLSX exportiert!')
   } catch {
-    toast.error('Failed to export XLSX')
+    toast.error('XLSX-Export fehlgeschlagen')
   }
 }
 
@@ -25,8 +25,8 @@ export async function copyPostalCodesCSV(codes: string[]) {
   try {
     const csv = codes.join(',')
     await navigator.clipboard.writeText(csv)
-    toast.success('Postal codes copied to clipboard!')
+    toast.success('Postleitzahlen in Zwischenablage kopiert!')
   } catch {
-    toast.error('Failed to copy to clipboard')
+    toast.error('Kopieren in Zwischenablage fehlgeschlagen')
   }
 }

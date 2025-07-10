@@ -226,7 +226,7 @@ function DrawingToolsImpl({
   const [isFilling, setIsFilling] = useState(false);
 
   return (
-    <Card role="region" aria-label="Map Tools Panel" className="gap-2">
+    <Card role="region" aria-label="Kartentools-Panel" className="gap-2">
       <CardHeader>
         <CardTitle>Kartentools</CardTitle>
         <CardAction>
@@ -247,7 +247,7 @@ function DrawingToolsImpl({
           <div className="mb-2">
             <Select value={granularity} onValueChange={onGranularityChange}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Granularität wählen" />
+                <SelectValue placeholder="Granularität auswählen" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="1digit">PLZ 1-stellig</SelectItem>

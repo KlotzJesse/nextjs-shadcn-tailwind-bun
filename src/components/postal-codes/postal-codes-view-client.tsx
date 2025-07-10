@@ -3,25 +3,25 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    Command,
-    CommandEmpty,
-    CommandInput,
-    CommandItem,
-    CommandList,
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
 import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
 import {
-    FeatureCollection,
-    GeoJsonProperties,
-    MultiPolygon,
-    Polygon,
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
 } from "geojson";
 import { ChevronsUpDownIcon } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -29,7 +29,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const AddressAutocompleteEnhanced = dynamic(
-  () => import("./address-autocomplete-enhanced").then((m) => m.AddressAutocompleteEnhanced),
+  () =>
+    import("./address-autocomplete-enhanced").then(
+      (m) => m.AddressAutocompleteEnhanced
+    ),
   { ssr: false }
 );
 
@@ -57,8 +60,8 @@ export default function PostalCodesViewClient({
   const { performRadiusSearch } = useRadiusSearch({
     onRadiusComplete: (postalCodes) => {
       // Add all postal codes from radius search to selection
-      postalCodes.forEach(code => selectPostalCode(code));
-    }
+      postalCodes.forEach((code) => selectPostalCode(code));
+    },
   });
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
   const [postalCodeOpen, setPostalCodeOpen] = useState(false);
@@ -73,7 +76,11 @@ export default function PostalCodesViewClient({
   };
 
   // Handle direct address selection (pin icon)
-  const handleAddressSelect = (coords: [number, number], _label: string, postalCode?: string) => {
+  const handleAddressSelect = (
+    coords: [number, number],
+    _label: string,
+    postalCode?: string
+  ) => {
     if (postalCode) {
       // If we have a postal code from geocoding, use it directly
       selectPostalCode(postalCode);
@@ -89,7 +96,11 @@ export default function PostalCodesViewClient({
   };
 
   // Handle radius selection (radius icon)
-  const handleRadiusSelect = async (coords: [number, number], radius: number, granularity: string) => {
+  const handleRadiusSelect = async (
+    coords: [number, number],
+    radius: number,
+    granularity: string
+  ) => {
     await performRadiusSearch(coords, radius, granularity);
   };
 
@@ -114,7 +125,6 @@ export default function PostalCodesViewClient({
           <Popover open={postalCodeOpen} onOpenChange={setPostalCodeOpen}>
             <PopoverTrigger asChild>
               <Button
-                variant="outline"
                 role="combobox"
                 aria-expanded={postalCodeOpen}
                 className="w-full justify-between truncate"
@@ -122,7 +132,7 @@ export default function PostalCodesViewClient({
                 <span className="truncate block w-full text-left">
                   {selectedPostalCode
                     ? selectedPostalCode
-                    : "Select postal code..."}
+                    : "PLZ auswählen..."}
                 </span>
                 <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
@@ -130,7 +140,7 @@ export default function PostalCodesViewClient({
             <PopoverContent className="w-[320px] p-0">
               <Command>
                 <CommandInput
-                  placeholder="Search postal code..."
+                  placeholder="PLZ suchen..."
                   value={postalCodeQuery}
                   onValueChange={(v) => {
                     setPostalCodeQuery(v);
@@ -157,14 +167,14 @@ export default function PostalCodesViewClient({
                         className="cursor-pointer truncate"
                       >
                         <span className="truncate block w-full text-left">
-                          {code || "Unknown"}
+                          {code || "Unbekannt"}
                         </span>
                       </CommandItem>
                     ))}
                   {allPostalCodes.filter((code) =>
                     code.toLowerCase().includes(postalCodeQuery.toLowerCase())
                   ).length === 0 && (
-                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
                   )}
                 </CommandList>
               </Command>
@@ -177,7 +187,7 @@ export default function PostalCodesViewClient({
         <div className="absolute top-24 right-4 z-10 w-64">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Search Results</CardTitle>
+              <CardTitle className="text-lg">Suchergebnisse</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
