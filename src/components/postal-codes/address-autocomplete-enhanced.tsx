@@ -19,8 +19,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { ChevronsUpDownIcon, MapPinIcon, RadiusIcon } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface GeocodeResult {
@@ -66,7 +67,7 @@ export function AddressAutocompleteEnhanced({
   const [radius, setRadius] = useState<number>(5);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleInputChange = useCallback((value: string) => {
+  const handleInputChange = useStableCallback((value: string) => {
     setQuery(value);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
@@ -104,66 +105,65 @@ export function AddressAutocompleteEnhanced({
         setIsLoading(false);
       }
     }, 300);
-  }, []);
+  });
 
   // Utility function to convert postal code to granularity format
-  const convertPostalCodeToGranularity = useCallback((postalCode: string, granularityLevel: string): string => {
-    if (!postalCode) return postalCode;
-    
-    // Remove any non-digit characters and ensure it's a string
-    const cleanCode = postalCode.replace(/\D/g, '');
-    
-    switch (granularityLevel) {
-      case '1digit':
-        return cleanCode.substring(0, 1);
-      case '2digit':
-        return cleanCode.substring(0, 2);
-      case '3digit':
-        return cleanCode.substring(0, 3);
-      case '5digit':
-      default:
-        return cleanCode;
-    }
-  }, []);
+  const convertPostalCodeToGranularity = useStableCallback(
+    (postalCode: string, granularityLevel: string): string => {
+      if (!postalCode) return postalCode;
 
-  const handleDirectSelect = useCallback(
-    (result: GeocodeResult) => {
-      setSelectedLabel(result.display_name);
-      setQuery("");
-      setResults([]);
-      setOpen(false);
-      
-      // Convert postal code to match current granularity
-      const adjustedPostalCode = result.postal_code 
-        ? convertPostalCodeToGranularity(result.postal_code, granularity)
-        : result.postal_code;
-      
-      onAddressSelect(
-        result.coordinates,
-        result.display_name,
-        adjustedPostalCode
-      );
-    },
-    [onAddressSelect, convertPostalCodeToGranularity, granularity]
+      // Remove any non-digit characters and ensure it's a string
+      const cleanCode = postalCode.replace(/\D/g, "");
+
+      switch (granularityLevel) {
+        case "1digit":
+          return cleanCode.substring(0, 1);
+        case "2digit":
+          return cleanCode.substring(0, 2);
+        case "3digit":
+          return cleanCode.substring(0, 3);
+        case "5digit":
+        default:
+          return cleanCode;
+      }
+    }
   );
 
-  const handleRadiusSelect = useCallback((result: GeocodeResult) => {
+  const handleDirectSelect = useStableCallback((result: GeocodeResult) => {
+    setSelectedLabel(result.display_name);
+    setQuery("");
+    setResults([]);
+    setOpen(false);
+
+    // Convert postal code to match current granularity
+    const adjustedPostalCode = result.postal_code
+      ? convertPostalCodeToGranularity(result.postal_code, granularity)
+      : result.postal_code;
+
+    onAddressSelect(
+      result.coordinates,
+      result.display_name,
+      adjustedPostalCode
+    );
+  });
+
+  const handleRadiusSelect = useStableCallback((result: GeocodeResult) => {
     setSelectedCoords(result.coordinates);
     setSelectedLabel(result.display_name);
     setQuery("");
     setResults([]);
     setOpen(false);
     setRadiusDialogOpen(true);
-  }, []);
+  });
 
-  const handleRadiusConfirm = useCallback(() => {
+  const handleRadiusConfirm = useStableCallback(() => {
     if (selectedCoords) {
       onRadiusSelect(selectedCoords, radius, granularity);
       setRadiusDialogOpen(false);
       setSelectedCoords(null);
       toast.success(`${radius}km Umkreis um Standort ausgewählt`);
     }
-  }, [selectedCoords, radius, granularity, onRadiusSelect]);
+  });
 
   const formatDisplayName = (result: GeocodeResult): string => {
     if (result.postal_code) {

@@ -6,12 +6,18 @@ import { useCallback, useRef } from "react";
  * while still allowing the callback to access the latest values
  *
  * This is the standard "useEvent" pattern recommended by React team
+ *
+ * @param callback - The callback function to stabilize
+ * @returns A stable callback reference that won't cause re-renders
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function useStableCallback<T extends any[], U>(
-    callback: (...args: T) => U,
-): (...args: T) => U {
-    const callbackRef = useRef(callback);
-    callbackRef.current = callback;
-    return useCallback((...args: T) => callbackRef.current(...args), []);
+export function useStableCallback<
+  TCallback extends (...args: never[]) => unknown
+>(callback: TCallback): TCallback {
+  const callbackRef = useRef<TCallback>(callback);
+  callbackRef.current = callback;
+
+  return useCallback(
+    ((...args) => callbackRef.current(...args)) as TCallback,
+    []
+  );
 }

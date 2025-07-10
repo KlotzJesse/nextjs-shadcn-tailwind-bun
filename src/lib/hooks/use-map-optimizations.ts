@@ -1,11 +1,24 @@
-import { featureCollectionFromIds, makeLabelPoints } from "@/lib/utils/map-data";
-import type { FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Polygon } from "geojson";
-import { useCallback, useMemo } from "react";
+import {
+  featureCollectionFromIds,
+  makeLabelPoints,
+} from "@/lib/utils/map-data";
+import type {
+  FeatureCollection,
+  GeoJsonProperties,
+  Geometry,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
+import { useMemo } from "react";
+import { useStableCallback } from "./use-stable-callback";
 
 interface UseMapOptimizationsProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   selectedRegions: string[];
-  statesData?: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties> | null;
+  statesData?: FeatureCollection<
+    Polygon | MultiPolygon,
+    GeoJsonProperties
+  > | null;
 }
 
 /**
@@ -24,27 +37,45 @@ export function useMapOptimizations({
     return {
       ...fc,
       features: fc.features.filter(
-        (f): f is import("geojson").Feature<Polygon | MultiPolygon, GeoJsonProperties> =>
-          f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon"
+        (
+          f
+        ): f is import("geojson").Feature<
+          Polygon | MultiPolygon,
+          GeoJsonProperties
+        > => f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon"
       ),
     };
   }, [data, selectedRegions]);
 
   // Memoize label points computation (expensive operation)
   const labelPoints = useMemo(() => {
-    return makeLabelPoints(data) as FeatureCollection<Geometry, GeoJsonProperties>;
+    return makeLabelPoints(data) as FeatureCollection<
+      Geometry,
+      GeoJsonProperties
+    >;
   }, [data]);
 
   // Memoize states label points if available
   const statesLabelPoints = useMemo(() => {
-    return statesData ? makeLabelPoints(statesData) as FeatureCollection<Geometry, GeoJsonProperties> : null;
+    return statesData
+      ? (makeLabelPoints(statesData) as FeatureCollection<
+          Geometry,
+          GeoJsonProperties
+        >)
+      : null;
   }, [statesData]);
 
   // Memoize feature count for performance monitoring
-  const featureCount = useMemo(() => data.features.length, [data.features.length]);
+  const featureCount = useMemo(
+    () => data.features.length,
+    [data.features.length]
+  );
 
   // Memoize selected count
-  const selectedCount = useMemo(() => selectedRegions.length, [selectedRegions.length]);
+  const selectedCount = useMemo(
+    () => selectedRegions.length,
+    [selectedRegions.length]
+  );
 
   // Memoize data extent for bounds calculations
   const dataExtent = useMemo(() => {
@@ -79,13 +110,21 @@ export function useMapOptimizations({
   }, [data]);
 
   // Stable callback functions for layer usage
-  const getSelectedFeatureCollection = useCallback(() => {
-    return featureCollectionFromIds(data, selectedRegions) as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
-  }, [data, selectedRegions]);
+  const getSelectedFeatureCollection = useStableCallback(() => {
+    return featureCollectionFromIds(data, selectedRegions) as FeatureCollection<
+      Polygon | MultiPolygon,
+      GeoJsonProperties
+    >;
+  });
 
-  const getLabelPoints = useCallback((d: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>) => {
-    return makeLabelPoints(d) as FeatureCollection<Geometry, GeoJsonProperties>;
-  }, []);
+  const getLabelPoints = useStableCallback(
+    (d: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>) => {
+      return makeLabelPoints(d) as FeatureCollection<
+        Geometry,
+        GeoJsonProperties
+      >;
+    }
+  );
 
   return {
     selectedFeatureCollection,

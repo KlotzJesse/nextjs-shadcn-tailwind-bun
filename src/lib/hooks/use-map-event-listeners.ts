@@ -1,6 +1,7 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useCallback, useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { flushSync } from "react-dom";
+import { useStableCallback } from "./use-stable-callback";
 
 interface UseMapEventListenersProps {
   map: MapLibreMap | null;
@@ -29,21 +30,21 @@ export function useMapEventListeners({
   handleClick,
 }: UseMapEventListenersProps) {
   // Cursor style handlers with flushSync for synchronous updates
-  const handleMouseDown = useCallback(() => {
+  const handleMouseDown = useStableCallback(() => {
     if (!map) return;
     flushSync(() => {
       const canvas = map.getCanvas();
       if (canvas) canvas.style.cursor = "grabbing";
     });
-  }, [map]);
+  });
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useStableCallback(() => {
     if (!map) return;
     flushSync(() => {
       const canvas = map.getCanvas();
       if (canvas) canvas.style.cursor = "grab";
     });
-  }, [map]);
+  });
 
   // Use useLayoutEffect for cursor style updates to prevent visual flicker
   // This ensures cursor changes are applied synchronously before paint

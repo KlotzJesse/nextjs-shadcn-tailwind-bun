@@ -1,6 +1,6 @@
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import type { Map as MapLibre } from "maplibre-gl";
-import { RefObject, useCallback, useEffect, useRef } from "react";
+import { RefObject, useEffect, useRef } from "react";
 import {
   GeoJSONStoreFeatures,
   TerraDraw,
@@ -53,9 +53,11 @@ export function useTerraDraw({
   const isInitializedRef = useRef(false);
 
   // Stable callbacks to prevent unnecessary re-initializations
-  const stableOnSelectionChange = useStableCallback((features: (string | number)[]) => {
-    onSelectionChange?.(features);
-  });
+  const stableOnSelectionChange = useStableCallback(
+    (features: (string | number)[]) => {
+      onSelectionChange?.(features);
+    }
+  );
 
   const stableOnStart = useStableCallback(() => {
     onStart?.();
@@ -89,7 +91,9 @@ export function useTerraDraw({
     if (!map || !isMapLoaded || isInitializedRef.current) return;
 
     if (process.env.NODE_ENV === "development") {
-      console.log("[TerraDraw] Initializing TerraDraw with ready map and style...");
+      console.log(
+        "[TerraDraw] Initializing TerraDraw with ready map and style..."
+      );
       console.log("[TerraDraw] Map instance:", map);
       console.log("[TerraDraw] Map container:", map?.getContainer());
       console.log("[TerraDraw] Map loaded():", map?.loaded());
@@ -140,12 +144,18 @@ export function useTerraDraw({
             if (context.action === "draw") {
               const allFeatures = draw.getSnapshot();
               if (process.env.NODE_ENV === "development") {
-                console.log("[TerraDraw] All features after draw:", allFeatures);
+                console.log(
+                  "[TerraDraw] All features after draw:",
+                  allFeatures
+                );
               }
               const featureIds = allFeatures.map((feature) => feature.id);
               if (featureIds.length > 0) {
                 if (process.env.NODE_ENV === "development") {
-                  console.log("[TerraDraw] Calling onSelectionChange with:", featureIds);
+                  console.log(
+                    "[TerraDraw] Calling onSelectionChange with:",
+                    featureIds
+                  );
                 }
                 stableOnSelectionChange(
                   featureIds.filter((id) => id !== undefined && id !== null)
@@ -185,7 +195,9 @@ export function useTerraDraw({
       drawRef.current = draw;
       isInitializedRef.current = true;
       if (process.env.NODE_ENV === "development") {
-        console.log("[TerraDraw] TerraDraw initialized and started successfully");
+        console.log(
+          "[TerraDraw] TerraDraw initialized and started successfully"
+        );
       }
     } catch (error) {
       console.error("[TerraDraw] Failed to initialize TerraDraw:", error);
@@ -234,7 +246,7 @@ export function useTerraDraw({
   });
 
   // Debug function to test TerraDraw manually
-  const debugTerraDraw = useCallback(() => {
+  const debugTerraDraw = useStableCallback(() => {
     const map = mapRef.current;
     if (!drawRef.current || !map) {
       console.log("[TerraDraw] Debug: Not initialized");
@@ -254,15 +266,18 @@ export function useTerraDraw({
     try {
       console.log("[TerraDraw] Debug: Manually setting to freehand");
       drawRef.current.setMode("freehand");
-      console.log("[TerraDraw] Debug: Mode after manual set:", drawRef.current.getModeState());
+      console.log(
+        "[TerraDraw] Debug: Mode after manual set:",
+        drawRef.current.getModeState()
+      );
     } catch (error) {
       console.error("[TerraDraw] Debug: Error setting mode:", error);
     }
-  }, [mapRef]);
+  });
 
   // Expose debug function globally for testing
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).debugTerraDraw = debugTerraDraw;
     }
@@ -277,7 +292,7 @@ export function useTerraDraw({
         isInitialized: isInitializedRef.current,
         isEnabled,
         mode,
-        map: !!map
+        map: !!map,
       });
     }
 
@@ -299,11 +314,18 @@ export function useTerraDraw({
         const currentModeState = drawRef.current.getModeState();
         isStarted = !!currentModeState;
         if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Current mode state:", currentModeState, "isStarted:", isStarted);
+          console.log(
+            "[TerraDraw] Current mode state:",
+            currentModeState,
+            "isStarted:",
+            isStarted
+          );
         }
       } catch {
         if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Could not get mode state, assuming not started");
+          console.log(
+            "[TerraDraw] Could not get mode state, assuming not started"
+          );
         }
         isStarted = false;
       }
@@ -335,7 +357,7 @@ export function useTerraDraw({
         map.boxZoom.disable();
         map.doubleClickZoom.disable();
         map.keyboard.disable();
-        map.getContainer().style.cursor = 'crosshair';
+        map.getContainer().style.cursor = "crosshair";
 
         // Set the drawing mode
         if (process.env.NODE_ENV === "development") {
@@ -376,7 +398,7 @@ export function useTerraDraw({
         map.boxZoom.enable();
         map.doubleClickZoom.enable();
         map.keyboard.enable();
-        map.getContainer().style.cursor = '';
+        map.getContainer().style.cursor = "";
 
         stableOnStop();
         if (process.env.NODE_ENV === "development") {
@@ -402,7 +424,7 @@ export function useTerraDraw({
           currentMap.boxZoom.enable();
           currentMap.doubleClickZoom.enable();
           currentMap.keyboard.enable();
-          currentMap.getContainer().style.cursor = '';
+          currentMap.getContainer().style.cursor = "";
         } catch (cleanupError) {
           console.error("Error during TerraDraw cleanup:", cleanupError);
         }

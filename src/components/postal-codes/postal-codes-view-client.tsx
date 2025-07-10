@@ -17,6 +17,7 @@ import {
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
 import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
+import { useMapState } from "@/lib/url-state/map-state";
 import {
   FeatureCollection,
   GeoJsonProperties,
@@ -55,12 +56,13 @@ export default function PostalCodesViewClient({
       initialData
     );
   const router = useRouter();
+  const { addSelectedRegions } = useMapState();
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
   const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
   const { performRadiusSearch } = useRadiusSearch({
     onRadiusComplete: (postalCodes) => {
-      // Add all postal codes from radius search to selection
-      postalCodes.forEach((code) => selectPostalCode(code));
+      // Add all postal codes from radius search to selection at once
+      addSelectedRegions(postalCodes);
     },
   });
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
@@ -130,9 +132,7 @@ export default function PostalCodesViewClient({
                 className="w-full justify-between truncate"
               >
                 <span className="truncate block w-full text-left">
-                  {selectedPostalCode
-                    ? selectedPostalCode
-                    : "PLZ auswählen..."}
+                  {selectedPostalCode ? selectedPostalCode : "PLZ auswählen..."}
                 </span>
                 <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>

@@ -1,6 +1,7 @@
 import { useMapState } from "@/lib/url-state/map-state";
 import type { MapLayerMouseEvent, Map as MapLibre } from "maplibre-gl";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useStableCallback } from "./use-stable-callback";
 
 interface CursorSelectionProps {
   map: MapLibre | null;
@@ -24,73 +25,64 @@ export function useCursorSelection({
   const pendingEvent = useRef<MapLayerMouseEvent | null>(null);
 
   // Click handler for selecting/deselecting regions
-  const handleClick = useCallback(
-    (e: MapLayerMouseEvent) => {
-      if (!map || !enabled || !e.features || e.features.length === 0) return;
-      const feature = e.features[0];
-      const regionCode = feature.properties?.code;
-      if (regionCode) {
-        if (selectedRegions.includes(regionCode)) {
-          removeSelectedRegion(regionCode);
-        } else {
-          addSelectedRegion(regionCode);
-        }
+  const handleClick = useStableCallback((e: MapLayerMouseEvent) => {
+    if (!map || !enabled || !e.features || e.features.length === 0) return;
+    const feature = e.features[0];
+    const regionCode = feature.properties?.code;
+    if (regionCode) {
+      if (selectedRegions.includes(regionCode)) {
+        removeSelectedRegion(regionCode);
+      } else {
+        addSelectedRegion(regionCode);
       }
-    },
-    [map, enabled, selectedRegions, addSelectedRegion, removeSelectedRegion]
-  );
+    }
+  });
 
   // Throttled hover handler
-  const processHover = useCallback(
-    (e: MapLayerMouseEvent) => {
-      if (!map || !enabled) return;
-      const hoverLayerId = `${layerId}-hover`;
-      if (e.features && e.features.length > 0) {
-        const feature = e.features[0];
-        const regionCode = feature.properties?.code;
-        if (regionCode && lastRegionIdRef.current !== regionCode) {
-          map.setFilter(hoverLayerId, ["==", "code", regionCode]);
-          map.setLayoutProperty(hoverLayerId, "visibility", "visible");
-          map.getCanvas().style.cursor = "pointer";
-          lastRegionIdRef.current = regionCode;
-        }
-      } else {
-        if (lastRegionIdRef.current !== null) {
-          map.setLayoutProperty(hoverLayerId, "visibility", "none");
-          map.getCanvas().style.cursor = "";
-          lastRegionIdRef.current = null;
-        }
+  const processHover = useStableCallback((e: MapLayerMouseEvent) => {
+    if (!map || !enabled) return;
+    const hoverLayerId = `${layerId}-hover`;
+    if (e.features && e.features.length > 0) {
+      const feature = e.features[0];
+      const regionCode = feature.properties?.code;
+      if (regionCode && lastRegionIdRef.current !== regionCode) {
+        map.setFilter(hoverLayerId, ["==", "code", regionCode]);
+        map.setLayoutProperty(hoverLayerId, "visibility", "visible");
+        map.getCanvas().style.cursor = "pointer";
+        lastRegionIdRef.current = regionCode;
       }
-    },
-    [map, enabled, layerId]
-  );
+    } else {
+      if (lastRegionIdRef.current !== null) {
+        map.setLayoutProperty(hoverLayerId, "visibility", "none");
+        map.getCanvas().style.cursor = "";
+        lastRegionIdRef.current = null;
+      }
+    }
+  });
 
   // Throttle wrapper
-  const handleMouseMove = useCallback(
-    (e: MapLayerMouseEvent) => {
-      if (throttleTimeout.current) {
-        pendingEvent.current = e;
-        return;
+  const handleMouseMove = useStableCallback((e: MapLayerMouseEvent) => {
+    if (throttleTimeout.current) {
+      pendingEvent.current = e;
+      return;
+    }
+    processHover(e);
+    throttleTimeout.current = setTimeout(() => {
+      throttleTimeout.current = null;
+      if (pendingEvent.current) {
+        processHover(pendingEvent.current);
+        pendingEvent.current = null;
       }
-      processHover(e);
-      throttleTimeout.current = setTimeout(() => {
-        throttleTimeout.current = null;
-        if (pendingEvent.current) {
-          processHover(pendingEvent.current);
-          pendingEvent.current = null;
-        }
-      }, 32); // ~30fps
-    },
-    [processHover]
-  );
+    }, 32); // ~30fps
+  });
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseLeave = useStableCallback(() => {
     if (!map || !enabled) return;
     const hoverLayerId = `${layerId}-hover`;
     map.getCanvas().style.cursor = "";
     map.setLayoutProperty(hoverLayerId, "visibility", "none");
     lastRegionIdRef.current = null;
-  }, [map, enabled, layerId]);
+  });
 
   useEffect(() => {
     if (!map || !isMapLoaded || !enabled) return;
