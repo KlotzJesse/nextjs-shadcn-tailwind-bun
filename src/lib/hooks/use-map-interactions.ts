@@ -50,18 +50,16 @@ export function useMapInteractions({
     hideTools,
   } = useMapDrawingTools();
 
-  // Debug logging for drawing mode changes - only log on mode changes, not map state changes
+  // Debug logging for drawing mode changes - only log on actual mode changes
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
       console.log("[useMapInteractions] Drawing mode state:", {
         currentDrawingMode,
         isCursorMode,
         isDrawingActive,
-        isMapLoaded,
-        styleLoaded,
       });
     }
-  }, [currentDrawingMode, isCursorMode, isDrawingActive]); // Removed layersLoaded, isMapLoaded, styleLoaded to prevent unnecessary rerenders
+  }, [currentDrawingMode, isCursorMode, isDrawingActive]); // Only log when drawing mode actually changes
 
   // TerraDraw selection logic
   const { terraDrawRef, handleTerraDrawSelection, clearAll } = useMapTerraDrawSelection({
@@ -81,23 +79,6 @@ export function useMapInteractions({
     mode: isDrawingActive ? currentDrawingMode : null,
     onSelectionChange: handleTerraDrawSelection,
   });
-
-  // Debug logging for TerraDraw parameters - only log when TerraDraw relevant state changes
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      const map = mapRef.current;
-      console.log("[useMapInteractions] TerraDraw parameters:", {
-        map: !!map,
-        isMapLoaded,
-        styleLoaded,
-        mapReady: !!(map && isMapLoaded && styleLoaded),
-        isEnabled: isDrawingActive,
-        mode: isDrawingActive ? currentDrawingMode : null,
-        currentDrawingMode,
-        isDrawingActive,
-      });
-    }
-  }, [isMapLoaded, styleLoaded, isDrawingActive, currentDrawingMode]); // Removed layersLoaded and mapRef to prevent unnecessary rerenders
 
   // Always assign terraDrawRef for stability
   terraDrawRef.current = terraDrawApi;
