@@ -31,7 +31,6 @@ export type TerraDrawMode =
 export type UseTerraDrawProps = {
   mapRef: RefObject<MapLibre | null>; // Changed from map to mapRef
   isMapLoaded: boolean; // Added for better control
-  styleLoaded: boolean; // Added for better control
   isEnabled: boolean;
   mode: TerraDrawMode | null;
   onSelectionChange?: (features: (string | number)[]) => void;
@@ -44,7 +43,6 @@ export type UseTerraDrawProps = {
 export function useTerraDraw({
   mapRef,
   isMapLoaded,
-  styleLoaded,
   isEnabled,
   mode,
   onSelectionChange,
@@ -76,8 +74,6 @@ export function useTerraDraw({
         map,
         "isMapLoaded:",
         isMapLoaded,
-        "styleLoaded:",
-        styleLoaded,
         "isEnabled:",
         isEnabled,
         "mode:",
@@ -87,17 +83,16 @@ export function useTerraDraw({
         console.log("[TerraDraw] useTerraDraw hook unmounted.");
       };
     }
-  }, [mapRef, isMapLoaded, styleLoaded, isEnabled, mode]); // Include all dependencies for proper debugging  // Only initialize TerraDraw once, after map style is loaded
+  }, [mapRef, isMapLoaded, isEnabled, mode]); // Include all dependencies for proper debugging  // Only initialize TerraDraw once, after map is loaded
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !isMapLoaded || !styleLoaded || isInitializedRef.current) return;
+    if (!map || !isMapLoaded || isInitializedRef.current) return;
 
     if (process.env.NODE_ENV === "development") {
       console.log("[TerraDraw] Initializing TerraDraw with ready map and style...");
       console.log("[TerraDraw] Map instance:", map);
       console.log("[TerraDraw] Map container:", map?.getContainer());
-      console.log("[TerraDraw] React styleLoaded flag:", styleLoaded);
-      console.log("[TerraDraw] Map isStyleLoaded():", map?.isStyleLoaded());
+      console.log("[TerraDraw] Map loaded():", map?.loaded());
     }
 
     try {
@@ -196,7 +191,7 @@ export function useTerraDraw({
       console.error("[TerraDraw] Failed to initialize TerraDraw:", error);
       isInitializedRef.current = false;
     }
-  }, [mapRef, isMapLoaded, styleLoaded, stableOnSelectionChange]); // Include stableOnSelectionChange since it's used in the effect
+  }, [mapRef, isMapLoaded, stableOnSelectionChange]); // Include stableOnSelectionChange since it's used in the effect
 
   const clearAll = useStableCallback(() => {
     if (!drawRef.current) return;

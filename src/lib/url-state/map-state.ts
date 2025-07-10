@@ -1,4 +1,5 @@
 import { useQueryState } from 'nuqs'
+import { useCallback, useMemo } from 'react'
 
 // Helper for atomic map view state
 export function useMapView() {
@@ -13,7 +14,7 @@ export function useMapView() {
   ] as const
 }
 
-// Hook for managing all map state
+// Hook for managing all map state (Optimized v3 - stable arrays and callbacks)
 export function useMapState() {
   // --- Atomic map view state ---
   const [mapView, setMapView] = useMapView()
@@ -23,35 +24,41 @@ export function useMapState() {
   const [granularity, setGranularity] = useQueryState('granularity')
   const [radius, setRadius] = useQueryState('radius')
 
-  // Helper functions for managing selected regions
-  const addSelectedRegion = (region: string) => {
+  // Memoize selected regions to prevent unnecessary rerenders when the array content is the same
+  const selectedRegionsArray = useMemo(() => {
+    return selectedRegions ? JSON.parse(selectedRegions) : []
+  }, [selectedRegions])
+
+  // Helper functions for managing selected regions - memoized to prevent unnecessary rerenders
+  // Note: setSelectedRegions from useQueryState should be stable, so we only depend on selectedRegions
+  const addSelectedRegion = useCallback((region: string) => {
     const current = selectedRegions ? JSON.parse(selectedRegions) : []
     if (!current.includes(region)) {
       setSelectedRegions(JSON.stringify([...current, region]))
     }
-  }
+  }, [selectedRegions])
 
-  const removeSelectedRegion = (region: string) => {
+  const removeSelectedRegion = useCallback((region: string) => {
     const current = selectedRegions ? JSON.parse(selectedRegions) : []
     setSelectedRegions(JSON.stringify(current.filter((r: string) => r !== region)))
-  }
+  }, [selectedRegions])
 
-  const clearSelectedRegions = () => {
+  const clearSelectedRegions = useCallback(() => {
     setSelectedRegions(null)
-  }
+  }, [])
 
-  const setSelectedRegionsArray = (regions: string[]) => {
+  const setSelectedRegionsArray = useCallback((regions: string[]) => {
     setSelectedRegions(JSON.stringify(regions))
-  }
+  }, [])
 
   // --- Atomic map view helpers ---
-  const setMapCenterZoom = (center: [number, number], zoom: number) => {
+  const setMapCenterZoom = useCallback((center: [number, number], zoom: number) => {
     setMapView({ center, zoom })
-  }
+  }, [])
 
   return {
     // State
-    selectedRegions: selectedRegions ? JSON.parse(selectedRegions) : [],
+    selectedRegions: selectedRegionsArray,
     selectionMode: selectionMode || 'cursor',
     granularity: granularity || '1digit',
     center: mapView.center,
@@ -62,7 +69,7 @@ export function useMapState() {
     setSelectionMode,
     setGranularity,
     setMapCenterZoom, // atomic
-    setRadius: (radiusValue: number) => setRadius(radiusValue.toString()),
+    setRadius: useCallback((radiusValue: number) => setRadius(radiusValue.toString()), []),
     // Helper functions
     addSelectedRegion,
     removeSelectedRegion,

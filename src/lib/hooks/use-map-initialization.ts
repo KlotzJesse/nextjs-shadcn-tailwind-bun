@@ -18,8 +18,9 @@ export function useMapInitialization({
   style: string;
 }) {
   const mapRef = useRef<MapLibreMap | null>(null);
+
+  // Single state flag that gets set once when map loads
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [styleLoaded, setStyleLoaded] = useState(false);
 
   // Use useLayoutEffect for DOM container setup to ensure synchronous initialization
   // This prevents potential race conditions and ensures the map container is ready
@@ -30,7 +31,7 @@ export function useMapInitialization({
 
     (async () => {
       const maplibre = await import("maplibre-gl");
-      mapRef.current = new maplibre.Map({
+      const map = new maplibre.Map({
         container: mapContainer.current!,
         style,
         center,
@@ -38,10 +39,18 @@ export function useMapInitialization({
         minZoom: 3,
         maxZoom: 18,
       });
-      mapRef.current.on("load", () => setIsMapLoaded(true));
-      mapRef.current.on("style.load", () => setStyleLoaded(true));
+
+      mapRef.current = map;
+
+      // Listen for the load event once to trigger React re-render
+      map.once('load', () => {
+        setIsMapLoaded(true);
+      });
     })();
   }, [center, data, zoom, mapContainer, style]);
 
-  return { mapRef, isMapLoaded, styleLoaded };
+  return {
+    mapRef,
+    isMapLoaded,
+  };
 }

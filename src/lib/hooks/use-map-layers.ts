@@ -5,7 +5,6 @@ import { useEffect, useLayoutEffect, useMemo } from "react";
 interface UseMapLayersProps {
   map: MapLibreMap | null;
   isMapLoaded: boolean;
-  styleLoaded: boolean;
   layerId: string;
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   statesData?: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties> | null;
@@ -22,7 +21,6 @@ interface UseMapLayersProps {
 export function useMapLayers({
   map,
   isMapLoaded,
-  styleLoaded,
   layerId,
   data,
   statesData,
@@ -31,8 +29,10 @@ export function useMapLayers({
   getSelectedFeatureCollection,
   getLabelPoints,
 }: UseMapLayersProps) {
-  // Remove separate layersLoaded state - derive it from other conditions
-  const layersLoaded = !!(map && isMapLoaded && styleLoaded && data);
+  // Memoize layersLoaded calculation to prevent unnecessary rerenders
+  const layersLoaded = useMemo(() => {
+    return !!(map && isMapLoaded && data);
+  }, [map, isMapLoaded, data]);
 
   // Memoize all IDs for stable references
   const ids = useMemo(() => ({
@@ -54,7 +54,7 @@ export function useMapLayers({
   // Use useLayoutEffect for layer initialization to prevent visual flicker
   // This ensures all layers are created synchronously before paint
   useLayoutEffect(() => {
-    if (!map || !isMapLoaded || !styleLoaded || !data) {
+    if (!map || !isMapLoaded || !data) {
       return;
     }
 
@@ -288,10 +288,10 @@ export function useMapLayers({
     }
 
     if (process.env.NODE_ENV === "development") {
-      console.log("[useMapLayers] Layers initialized successfully");
+      console.log("[useMapLayers] Layers initialized successfully - optimized!");
     }
 
-  }, [map, isMapLoaded, styleLoaded, data, statesData, ids, layerId, getSelectedFeatureCollection, getLabelPoints]);
+  }, [map, isMapLoaded, data, statesData, ids, layerId, getSelectedFeatureCollection, getLabelPoints]);
 
   // Update selected features source when selection changes
   useEffect(() => {

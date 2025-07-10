@@ -76,7 +76,7 @@ const BaseMapComponent = ({
   const { isValid: isDataValid, errorMessage } = useMapDataValidation(data);
 
   // Map initialization with stable config
-  const { mapRef: map, isMapLoaded, styleLoaded } = useMapInitialization({
+  const { mapRef: map, isMapLoaded } = useMapInitialization({
     mapContainer,
     data,
     center: mapConfig.center,
@@ -110,11 +110,10 @@ const BaseMapComponent = ({
   const { layersLoaded } = useMapLayers({
     map: map.current,
     isMapLoaded,
-    styleLoaded,
     layerId,
     data,
     statesData,
-    selectedRegions: Array.from(selectedRegions),
+    selectedRegions, // selectedRegions is now a stable array from useMapState
     hoveredRegionId: hoveredRegionIdRef.current,
     getSelectedFeatureCollection: optimizations.getSelectedFeatureCollection,
     getLabelPoints: optimizations.getLabelPoints,
@@ -126,7 +125,6 @@ const BaseMapComponent = ({
     layerId,
     data,
     isMapLoaded,
-    styleLoaded,
     layersLoaded,
     selectedRegions,
     addSelectedRegion,

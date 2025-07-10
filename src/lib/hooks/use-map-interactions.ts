@@ -13,7 +13,6 @@ interface UseMapInteractionsProps {
   layerId: string;
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   isMapLoaded: boolean;
-  styleLoaded: boolean;
   layersLoaded: boolean;
   selectedRegions: string[];
   addSelectedRegion: (regionId: string) => void;
@@ -31,7 +30,6 @@ export function useMapInteractions({
   layerId,
   data,
   isMapLoaded,
-  styleLoaded,
   layersLoaded,
   selectedRegions,
   addSelectedRegion,
@@ -74,7 +72,6 @@ export function useMapInteractions({
   const terraDrawApi = useTerraDraw({
     mapRef, // Pass the ref, let useTerraDraw handle the dereferencing
     isMapLoaded,
-    styleLoaded,
     isEnabled: isDrawingActive,
     mode: isDrawingActive ? currentDrawingMode : null,
     onSelectionChange: handleTerraDrawSelection,
