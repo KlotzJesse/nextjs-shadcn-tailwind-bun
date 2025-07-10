@@ -5,7 +5,7 @@ import { toast } from "sonner";
  * @param codes Array of postal codes (strings)
  */
 export async function exportPostalCodesXLSX(codes: string[]) {
-  try {
+  const exportPromise = async () => {
     const XLSX = await import("xlsx");
     const ws = XLSX.utils.aoa_to_sheet([
       ["Postleitzahl"],
@@ -14,10 +14,14 @@ export async function exportPostalCodesXLSX(codes: string[]) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Postleitzahlen");
     XLSX.writeFile(wb, "postleitzahlen.xlsx");
-    toast.success("Postleitzahlen als XLSX exportiert!");
-  } catch {
-    toast.error("XLSX-Export fehlgeschlagen");
-  }
+    return `${codes.length} Postleitzahlen als XLSX exportiert`;
+  };
+
+  return toast.promise(exportPromise(), {
+    loading: `📊 Exportiere ${codes.length} Postleitzahlen...`,
+    success: (message: string) => message,
+    error: "XLSX-Export fehlgeschlagen",
+  });
 }
 
 /**
@@ -25,11 +29,15 @@ export async function exportPostalCodesXLSX(codes: string[]) {
  * @param codes Array of postal codes (strings)
  */
 export async function copyPostalCodesCSV(codes: string[]) {
-  try {
+  const copyPromise = async () => {
     const csv = codes.join(",");
     await navigator.clipboard.writeText(csv);
-    toast.success("Postleitzahlen in Zwischenablage kopiert!");
-  } catch {
-    toast.error("Kopieren in Zwischenablage fehlgeschlagen");
-  }
+    return `${codes.length} Postleitzahlen in Zwischenablage kopiert`;
+  };
+
+  return toast.promise(copyPromise(), {
+    loading: `📋 Kopiere ${codes.length} Postleitzahlen...`,
+    success: (message: string) => message,
+    error: "Kopieren in Zwischenablage fehlgeschlagen",
+  });
 }

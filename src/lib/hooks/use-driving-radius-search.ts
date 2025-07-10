@@ -38,55 +38,75 @@ export function useDrivingRadiusSearch({
       mode: "distance" | "time" = "distance",
       method: "osrm" | "approximation" = "approximation"
     ) => {
-      setIsLoading(true);
+      const searchPromise = async () => {
+        setIsLoading(true);
 
-      try {
-        const response = await fetch("/api/driving-radius-search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            coordinates,
-            radius,
-            granularity,
-            mode,
-            method,
-          }),
-        });
+        try {
+          const response = await fetch("/api/driving-radius-search", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              coordinates,
+              radius,
+              granularity,
+              mode,
+              method,
+            }),
+          });
 
-        if (!response.ok) {
-          throw new Error("Driving radius search failed");
+          if (!response.ok) {
+            throw new Error("Driving radius search failed");
+          }
+
+          const result: DrivingRadiusSearchResult = await response.json();
+          setLastSearchResult(result);
+
+          const postalCodes = result.postalCodes.map((pc) => pc.code);
+
+          if (onRadiusComplete) {
+            onRadiusComplete(postalCodes);
+          }
+
+          // Show fallback warning if OSRM failed
+          if (result.fellBackToApproximation) {
+            toast.warning(
+              "⚠️ Präzisionsmodus nicht verfügbar - Schätzung verwendet",
+              {
+                description:
+                  "Die exakte Routenberechnung ist temporär nicht verfügbar. Es wurde eine hochwertige Schätzung verwendet.",
+              }
+            );
+          }
+
+          const unit = mode === "time" ? "min" : "km";
+          const modeText = mode === "time" ? "Fahrzeit" : "Fahrstrecke";
+          const methodText =
+            result.method === "osrm" ? "🎯 Präzise" : "⚡ Geschätzt";
+
+          return `${methodText}: ${result.count} PLZ innerhalb ${radius}${unit} ${modeText} gefunden`;
+        } catch (error) {
+          console.error("Driving radius search error:", error);
+          throw error; // Re-throw for promise toast handling
+        } finally {
+          setIsLoading(false);
         }
+      };
 
-        const result: DrivingRadiusSearchResult = await response.json();
-        setLastSearchResult(result);
+      // Use promise-based toast for consistent feedback
+      const unit = mode === "time" ? "min" : "km";
+      const modeText = mode === "time" ? "Fahrzeit" : "Fahrstrecke";
+      const methodText = method === "osrm" ? "Präzise" : "Schnelle";
 
-        const postalCodes = result.postalCodes.map((pc) => pc.code);
-
-        if (onRadiusComplete) {
-          onRadiusComplete(postalCodes);
-        }
-
-        // Show fallback warning if OSRM failed
-        if (result.fellBackToApproximation) {
-          toast.warning(
-            "⚠️ Präzisionsmodus nicht verfügbar - Schätzung verwendet",
-            {
-              description:
-                "Die exakte Routenberechnung ist temporär nicht verfügbar. Es wurde eine hochwertige Schätzung verwendet.",
-            }
-          );
-        }
-
-        return result;
-      } catch (error) {
-        console.error("Driving radius search error:", error);
-        // Don't show error toast here - let promise toast handle it
-        throw error; // Re-throw for promise toast handling
-      } finally {
-        setIsLoading(false);
-      }
+      return toast.promise(searchPromise(), {
+        loading: `🔄 ${methodText} ${modeText}-Berechnung (${radius}${unit})...`,
+        success: (message) => message,
+        error: (error) =>
+          error instanceof Error
+            ? error.message
+            : `${modeText}-Berechnung fehlgeschlagen`,
+      });
     }
   );
 

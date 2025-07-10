@@ -29,6 +29,7 @@ import { ChevronsUpDownIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import {
   AddressAutocompleteErrorBoundary,
@@ -100,6 +101,22 @@ export default function PostalCodesViewClient({
 
   const handleGranularityChange = (newGranularity: string) => {
     if (newGranularity !== defaultGranularity) {
+      const granularityLabels: Record<string, string> = {
+        "1digit": "1-stellig",
+        "2digit": "2-stellig",
+        "3digit": "3-stellig",
+        "5digit": "5-stellig",
+      };
+
+      toast.success(
+        `🔄 Wechsel zu ${
+          granularityLabels[newGranularity] || newGranularity
+        } PLZ-Ansicht...`,
+        {
+          duration: 2000,
+        }
+      );
+
       router.push(`/postal-codes/${newGranularity}`);
     }
   };
@@ -110,18 +127,29 @@ export default function PostalCodesViewClient({
     _label: string,
     postalCode?: string
   ) => {
-    if (postalCode) {
-      // If we have a postal code from geocoding, use it directly
-      selectPostalCode(postalCode);
-    } else {
-      // Otherwise, find the postal code by coordinates
-      const foundCode = findPostalCodeByCoords(coords[0], coords[1]);
-      if (foundCode) {
-        selectPostalCode(foundCode);
+    const selectionPromise = async () => {
+      if (postalCode) {
+        // If we have a postal code from geocoding, use it directly
+        selectPostalCode(postalCode);
+        return `PLZ ${postalCode} ausgewählt`;
       } else {
-        alert("No postal code region found for this address.");
+        // Otherwise, find the postal code by coordinates
+        const foundCode = findPostalCodeByCoords(coords[0], coords[1]);
+        if (foundCode) {
+          selectPostalCode(foundCode);
+          return `PLZ ${foundCode} ausgewählt`;
+        } else {
+          throw new Error("Keine PLZ-Region für diese Adresse gefunden");
+        }
       }
-    }
+    };
+
+    toast.promise(selectionPromise(), {
+      loading: "📍 PLZ-Region wird ermittelt...",
+      success: (message: string) => message,
+      error: (error: unknown) =>
+        error instanceof Error ? error.message : "Fehler bei PLZ-Auswahl",
+    });
   };
 
   // Handle radius selection (radius icon)
@@ -131,17 +159,6 @@ export default function PostalCodesViewClient({
     granularity: string
   ) => {
     await performRadiusSearch(coords, radius, granularity);
-  };
-
-  // Handle driving radius selection
-  const handleDrivingRadiusSelect = async (
-    coords: [number, number],
-    radius: number,
-    granularity: string,
-    mode: "distance" | "time",
-    method: "osrm" | "approximation"
-  ) => {
-    await performDrivingRadiusSearch(coords, radius, granularity, mode, method);
   };
 
   // Get all postal codes for autocomplete
@@ -158,7 +175,7 @@ export default function PostalCodesViewClient({
             <AddressAutocompleteEnhanced
               onAddressSelect={handleAddressSelect}
               onRadiusSelect={handleRadiusSelect}
-              onDrivingRadiusSelect={handleDrivingRadiusSelect}
+              performDrivingRadiusSearch={performDrivingRadiusSearch}
               granularity={defaultGranularity}
               triggerClassName="truncate"
             />

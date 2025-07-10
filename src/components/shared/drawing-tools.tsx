@@ -326,7 +326,12 @@ function DrawingToolsImpl({
             <Button
               variant="destructive"
               size="sm"
-              onClick={onClearAll}
+              onClick={() => {
+                onClearAll();
+                toast.success("🗑️ Alle Zeichnungen und Auswahlen gelöscht", {
+                  duration: 2000,
+                });
+              }}
               className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
               title="Alle Zeichnungen und Auswahlen löschen"
               aria-label="Alles löschen"
@@ -339,7 +344,16 @@ function DrawingToolsImpl({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setSelectedRegions([])}
+              onClick={() => {
+                const count = selectedRegions.length;
+                setSelectedRegions([]);
+                toast.success(
+                  `📍 ${count} Region${count === 1 ? "" : "en"} abgewählt`,
+                  {
+                    duration: 2000,
+                  }
+                );
+              }}
               className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
               title="Auswahl aufheben"
               aria-label="Deselektieren"

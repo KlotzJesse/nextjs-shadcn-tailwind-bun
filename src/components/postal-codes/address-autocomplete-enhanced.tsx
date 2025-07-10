@@ -25,7 +25,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useDrivingRadiusSearch } from "@/lib/hooks/use-driving-radius-search";
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { ChevronsUpDownIcon, MapPinIcon, RadiusIcon } from "lucide-react";
 import { useRef, useState } from "react";
@@ -52,13 +51,13 @@ interface AddressAutocompleteEnhancedProps {
     radius: number,
     granularity: string
   ) => void;
-  onDrivingRadiusSelect?: (
-    coords: [number, number],
+  performDrivingRadiusSearch?: (
+    coordinates: [number, number],
     radius: number,
     granularity: string,
     mode: "distance" | "time",
     method: "osrm" | "approximation"
-  ) => void;
+  ) => Promise<unknown>;
   granularity: string;
   triggerClassName?: string;
 }
@@ -66,7 +65,7 @@ interface AddressAutocompleteEnhancedProps {
 export function AddressAutocompleteEnhanced({
   onAddressSelect,
   onRadiusSelect,
-  onDrivingRadiusSelect,
+  performDrivingRadiusSearch,
   granularity,
   triggerClassName = "",
 }: AddressAutocompleteEnhancedProps) {
@@ -84,9 +83,6 @@ export function AddressAutocompleteEnhanced({
     "straight" | "distance" | "time"
   >("distance"); // Simplified: straight, driving distance, or driving time
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Hook for driving radius search
-  const { performDrivingRadiusSearch } = useDrivingRadiusSearch();
 
   // Sync input field with slider value
   const syncInputWithRadius = useStableCallback((newRadius: number) => {
@@ -114,32 +110,52 @@ export function AddressAutocompleteEnhanced({
 
     setIsLoading(true);
     timeoutRef.current = setTimeout(async () => {
-      try {
-        const response = await fetch("/api/geocode", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: value,
-            includePostalCode: true,
-            limit: 8,
-          }),
-        });
+      // Create a promise for toast feedback
+      const geocodePromise = async () => {
+        try {
+          const response = await fetch("/api/geocode", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: value,
+              includePostalCode: true,
+              limit: 8,
+            }),
+          });
 
-        if (!response.ok) {
-          throw new Error("Geocoding failed");
+          if (!response.ok) {
+            throw new Error("Geocoding failed");
+          }
+
+          const data = await response.json();
+          const results = data.results || [];
+          setResults(results);
+
+          if (results.length === 0) {
+            throw new Error(`Keine Ergebnisse für "${value}" gefunden`);
+          }
+
+          return `${results.length} Adresse${
+            results.length > 1 ? "n" : ""
+          } gefunden`;
+        } catch (error) {
+          console.error("Geocoding error:", error);
+          setResults([]);
+          throw error;
+        } finally {
+          setIsLoading(false);
         }
+      };
 
-        const data = await response.json();
-        setResults(data.results || []);
-      } catch (error) {
-        console.error("Geocoding error:", error);
-        setResults([]);
-        toast.error("Adresssuche fehlgeschlagen");
-      } finally {
-        setIsLoading(false);
-      }
+      // Use promise-based toast for geocoding feedback
+      toast.promise(geocodePromise(), {
+        loading: `🔍 Suche nach "${value}"...`,
+        success: (message) => message,
+        error: (error) =>
+          error instanceof Error ? error.message : "Adresssuche fehlgeschlagen",
+      });
     }, 300);
   });
 
@@ -202,15 +218,17 @@ export function AddressAutocompleteEnhanced({
       // Create the search promise for toast handling with enhanced feedback
       const searchPromise = async () => {
         if (searchMode === "straight") {
-          // Use traditional straight-line radius search
-          onRadiusSelect(selectedCoords, finalRadius, granularity);
+          // Use traditional straight-line radius search - it handles its own toast
+          await onRadiusSelect(selectedCoords, finalRadius, granularity);
           return `✅ ${finalRadius}km Luftlinie erfolgreich ausgewählt`;
         } else {
-          // Use driving radius search (default to OSRM precision)
+          // Use driving radius search - it handles its own toast
           const mode = searchMode === "distance" ? "distance" : "time";
           const method = "osrm"; // Always start with precision mode
 
-          try {
+          // The performDrivingRadiusSearch hook already calls the onRadiusComplete callback
+          // internally, so we don't need to call onDrivingRadiusSelect manually
+          if (performDrivingRadiusSearch) {
             await performDrivingRadiusSearch(
               selectedCoords,
               finalRadius,
@@ -218,44 +236,19 @@ export function AddressAutocompleteEnhanced({
               mode,
               method
             );
-
-            if (onDrivingRadiusSelect) {
-              onDrivingRadiusSelect(
-                selectedCoords,
-                finalRadius,
-                granularity,
-                mode,
-                method
-              );
-            }
-
-            const unit = mode === "time" ? "min" : "km";
-            const modeText = mode === "time" ? "Fahrzeit" : "Fahrstrecke";
-            return `🎯 ${finalRadius}${unit} ${modeText} erfolgreich berechnet`;
-          } catch (error) {
-            console.error("Driving radius search failed:", error);
-            throw new Error(
-              `Fehler bei der ${
-                mode === "time" ? "Fahrzeit" : "Fahrstrecke"
-              }-Berechnung. Bitte versuchen Sie es erneut.`
-            );
+          } else {
+            throw new Error("Driving radius search is not available");
           }
+
+          const unit = mode === "time" ? "min" : "km";
+          const modeText = mode === "time" ? "Fahrzeit" : "Fahrstrecke";
+          return `✅ ${finalRadius}${unit} ${modeText} erfolgreich ausgewählt`;
         }
       };
 
-      // Enhanced promise-based toast with better UX
-      toast.promise(searchPromise(), {
-        loading: `🔄 ${
-          searchMode === "straight"
-            ? "Luftlinie"
-            : searchMode === "distance"
-            ? "Fahrstrecke"
-            : "Fahrzeit"
-        } wird berechnet...`,
-        success: (message) => message,
-        error: (error) =>
-          error.message || "Unerwarteter Fehler bei der Berechnung",
-      });
+      // Since the individual search functions handle their own toasts,
+      // we just execute the search without wrapping in another toast
+      await searchPromise();
 
       setRadiusDialogOpen(false);
       setSelectedCoords(null);

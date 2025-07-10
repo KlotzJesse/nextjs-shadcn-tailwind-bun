@@ -32,44 +32,53 @@ export function useRadiusSearch({
       radius: number,
       granularity: string
     ) => {
-      setIsLoading(true);
+      const searchPromise = async () => {
+        setIsLoading(true);
 
-      try {
-        const response = await fetch("/api/radius-search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            coordinates,
-            radius,
-            granularity,
-          }),
-        });
+        try {
+          const response = await fetch("/api/radius-search", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              coordinates,
+              radius,
+              granularity,
+            }),
+          });
 
-        if (!response.ok) {
-          throw new Error("Radius search failed");
+          if (!response.ok) {
+            throw new Error("Radius search failed");
+          }
+
+          const result: RadiusSearchResult = await response.json();
+          setLastSearchResult(result);
+
+          const postalCodes = result.postalCodes.map((pc) => pc.code);
+
+          if (onRadiusComplete) {
+            onRadiusComplete(postalCodes);
+          }
+
+          return `${result.count} PLZ innerhalb ${radius}km Luftlinie gefunden`;
+        } catch (error) {
+          console.error("Radius search error:", error);
+          throw new Error("PLZ-Umkreissuche fehlgeschlagen");
+        } finally {
+          setIsLoading(false);
         }
+      };
 
-        const result: RadiusSearchResult = await response.json();
-        setLastSearchResult(result);
-
-        const postalCodes = result.postalCodes.map((pc) => pc.code);
-
-        if (onRadiusComplete) {
-          onRadiusComplete(postalCodes);
-        }
-
-        toast.success(`${result.count} PLZ innerhalb ${radius}km gefunden`);
-
-        return result;
-      } catch (error) {
-        console.error("Radius search error:", error);
-        toast.error("PLZ-Umkreissuche fehlgeschlagen");
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
+      // Use promise-based toast for consistent feedback
+      return toast.promise(searchPromise(), {
+        loading: `🔄 Suche PLZ innerhalb ${radius}km Luftlinie...`,
+        success: (message) => message,
+        error: (error) =>
+          error instanceof Error
+            ? error.message
+            : "PLZ-Umkreissuche fehlgeschlagen",
+      });
     }
   );
 

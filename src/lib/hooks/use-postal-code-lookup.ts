@@ -30,53 +30,63 @@ export function usePostalCodeLookup({
     useState<PostalCodeLookupResult | null>(null);
 
   const lookupPostalCode = useStableCallback(async (postalCode: string) => {
-    setIsLoading(true);
+    const lookupPromise = async () => {
+      setIsLoading(true);
 
-    try {
-      // First try to find the postal code in the current data
-      const normalizedCode = postalCode.trim().toUpperCase();
-      const feature = data.features.find((f) => {
-        const code =
-          f.properties?.code || f.properties?.PLZ || f.properties?.plz;
-        return code && code.toString().toUpperCase() === normalizedCode;
-      });
+      try {
+        // First try to find the postal code in the current data
+        const normalizedCode = postalCode.trim().toUpperCase();
+        const feature = data.features.find((f) => {
+          const code =
+            f.properties?.code || f.properties?.PLZ || f.properties?.plz;
+          return code && code.toString().toUpperCase() === normalizedCode;
+        });
 
-      if (feature) {
-        const result: PostalCodeLookupResult = {
-          code: normalizedCode,
-          geometry: feature.geometry,
-          properties: feature.properties,
-          found: true,
-        };
+        if (feature) {
+          const result: PostalCodeLookupResult = {
+            code: normalizedCode,
+            geometry: feature.geometry,
+            properties: feature.properties,
+            found: true,
+          };
 
-        setLastLookupResult(result);
+          setLastLookupResult(result);
 
-        if (onPostalCodeFound) {
-          onPostalCodeFound(normalizedCode, feature.geometry);
+          if (onPostalCodeFound) {
+            onPostalCodeFound(normalizedCode, feature.geometry);
+          }
+
+          return `PLZ ${normalizedCode} gefunden`;
+        } else {
+          // If not found in current data, show appropriate message
+          const result: PostalCodeLookupResult = {
+            code: normalizedCode,
+            geometry: null,
+            properties: null,
+            found: false,
+          };
+
+          setLastLookupResult(result);
+          throw new Error(
+            `PLZ ${normalizedCode} nicht in aktueller Ansicht gefunden`
+          );
         }
-
-        toast.success(`Found postal code: ${normalizedCode}`);
-        return result;
-      } else {
-        // If not found in current data, show appropriate message
-        const result: PostalCodeLookupResult = {
-          code: normalizedCode,
-          geometry: null,
-          properties: null,
-          found: false,
-        };
-
-        setLastLookupResult(result);
-        toast.error(`Postal code ${normalizedCode} not found in current view`);
-        return result;
+      } catch (error) {
+        console.error("Postal code lookup error:", error);
+        throw error instanceof Error
+          ? error
+          : new Error("PLZ-Suche fehlgeschlagen");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Postal code lookup error:", error);
-      toast.error("Failed to lookup postal code");
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    return toast.promise(lookupPromise(), {
+      loading: `🔍 Suche PLZ ${postalCode}...`,
+      success: (message) => message,
+      error: (error) =>
+        error instanceof Error ? error.message : "PLZ-Suche fehlgeschlagen",
+    });
   });
 
   const clearLastLookup = useStableCallback(() => {
