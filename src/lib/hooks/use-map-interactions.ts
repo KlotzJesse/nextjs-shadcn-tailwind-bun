@@ -62,9 +62,6 @@ export function useMapInteractions({
     });
   }, [currentDrawingMode, isCursorMode, isDrawingActive, isMapLoaded, styleLoaded, layersLoaded]);
 
-  // Memoize map reference for stability - use the actual map instance, not the ref
-  const map = mapRef.current;
-
   // TerraDraw selection logic
   const { terraDrawRef, handleTerraDrawSelection, clearAll } = useMapTerraDrawSelection({
     mapRef,
@@ -73,28 +70,32 @@ export function useMapInteractions({
     setSelectedRegions,
   });
 
-  // TerraDraw integration
+  // TerraDraw integration - initialize as soon as map is ready, don't wait for layers
+  // CRITICAL: Pass the ref directly to avoid unstable map references that cause constant remounting
   const terraDrawApi = useTerraDraw({
-    map: map && isMapLoaded && styleLoaded && layersLoaded ? map : null,
-    isEnabled: isDrawingActive && layersLoaded,
+    mapRef, // Pass the ref, let useTerraDraw handle the dereferencing
+    isMapLoaded,
+    styleLoaded,
+    isEnabled: isDrawingActive,
     mode: isDrawingActive ? currentDrawingMode : null,
     onSelectionChange: handleTerraDrawSelection,
   });
 
   // Debug logging for TerraDraw parameters
   useEffect(() => {
+    const map = mapRef.current;
     console.log("[useMapInteractions] TerraDraw parameters:", {
       map: !!map,
       isMapLoaded,
       styleLoaded,
       layersLoaded,
-      mapReady: !!(map && isMapLoaded && styleLoaded && layersLoaded),
-      isEnabled: isDrawingActive && layersLoaded,
+      mapReady: !!(map && isMapLoaded && styleLoaded),
+      isEnabled: isDrawingActive,
       mode: isDrawingActive ? currentDrawingMode : null,
       currentDrawingMode,
       isDrawingActive,
     });
-  }, [map, isMapLoaded, styleLoaded, layersLoaded, isDrawingActive, currentDrawingMode]);
+  }, [mapRef, isMapLoaded, styleLoaded, layersLoaded, isDrawingActive, currentDrawingMode]);
 
   // Always assign terraDrawRef for stability
   terraDrawRef.current = terraDrawApi;
@@ -106,11 +107,11 @@ export function useMapInteractions({
     handleMouseMove,
     handleMouseLeave,
     isFeatureWithCode,
-  } = useMapHoverInteraction(map, layerId, layersLoaded, isCursorMode);
+  } = useMapHoverInteraction(mapRef.current, layerId, layersLoaded, isCursorMode);
 
   // Click interaction management
   const { handleClick } = useMapClickInteraction(
-    map,
+    mapRef.current,
     layersLoaded,
     isCursorMode,
     selectedRegions,
@@ -121,7 +122,7 @@ export function useMapInteractions({
 
   // Event listeners management
   useMapEventListeners({
-    map,
+    map: mapRef.current,
     layerId,
     layersLoaded,
     isCursorMode,

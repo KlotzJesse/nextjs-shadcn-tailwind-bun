@@ -1,7 +1,7 @@
 import { useConvertRadiusToGeographic, useFindFeaturesInCircle, useFindFeaturesInPolygon } from "@/components/shared/hooks/use-feature-selection";
 import type { Feature, FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useCallback, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 
 interface UseMapTerraDrawSelectionProps {
   mapRef: RefObject<MapLibreMap | null>;
@@ -26,6 +26,14 @@ export function useMapTerraDrawSelection({
     getSnapshot: () => unknown[];
     clearAll: () => void;
   } | null>(null);
+
+  // Ref to track current selected regions to avoid dependency issues
+  const selectedRegionsRef = useRef<string[]>(selectedRegions);
+
+  // Update ref when selectedRegions changes
+  useEffect(() => {
+    selectedRegionsRef.current = selectedRegions;
+  }, [selectedRegions]);
 
   // Feature selection hooks
   const findFeaturesInPolygon = useFindFeaturesInPolygon(data);
@@ -174,7 +182,8 @@ export function useMapTerraDrawSelection({
       // Remove duplicates and add all selected features to state
       const uniqueSelectedFeatures = [...new Set(allSelectedFeatures)];
       if (uniqueSelectedFeatures.length > 0) {
-        const currentSelectedRegions = selectedRegions || [];
+        // Use ref to get current state and avoid dependency issues
+        const currentSelectedRegions = selectedRegionsRef.current || [];
         const mergedRegions = [
           ...new Set([...currentSelectedRegions, ...uniqueSelectedFeatures]),
         ];
@@ -185,7 +194,6 @@ export function useMapTerraDrawSelection({
       mapRef,
       findFeaturesInPolygon,
       findFeaturesInCircle,
-      selectedRegions,
       setSelectedRegions,
       convertRadiusToGeographic,
     ]
