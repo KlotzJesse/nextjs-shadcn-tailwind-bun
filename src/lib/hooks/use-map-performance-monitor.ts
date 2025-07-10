@@ -27,32 +27,25 @@ export function useMapPerformanceMonitor({
   const mountTime = useRef(Date.now());
 
   useEffect(() => {
-    // Only increment render count and calculate timings
     renderCount.current += 1;
     const now = Date.now();
     const timeSinceLastRender = now - lastRenderTime.current;
     const timeSinceMount = now - mountTime.current;
-    lastRenderTime.current = now;
 
-    // Only log in development and reduce logging frequency
+    // Only log in development
     if (process.env.NODE_ENV === "development") {
-      // Only log every 4th render after the first few to reduce noise
-      const shouldLog = renderCount.current <= 4 || renderCount.current % 4 === 0;
-
-      if (shouldLog) {
-        console.log(
-          `[${componentName}] Render #${renderCount.current}`,
-          {
-            timeSinceLastRender: `${timeSinceLastRender}ms`,
-            timeSinceMount: `${timeSinceMount}ms`,
-            featureCount,
-            selectedCount,
-            isMapLoaded,
-            layersLoaded,
-            currentDrawingMode,
-          }
-        );
-      }
+      console.log(
+        `[${componentName}] Render #${renderCount.current}`,
+        {
+          timeSinceLastRender: `${timeSinceLastRender}ms`,
+          timeSinceMount: `${timeSinceMount}ms`,
+          featureCount,
+          selectedCount,
+          isMapLoaded,
+          layersLoaded,
+          currentDrawingMode,
+        }
+      );
 
       // Warn about frequent re-renders
       if (timeSinceLastRender < 100 && renderCount.current > 5) {
@@ -61,7 +54,9 @@ export function useMapPerformanceMonitor({
         );
       }
     }
-  }); // No dependency array to run on every render
+
+    lastRenderTime.current = now;
+  });
 
   // Log mount/unmount in development
   useEffect(() => {

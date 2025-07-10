@@ -50,7 +50,7 @@ export function useMapLayers({
 
   // Helper to add a layer with beforeId if it exists
 
-  // Main effect: initialize all sources and layers (only when map/data changes)
+  // Main effect: initialize/update all sources and layers
   useEffect(() => {
     if (!map || !isMapLoaded || !styleLoaded || !data) {
       setLayersLoaded(false);
@@ -269,7 +269,7 @@ export function useMapLayers({
     }
     setLayersLoaded(true);
 
-  }, [map, isMapLoaded, styleLoaded, data, statesData, getSelectedFeatureCollection, getLabelPoints, ids, layerId]); // Removed selectedRegions and hoveredRegionId to prevent unnecessary reinitializations
+  }, [map, isMapLoaded, styleLoaded, data, statesData, selectedRegions, hoveredRegionId, getSelectedFeatureCollection, getLabelPoints, ids, layerId]);
 
   // Update selected features source when selection changes
   useEffect(() => {
