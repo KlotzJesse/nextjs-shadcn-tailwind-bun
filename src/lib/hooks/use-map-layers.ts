@@ -326,17 +326,56 @@ export function useMapLayers({
   useEffect(() => {
     return () => {
       if (!map) return;
-      Object.values(ids).forEach((id) => {
+      
+      // First, remove all layers (order matters: remove layers before sources)
+      const layerIds = [
+        ids.labelLayerId,
+        "state-boundaries-label",
+        ids.hoverLayerId,
+        ids.selectedLayerId,
+        `${layerId}-border`,
+        ids.stateLayerId,
+        `${layerId}-layer`
+      ];
+      
+      layerIds.forEach((id) => {
         try {
-          if (map.getLayer(id)) map.removeLayer(id);
-        } catch {}
+          if (map.getLayer(id)) {
+            map.removeLayer(id);
+          }
+        } catch (error) {
+          // Layer might not exist or already removed
+          if (process.env.NODE_ENV === "development") {
+            console.warn(`Failed to remove layer ${id}:`, error);
+          }
+        }
+      });
+      
+      // Then remove all sources (after all layers are removed)
+      const sourceIds = [
+        ids.sourceId,
+        ids.selectedSourceId,
+        ids.hoverSourceId,
+        ids.labelSourceId,
+        ids.stateSourceId,
+        ids.stateLabelSourceId
+      ];
+      
+      sourceIds.forEach((id) => {
         try {
-          if (map.getSource(id)) map.removeSource(id);
-        } catch {}
+          if (map.getSource(id)) {
+            map.removeSource(id);
+          }
+        } catch (error) {
+          // Source might not exist or already removed
+          if (process.env.NODE_ENV === "development") {
+            console.warn(`Failed to remove source ${id}:`, error);
+          }
+        }
       });
     };
 
-  }, [map, ids]);
+  }, [map, layerId, ids]);
 
   return { layersLoaded };
 }
