@@ -1,4 +1,3 @@
-import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { ErrorBoundary } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMapCenterZoomSync } from "@/lib/hooks/use-map-center-zoom-sync";
@@ -10,6 +9,7 @@ import { useMapLayers } from "@/lib/hooks/use-map-layers";
 import { useMapOptimizations } from "@/lib/hooks/use-map-optimizations";
 import { useMapPerformanceMonitor } from "@/lib/hooks/use-map-performance-monitor";
 import { useMapSelectedFeaturesSource } from "@/lib/hooks/use-map-selected-features-source";
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { useMapState } from "@/lib/url-state/map-state";
 import type {
   BaseMapProps,
@@ -18,7 +18,7 @@ import type {
 } from "@/types/base-map";
 import { PlusIcon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { memo, startTransition, Suspense, useCallback, useMemo, useRef } from "react";
+import { memo, startTransition, Suspense, useMemo, useRef } from "react";
 import { Button } from "../ui/button";
 
 // Memoized drawing tools component with lazy loading for performance
@@ -102,7 +102,6 @@ const BaseMapComponent = ({
   });
 
   // Business logic with stable references (available for future use)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
   // Memoized hovered region ref to prevent layer re-initialization
   const hoveredRegionIdRef = useMemo(() => ({ current: null as string | null }), []);

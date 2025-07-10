@@ -87,7 +87,7 @@ export function useTerraDraw({
         console.log("[TerraDraw] useTerraDraw hook unmounted.");
       };
     }
-  }, []); // Empty dependency array to only log on mount/unmount  // Only initialize TerraDraw once, after map style is loaded
+  }, [mapRef, isMapLoaded, styleLoaded, isEnabled, mode]); // Include all dependencies for proper debugging  // Only initialize TerraDraw once, after map style is loaded
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapLoaded || !styleLoaded || isInitializedRef.current) return;
@@ -196,7 +196,7 @@ export function useTerraDraw({
       console.error("[TerraDraw] Failed to initialize TerraDraw:", error);
       isInitializedRef.current = false;
     }
-  }, [mapRef, isMapLoaded, styleLoaded]); // Removed stableOnSelectionChange from deps since it's stable
+  }, [mapRef, isMapLoaded, styleLoaded, stableOnSelectionChange]); // Include stableOnSelectionChange since it's used in the effect
 
   const clearAll = useStableCallback(() => {
     if (!drawRef.current) return;
@@ -413,7 +413,7 @@ export function useTerraDraw({
         }
       }
     };
-  }, [mapRef]);
+  }, []); // Empty dependency array for cleanup on unmount only
 
   return {
     isInitialized: isInitializedRef.current,

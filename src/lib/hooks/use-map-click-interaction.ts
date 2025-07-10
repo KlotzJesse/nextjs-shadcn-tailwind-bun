@@ -1,5 +1,5 @@
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useCallback } from "react";
 
 /**
  * Hook for managing click interactions and feature selection
@@ -15,7 +15,7 @@ export function useMapClickInteraction(
   isFeatureWithCode: (obj: unknown) => obj is { properties?: { code?: string } }
 ) {
   // Click handler for feature selection
-  const handleClick = useCallback(
+  const handleClick = useStableCallback(
     (...args: unknown[]) => {
       if (!map || !layersLoaded || !isCursorMode) return;
 
@@ -33,16 +33,7 @@ export function useMapClickInteraction(
           }
         }
       }
-    },
-    [
-      map,
-      layersLoaded,
-      isCursorMode,
-      selectedRegions,
-      addSelectedRegion,
-      removeSelectedRegion,
-      isFeatureWithCode,
-    ]
+    }
   );
 
   return {

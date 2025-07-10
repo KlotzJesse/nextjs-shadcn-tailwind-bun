@@ -1,3 +1,4 @@
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { useMapState } from "@/lib/url-state/map-state";
 import {
   FeatureCollection,
@@ -5,7 +6,7 @@ import {
   MultiPolygon,
   Polygon,
 } from "geojson";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 interface PostalCodeSearchProps {
   data: FeatureCollection<MultiPolygon | Polygon, GeoJsonProperties>;
@@ -16,7 +17,7 @@ export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
   const [isSearching, setIsSearching] = useState(false);
   const { addSelectedRegion } = useMapState();
 
-  const searchPostalCodes = useCallback(
+  const searchPostalCodes = useStableCallback(
     (query: string) => {
       if (!query.trim()) {
         setSearchResults([]);
@@ -59,22 +60,20 @@ export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
       } finally {
         setIsSearching(false);
       }
-    },
-    [data]
+    }
   );
 
-  const selectPostalCode = useCallback(
+  const selectPostalCode = useStableCallback(
     (postalCode: string) => {
       addSelectedRegion(postalCode);
       setSearchResults([]); // Clear search results after selection
-    },
-    [addSelectedRegion]
+    }
   );
 
-  const clearSearch = useCallback(() => {
+  const clearSearch = useStableCallback(() => {
     setSearchResults([]);
     setIsSearching(false);
-  }, []);
+  });
 
   return {
     searchResults,

@@ -1,5 +1,7 @@
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
+import { flushSync } from "react-dom";
 
 /**
  * Hook for managing hover state and interactions
@@ -15,7 +17,7 @@ export function useMapHoverInteraction(
   const hoveredRegionIdRef = useRef<string | null>(null);
 
   // Memoized helper to check if feature has code property
-  const isFeatureWithCode = useCallback((
+  const isFeatureWithCode = useStableCallback((
     obj: unknown
   ): obj is { properties?: { code?: string } } => {
     return (
@@ -26,10 +28,10 @@ export function useMapHoverInteraction(
       (obj as { properties?: unknown }).properties !== null &&
       "code" in (obj as { properties: { code?: unknown } }).properties
     );
-  }, []);
+  });
 
   // Core hover processing logic
-  const processHover = useCallback(
+  const processHover = useStableCallback(
     (...args: unknown[]) => {
       if (!map || !layersLoaded || !isCursorMode) return;
 
@@ -50,34 +52,35 @@ export function useMapHoverInteraction(
               });
             }
             map.setLayoutProperty(hoverLayerId, "visibility", "visible");
-            const canvas = map.getCanvas();
-            if (canvas) canvas.style.cursor = "pointer";
+            
+            // Use flushSync for synchronous cursor updates to prevent visual lag
+            flushSync(() => {
+              const canvas = map.getCanvas();
+              if (canvas) canvas.style.cursor = "pointer";
+            });
             hoveredRegionIdRef.current = regionCode;
           }
         }
       }
-    },
-    [map, layerId, layersLoaded, isCursorMode, isFeatureWithCode]
+    }
   );
 
   // Mouse enter handler
-  const handleMouseEnter = useCallback(
+  const handleMouseEnter = useStableCallback(
     (...args: unknown[]) => {
       processHover(...args);
-    },
-    [processHover]
+    }
   );
 
   // Mouse move handler
-  const handleMouseMove = useCallback(
+  const handleMouseMove = useStableCallback(
     (...args: unknown[]) => {
       processHover(...args);
-    },
-    [processHover]
+    }
   );
 
   // Mouse leave handler
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseLeave = useStableCallback(() => {
     if (!map || !layersLoaded || !isCursorMode) return;
 
     const hoverSourceId = `${layerId}-hover-source`;
@@ -93,12 +96,15 @@ export function useMapHoverInteraction(
 
     if (map) {
       map.setLayoutProperty(hoverLayerId, "visibility", "none");
-      const canvas = map.getCanvas();
-      if (canvas) canvas.style.cursor = "grab";
+      // Use flushSync for synchronous cursor updates to prevent visual lag
+      flushSync(() => {
+        const canvas = map.getCanvas();
+        if (canvas) canvas.style.cursor = "grab";
+      });
     }
 
     hoveredRegionIdRef.current = null;
-  }, [map, layerId, layersLoaded, isCursorMode]);
+  });
 
   return {
     hoveredRegionIdRef,

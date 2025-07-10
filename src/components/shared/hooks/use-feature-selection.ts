@@ -1,16 +1,16 @@
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { getLargestPolygonCentroid } from "@/lib/utils/map-data";
 import type {
-  Feature,
-  FeatureCollection,
-  GeoJsonProperties,
-  MultiPolygon,
-  Polygon,
+    Feature,
+    FeatureCollection,
+    GeoJsonProperties,
+    MultiPolygon,
+    Polygon,
 } from "geojson";
-import { useCallback } from "react";
 
 // Point-in-polygon helper (ray-casting)
 export function usePointInPolygon() {
-  return useCallback((point: [number, number], polygon: [number, number][]): boolean => {
+  return useStableCallback((point: [number, number], polygon: [number, number][]): boolean => {
     let inside = false;
     const [x, y] = point;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -21,7 +21,7 @@ export function usePointInPolygon() {
       }
     }
     return inside;
-  }, []);
+  });
 }
 
 // Find features whose centroid is inside a polygon
@@ -29,7 +29,7 @@ export function useFindFeaturesInPolygon(
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
 ) {
   const isPointInPolygon = usePointInPolygon();
-  return useCallback(
+  return useStableCallback(
     (polygon: number[][]): string[] => {
       if (!data || polygon.length < 3) return [];
       const selectedFeatures: string[] = [];
@@ -53,8 +53,7 @@ export function useFindFeaturesInPolygon(
         if (isInside) selectedFeatures.push(featureCode);
       });
       return selectedFeatures;
-    },
-    [data, isPointInPolygon]
+    }
   );
 }
 
@@ -62,7 +61,7 @@ export function useFindFeaturesInPolygon(
 export function useFindFeaturesInCircle(
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
 ) {
-  return useCallback(
+  return useStableCallback(
     (center: [number, number], radiusDegrees: number): string[] => {
       if (!data) return [];
       const selectedFeatures: string[] = [];
@@ -84,8 +83,7 @@ export function useFindFeaturesInCircle(
         if (distance <= radiusDegrees) selectedFeatures.push(featureCode);
       });
       return selectedFeatures;
-    },
-    [data]
+    }
   );
 }
 
@@ -93,7 +91,7 @@ export function useFindFeaturesInCircle(
 import type { MapLibreMap } from "@/types/map";
 
 export function useConvertRadiusToGeographic(mapRef: React.RefObject<MapLibreMap | null>) {
-  return useCallback((pixelRadius: number, center: [number, number]): number => {
+  return useStableCallback((pixelRadius: number, center: [number, number]): number => {
     if (!mapRef.current) return pixelRadius;
     try {
       const zoom = mapRef.current.getZoom();
@@ -106,5 +104,5 @@ export function useConvertRadiusToGeographic(mapRef: React.RefObject<MapLibreMap
     } catch {
       return pixelRadius;
     }
-  }, [mapRef]);
+  });
 }

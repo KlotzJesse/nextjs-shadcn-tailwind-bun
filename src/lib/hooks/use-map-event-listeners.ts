@@ -1,5 +1,6 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect } from "react";
+import { flushSync } from "react-dom";
 
 interface UseMapEventListenersProps {
   map: MapLibreMap | null;
@@ -27,25 +28,42 @@ export function useMapEventListeners({
   handleMouseLeave,
   handleClick,
 }: UseMapEventListenersProps) {
-  // Cursor style handlers
+  // Cursor style handlers with flushSync for synchronous updates
   const handleMouseDown = useCallback(() => {
     if (!map) return;
-    const canvas = map.getCanvas();
-    if (canvas) canvas.style.cursor = "grabbing";
+    flushSync(() => {
+      const canvas = map.getCanvas();
+      if (canvas) canvas.style.cursor = "grabbing";
+    });
   }, [map]);
 
   const handleMouseUp = useCallback(() => {
     if (!map) return;
-    const canvas = map.getCanvas();
-    if (canvas) canvas.style.cursor = "grab";
+    flushSync(() => {
+      const canvas = map.getCanvas();
+      if (canvas) canvas.style.cursor = "grab";
+    });
   }, [map]);
 
-  useEffect(() => {
+  // Use useLayoutEffect for cursor style updates to prevent visual flicker
+  // This ensures cursor changes are applied synchronously before paint
+  useLayoutEffect(() => {
     if (!map || !layersLoaded || !isCursorMode) return;
 
     const canvas = map.getCanvas();
     canvas.style.cursor = "grab";
 
+    return () => {
+      // Reset cursor on cleanup
+      canvas.style.cursor = "grab";
+    };
+  }, [map, layersLoaded, isCursorMode]);
+
+  // Use useEffect for event listeners since they don't affect layout immediately
+  useEffect(() => {
+    if (!map || !layersLoaded || !isCursorMode) return;
+
+    const canvas = map.getCanvas();
     const targetLayer = `${layerId}-layer`;
     let attached = false;
 
@@ -75,7 +93,7 @@ export function useMapEventListeners({
     // Attach immediately if layer is already present
     attachHandlers();
 
-    // Add cursor style handlers
+    // Add cursor style handlers (synchronous DOM updates)
     canvas.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mouseup", handleMouseUp);
 
@@ -94,9 +112,6 @@ export function useMapEventListeners({
       map?.off("styledata", onStyleData);
       canvas.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mouseup", handleMouseUp);
-
-      // Reset cursor
-      canvas.style.cursor = "grab";
     };
   }, [
     map,

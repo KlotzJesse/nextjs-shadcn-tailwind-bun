@@ -1,6 +1,6 @@
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { MapLibreMap } from "@/types/map";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 
 /**
  * useMapCenterZoomSync
@@ -54,12 +54,13 @@ export function useMapCenterZoomSync({
     }
   });
 
-  // Sync map view when center/zoom props change
-  useEffect(() => {
+  // Use useLayoutEffect for synchronous map view updates to prevent visual flicker
+  // This ensures the map position is updated before the browser paints
+  useLayoutEffect(() => {
     updateMapView();
   }, [updateMapView]);
 
-  // Attach/detach event listeners for moveend/zoomend
+  // Use useEffect for event listeners since they don't affect layout immediately
   useEffect(() => {
     if (!mapRef.current || !isMapLoaded) return;
     const map = mapRef.current;

@@ -1,6 +1,6 @@
 import type { FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Polygon } from "geojson";
 import type { GeoJSONSource, LayerSpecification, Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo } from "react";
 
 interface UseMapLayersProps {
   map: MapLibreMap | null;
@@ -51,8 +51,9 @@ export function useMapLayers({
 
   // Helper to add a layer with beforeId if it exists
 
-  // Main effect: initialize all sources and layers (only when map/data changes)
-  useEffect(() => {
+  // Use useLayoutEffect for layer initialization to prevent visual flicker
+  // This ensures all layers are created synchronously before paint
+  useLayoutEffect(() => {
     if (!map || !isMapLoaded || !styleLoaded || !data) {
       return;
     }
@@ -60,6 +61,20 @@ export function useMapLayers({
     if (process.env.NODE_ENV === "development") {
       console.log("[useMapLayers] Initializing layers...");
     }
+
+    // Create stable references for functions to avoid dependency issues
+    const selectedFeatureCollection = (() => {
+      return getSelectedFeatureCollection();
+    })();
+
+    const labelPoints = (() => {
+      return getLabelPoints(data);
+    })();
+
+    const statesLabelPoints = statesData ? (() => {
+      return getLabelPoints(statesData);
+    })() : null;
+
     // --- Robust source creation ---
     // Always create all sources first
     // 1. Main data source
@@ -71,7 +86,7 @@ export function useMapLayers({
     }
     // 2. Selected source
     if (!map.getSource(ids.selectedSourceId)) {
-      map.addSource(ids.selectedSourceId, { type: "geojson", data: getSelectedFeatureCollection() });
+      map.addSource(ids.selectedSourceId, { type: "geojson", data: selectedFeatureCollection });
     }
     // 3. Hover source
     if (!map.getSource(ids.hoverSourceId)) {
@@ -79,10 +94,10 @@ export function useMapLayers({
     }
     // 4. Label points source
     if (!map.getSource(ids.labelSourceId)) {
-      map.addSource(ids.labelSourceId, { type: "geojson", data: getLabelPoints(data) });
+      map.addSource(ids.labelSourceId, { type: "geojson", data: labelPoints });
     } else {
       const src = map.getSource(ids.labelSourceId) as GeoJSONSource | undefined;
-      if (src && typeof src.setData === "function") src.setData(getLabelPoints(data));
+      if (src && typeof src.setData === "function") src.setData(labelPoints);
     }
     // 5. State boundaries sources
     if (statesData) {
@@ -93,10 +108,10 @@ export function useMapLayers({
         if (src && typeof src.setData === "function") src.setData(statesData);
       }
       if (!map.getSource(ids.stateLabelSourceId)) {
-        map.addSource(ids.stateLabelSourceId, { type: "geojson", data: getLabelPoints(statesData) });
+        map.addSource(ids.stateLabelSourceId, { type: "geojson", data: statesLabelPoints! });
       } else {
         const src = map.getSource(ids.stateLabelSourceId) as GeoJSONSource | undefined;
-        if (src && typeof src.setData === "function") src.setData(getLabelPoints(statesData));
+        if (src && typeof src.setData === "function") src.setData(statesLabelPoints!);
       }
     }
 
@@ -276,7 +291,7 @@ export function useMapLayers({
       console.log("[useMapLayers] Layers initialized successfully");
     }
 
-  }, [map, isMapLoaded, styleLoaded, data, statesData, ids, layerId]); // Removed getSelectedFeatureCollection and getLabelPoints to prevent function reference changes
+  }, [map, isMapLoaded, styleLoaded, data, statesData, ids, layerId, getSelectedFeatureCollection, getLabelPoints]);
 
   // Update selected features source when selection changes
   useEffect(() => {
@@ -287,8 +302,9 @@ export function useMapLayers({
     }
   }, [selectedRegions, getSelectedFeatureCollection, map, layersLoaded, ids.selectedSourceId]);
 
-  // Update hover source when hoveredRegionId changes
-  useEffect(() => {
+  // Use useLayoutEffect for hover source updates to prevent visual flicker
+  // This ensures hover state changes are applied synchronously
+  useLayoutEffect(() => {
     if (!map || !layersLoaded) return;
     const src = map.getSource(ids.hoverSourceId) as GeoJSONSource | undefined;
     if (src && typeof src.setData === "function") {
