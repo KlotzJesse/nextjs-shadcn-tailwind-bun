@@ -194,9 +194,20 @@ function DrawingToolsImpl({
 
   const handleModeClick = (mode: TerraDrawMode) => {
     if (currentMode === mode) {
-      onModeChange(null); // Deselect if clicking the same mode
+      // Deactivate current mode
+      onModeChange(null);
+      const modeInfo = drawingModes.find(m => m.id === mode);
+      toast.success(`🖱️ ${modeInfo?.name || 'Werkzeug'} deaktiviert`, {
+        duration: 2000,
+      });
     } else {
+      // Activate new mode
       onModeChange(mode);
+      const modeInfo = drawingModes.find(m => m.id === mode);
+      toast.success(`🎯 ${modeInfo?.name || 'Werkzeug'} aktiviert`, {
+        description: modeInfo?.description,
+        duration: 3000,
+      });
     }
   };
 

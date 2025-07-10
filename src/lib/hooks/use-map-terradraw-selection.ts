@@ -12,6 +12,7 @@ import type {
 } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useRef, type RefObject } from "react";
+import { toast } from "sonner";
 import { useStableCallback } from "./use-stable-callback";
 
 interface UseMapTerraDrawSelectionProps {
@@ -239,6 +240,17 @@ export function useMapTerraDrawSelection({
           ...new Set([...currentSelectedRegions, ...uniqueSelectedFeatures]),
         ];
         setSelectedRegions(mergedRegions);
+        
+        // Provide toast feedback for drawing selection
+        const newCount = uniqueSelectedFeatures.length;
+        const totalCount = mergedRegions.length;
+        toast.success(
+          `🎯 ${newCount} Region${newCount === 1 ? "" : "en"} durch Zeichnung ausgewählt`,
+          {
+            description: `Insgesamt ${totalCount} Region${totalCount === 1 ? "" : "en"} ausgewählt`,
+            duration: 3000,
+          }
+        );
       }
     }
   );
