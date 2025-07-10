@@ -20,6 +20,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useDrivingRadiusSearch } from "@/lib/hooks/use-driving-radius-search";
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { ChevronsUpDownIcon, MapPinIcon, RadiusIcon } from "lucide-react";
 import { useRef, useState } from "react";
@@ -46,6 +53,13 @@ interface AddressAutocompleteEnhancedProps {
     radius: number,
     granularity: string
   ) => void;
+  onDrivingRadiusSelect?: (
+    coords: [number, number],
+    radius: number,
+    granularity: string,
+    mode: "distance" | "time",
+    method: "osrm" | "approximation"
+  ) => void;
   granularity: string;
   triggerClassName?: string;
 }
@@ -53,6 +67,7 @@ interface AddressAutocompleteEnhancedProps {
 export function AddressAutocompleteEnhanced({
   onAddressSelect,
   onRadiusSelect,
+  onDrivingRadiusSelect,
   granularity,
   triggerClassName = "",
 }: AddressAutocompleteEnhancedProps) {
@@ -67,7 +82,13 @@ export function AddressAutocompleteEnhanced({
   );
   const [radius, setRadius] = useState<number>(5);
   const [customRadiusInput, setCustomRadiusInput] = useState<string>("5");
+  const [searchMode, setSearchMode] = useState<
+    "straight" | "distance" | "time"
+  >("distance"); // Simplified: straight, driving distance, or driving time
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Hook for driving radius search
+  const { performDrivingRadiusSearch } = useDrivingRadiusSearch();
 
   // Sync input field with slider value
   const syncInputWithRadius = useStableCallback((newRadius: number) => {
@@ -173,22 +194,78 @@ export function AddressAutocompleteEnhanced({
     setRadiusDialogOpen(true);
   });
 
-  const handleRadiusConfirm = useStableCallback(() => {
+  const handleRadiusConfirm = useStableCallback(async () => {
     if (selectedCoords) {
       const finalRadius = parseFloat(customRadiusInput);
 
       // Validate radius
       if (isNaN(finalRadius) || finalRadius < 0.1 || finalRadius > 200) {
         toast.error(
-          "Bitte geben Sie einen gültigen Radius zwischen 0.1km und 200km ein"
+          "Bitte geben Sie einen gültigen Radius zwischen 0.1 und 200 ein"
         );
         return;
       }
 
-      onRadiusSelect(selectedCoords, finalRadius, granularity);
+      // Create the search promise for toast handling with enhanced feedback
+      const searchPromise = async () => {
+        if (searchMode === "straight") {
+          // Use traditional straight-line radius search
+          onRadiusSelect(selectedCoords, finalRadius, granularity);
+          return `✅ ${finalRadius}km Luftlinie erfolgreich ausgewählt`;
+        } else {
+          // Use driving radius search (default to OSRM precision)
+          const mode = searchMode === "distance" ? "distance" : "time";
+          const method = "osrm"; // Always start with precision mode
+
+          try {
+            await performDrivingRadiusSearch(
+              selectedCoords,
+              finalRadius,
+              granularity,
+              mode,
+              method
+            );
+
+            if (onDrivingRadiusSelect) {
+              onDrivingRadiusSelect(
+                selectedCoords,
+                finalRadius,
+                granularity,
+                mode,
+                method
+              );
+            }
+
+            const unit = mode === "time" ? "min" : "km";
+            const modeText = mode === "time" ? "Fahrzeit" : "Fahrstrecke";
+            return `🎯 ${finalRadius}${unit} ${modeText} erfolgreich berechnet`;
+          } catch (error) {
+            console.error("Driving radius search failed:", error);
+            throw new Error(
+              `Fehler bei der ${
+                mode === "time" ? "Fahrzeit" : "Fahrstrecke"
+              }-Berechnung. Bitte versuchen Sie es erneut.`
+            );
+          }
+        }
+      };
+
+      // Enhanced promise-based toast with better UX
+      toast.promise(searchPromise(), {
+        loading: `🔄 ${
+          searchMode === "straight"
+            ? "Luftlinie"
+            : searchMode === "distance"
+            ? "Fahrstrecke"
+            : "Fahrzeit"
+        } wird berechnet...`,
+        success: (message) => message,
+        error: (error) =>
+          error.message || "Unerwarteter Fehler bei der Berechnung",
+      });
+
       setRadiusDialogOpen(false);
       setSelectedCoords(null);
-      toast.success(`${finalRadius}km Umkreis um Standort ausgewählt`);
     }
   });
 
@@ -251,30 +328,47 @@ export function AddressAutocompleteEnhanced({
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDirectSelect(result);
-                        }}
-                        className="h-8 px-2"
-                        title="Standort auswählen"
-                      >
-                        <MapPinIcon className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRadiusSelect(result);
-                        }}
-                        className="h-8 px-2"
-                        title="Umkreis um Standort auswählen"
-                      >
-                        <RadiusIcon className="h-3 w-3" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDirectSelect(result);
+                              }}
+                              className="h-8 px-2"
+                            >
+                              <MapPinIcon className="h-3 w-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Exakte Position auswählen</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRadiusSelect(result);
+                              }}
+                              className="h-8 px-2"
+                            >
+                              <RadiusIcon className="h-3 w-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Umkreis um Position auswählen</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
                 </CommandItem>
@@ -289,50 +383,151 @@ export function AddressAutocompleteEnhanced({
           <DialogHeader>
             <DialogTitle>Umkreis auswählen</DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Wählen Sie den gewünschten Radius für die PLZ-Auswahl
+              Wählen Sie Art und Größe des Suchradius
             </p>
           </DialogHeader>
           <div className="space-y-6">
-            {/* Quick preset buttons */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Häufige Entfernungen
-              </Label>
-              <div className="grid grid-cols-4 gap-2">
-                {[1, 5, 10, 25].map((preset) => (
-                  <Button
-                    key={preset}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => syncInputWithRadius(preset)}
-                    className="text-xs"
-                  >
-                    {preset}km
-                  </Button>
-                ))}
+            {/* Enhanced search mode selector with better UX */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-semibold">
+                  Suchmethode wählen
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Wählen Sie, wie der Umkreis berechnet werden soll
+                </p>
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {[50, 75, 100, 150].map((preset) => (
-                  <Button
-                    key={preset}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setCustomRadiusInput(preset.toString());
-                      setRadius(preset);
-                    }}
-                    className="text-xs"
-                  >
-                    {preset}km
-                  </Button>
-                ))}
+              <div className="grid grid-cols-1 gap-3">
+                <Button
+                  variant={searchMode === "straight" ? "default" : "outline"}
+                  size="default"
+                  onClick={() => setSearchMode("straight")}
+                  className="h-auto p-4 text-left flex flex-col items-start gap-1"
+                  role="radio"
+                  aria-checked={searchMode === "straight"}
+                  tabIndex={0}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="text-sm font-medium">📏 Luftlinie</span>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full ml-auto">
+                      Schnell
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Direkte Entfernung (wie der Vogel fliegt) - ⚡ Sofortige
+                    Ergebnisse
+                  </span>
+                </Button>
+                <Button
+                  variant={searchMode === "distance" ? "default" : "outline"}
+                  size="default"
+                  onClick={() => setSearchMode("distance")}
+                  className="h-auto p-4 text-left flex flex-col items-start gap-1"
+                  role="radio"
+                  aria-checked={searchMode === "distance"}
+                  tabIndex={0}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="text-sm font-medium">
+                      🛣️ Fahrstrecke (km)
+                    </span>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-auto">
+                      Präzise
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Tatsächliche Straßenentfernung - 🎯 OSRM-Routenberechnung
+                  </span>
+                </Button>
+                <Button
+                  variant={searchMode === "time" ? "default" : "outline"}
+                  size="default"
+                  onClick={() => setSearchMode("time")}
+                  className="h-auto p-4 text-left flex flex-col items-start gap-1"
+                  role="radio"
+                  aria-checked={searchMode === "time"}
+                  tabIndex={0}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="text-sm font-medium">
+                      ⏱️ Fahrzeit (min)
+                    </span>
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full ml-auto">
+                      Realistisch
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Geschätzte Fahrtdauer - 🚗 Verkehrsbedingungen
+                    berücksichtigt
+                  </span>
+                </Button>
               </div>
             </div>
 
-            {/* Slider for 0.5-200km range */}
+            {/* Smart preset buttons with contextual values */}
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm font-medium">
+                  Häufige Werte für{" "}
+                  {searchMode === "straight"
+                    ? "Luftlinie"
+                    : searchMode === "distance"
+                    ? "Fahrstrecke"
+                    : "Fahrzeit"}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {searchMode === "straight"
+                    ? "Direkte Entfernung in km"
+                    : searchMode === "distance"
+                    ? "Tatsächliche Straßenentfernung in km"
+                    : "Realistische Fahrtdauer in Minuten"}
+                </p>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {(searchMode === "time"
+                  ? [5, 15, 30, 45] // Time presets in minutes
+                  : [1, 5, 10, 25]
+                ) // Distance presets in km
+                  .map((preset) => (
+                    <Button
+                      key={preset}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncInputWithRadius(preset)}
+                      className="text-xs font-medium"
+                    >
+                      {preset}
+                      {searchMode === "time" ? "min" : "km"}
+                    </Button>
+                  ))}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {(searchMode === "time"
+                  ? [60, 90, 120, 180] // Extended time presets
+                  : [50, 75, 100, 150]
+                ) // Extended distance presets
+                  .map((preset) => (
+                    <Button
+                      key={preset}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCustomRadiusInput(preset.toString());
+                        setRadius(preset);
+                      }}
+                      className="text-xs font-medium"
+                    >
+                      {preset}
+                      {searchMode === "time" ? "min" : "km"}
+                    </Button>
+                  ))}
+              </div>
+            </div>
+
+            {/* Slider for 0.5-200 range */}
             <div className="space-y-2">
               <Label htmlFor="radius-slider">
-                Präzise Auswahl (0.5-200km): {radius} km
+                Präzise Auswahl: {radius} {searchMode === "time" ? "min" : "km"}
               </Label>
               <Slider
                 id="radius-slider"
@@ -344,14 +539,16 @@ export function AddressAutocompleteEnhanced({
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>0.5km</span>
-                <span>200km</span>
+                <span>0.5{searchMode === "time" ? "min" : "km"}</span>
+                <span>200{searchMode === "time" ? "min" : "km"}</span>
               </div>
             </div>
 
             {/* Direct input for any value */}
             <div className="space-y-2">
-              <Label htmlFor="radius-input">Exakte Eingabe (0.1-200km)</Label>
+              <Label htmlFor="radius-input">
+                Exakte Eingabe (0.1-200{searchMode === "time" ? "min" : "km"})
+              </Label>
               <Input
                 id="radius-input"
                 type="number"
@@ -364,16 +561,56 @@ export function AddressAutocompleteEnhanced({
                 className="w-full"
               />
               <div className="text-xs text-muted-foreground">
-                Werte zwischen 0.1km und 200km sind möglich
+                Werte zwischen 0.1{searchMode === "time" ? "min" : "km"} und 200
+                {searchMode === "time" ? "min" : "km"} sind möglich
               </div>
             </div>
 
-            <div className="text-sm text-muted-foreground border-t pt-4">
-              Alle PLZ innerhalb von{" "}
-              <span className="font-medium text-foreground">
-                {customRadiusInput}km
-              </span>{" "}
-              des gewählten Standorts werden ausgewählt.
+            {/* Enhanced result summary with accuracy indicators */}
+            <div className="text-sm border-t pt-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  Ausgewählter Radius:
+                </span>
+                <span className="font-medium text-foreground">
+                  {customRadiusInput}
+                  {searchMode === "time" ? "min" : "km"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Suchmethode:</span>
+                <span className="font-medium text-foreground">
+                  {searchMode === "straight"
+                    ? "📏 Luftlinie"
+                    : searchMode === "distance"
+                    ? "🛣️ Fahrstrecke"
+                    : "⏱️ Fahrzeit"}
+                </span>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg mt-3">
+                <p className="text-sm font-medium mb-1">
+                  ✅ Alle PLZ innerhalb von {customRadiusInput}
+                  {searchMode === "time" ? "min" : "km"}{" "}
+                  {searchMode === "straight"
+                    ? "Luftlinie"
+                    : searchMode === "distance"
+                    ? "Fahrstrecke"
+                    : "Fahrzeit"}{" "}
+                  werden ausgewählt
+                </p>
+                {searchMode !== "straight" && (
+                  <div className="text-xs text-blue-600 flex items-center gap-1 mt-2">
+                    <span>🎯</span>
+                    <span>Präzisionsmodus (OSRM) für höchste Genauigkeit</span>
+                  </div>
+                )}
+                {searchMode === "straight" && (
+                  <div className="text-xs text-green-600 flex items-center gap-1 mt-2">
+                    <span>⚡</span>
+                    <span>Schnellste Berechnung, sofortige Ergebnisse</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -384,7 +621,14 @@ export function AddressAutocompleteEnhanced({
                 Abbrechen
               </Button>
               <Button onClick={handleRadiusConfirm}>
-                {customRadiusInput}km Umkreis auswählen
+                {customRadiusInput}
+                {searchMode === "time" ? "min" : "km"}{" "}
+                {searchMode === "straight"
+                  ? "Luftlinie"
+                  : searchMode === "distance"
+                  ? "Fahrstrecke"
+                  : "Fahrzeit"}{" "}
+                auswählen
               </Button>
             </div>
           </div>

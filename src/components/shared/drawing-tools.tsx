@@ -122,56 +122,63 @@ async function fillRegions(
   setIsFilling: (b: boolean) => void,
   granularity?: string
 ) {
-  setIsFilling(true);
-  try {
-    if (!granularity) {
-      setIsFilling(false);
-      toast.error("Granularität ist erforderlich für die Geoverarbeitung");
-      return;
-    }
-    console.log(
-      "Filling regions with mode:",
-      mode,
-      "granularity:",
-      granularity,
-      "selectedRegions:",
-      selectedRegions
-    );
-    const response = await fetch("/api/geoprocess", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  if (!granularity) {
+    toast.error("Granularität ist erforderlich für die Geoverarbeitung");
+    return;
+  }
+
+  const fillPromise = async () => {
+    setIsFilling(true);
+
+    try {
+      console.log(
+        "Filling regions with mode:",
         mode,
+        "granularity:",
         granularity,
-        selectedCodes: selectedRegions,
-      }),
-    });
-    if (!response.ok) {
-      setIsFilling(false);
-      toast.error("Server-Geoverarbeitung fehlgeschlagen");
-      return;
-    }
-    const { resultCodes } = await response.json();
-    const newSelection = Array.from(
-      new Set([...selectedRegions, ...(resultCodes || [])])
-    );
-    setSelectedRegions(newSelection);
-    setIsFilling(false);
-    toast.success(
-      `Gefüllt ${(resultCodes || []).length} Region${
-        (resultCodes || []).length === 1 ? "" : "en"
-      } (${
+        "selectedRegions:",
+        selectedRegions
+      );
+
+      const response = await fetch("/api/geoprocess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          granularity,
+          selectedCodes: selectedRegions,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Server-Geoverarbeitung fehlgeschlagen");
+      }
+
+      const { resultCodes } = await response.json();
+      const newSelection = Array.from(
+        new Set([...selectedRegions, ...(resultCodes || [])])
+      );
+      setSelectedRegions(newSelection);
+
+      const count = (resultCodes || []).length;
+      const modeText =
         mode === "all"
           ? "alle Lücken"
           : mode === "holes"
           ? "Lücken"
-          : "eine Ebene"
-      })`
-    );
-  } catch {
-    setIsFilling(false);
-    toast.error("Fehler bei der Geoverarbeitung");
-  }
+          : "eine Ebene";
+
+      return `${count} Region${count === 1 ? "" : "en"} gefüllt (${modeText})`;
+    } finally {
+      setIsFilling(false);
+    }
+  };
+
+  toast.promise(fillPromise(), {
+    loading: "Geoverarbeitung läuft...",
+    success: (message) => message,
+    error: "Fehler bei der Geoverarbeitung",
+  });
 }
 
 function DrawingToolsImpl({

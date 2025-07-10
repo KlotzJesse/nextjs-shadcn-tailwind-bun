@@ -14,6 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useDrivingRadiusSearch } from "@/lib/hooks/use-driving-radius-search";
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
 import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
@@ -84,6 +85,13 @@ export default function PostalCodesViewClient({
       addSelectedRegions(postalCodes);
     },
   });
+
+  const { performDrivingRadiusSearch } = useDrivingRadiusSearch({
+    onRadiusComplete: (postalCodes) => {
+      // Add all postal codes from driving radius search to selection at once
+      addSelectedRegions(postalCodes);
+    },
+  });
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
   const [postalCodeOpen, setPostalCodeOpen] = useState(false);
   const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(
@@ -125,6 +133,17 @@ export default function PostalCodesViewClient({
     await performRadiusSearch(coords, radius, granularity);
   };
 
+  // Handle driving radius selection
+  const handleDrivingRadiusSelect = async (
+    coords: [number, number],
+    radius: number,
+    granularity: string,
+    mode: "distance" | "time",
+    method: "osrm" | "approximation"
+  ) => {
+    await performDrivingRadiusSearch(coords, radius, granularity, mode, method);
+  };
+
   // Get all postal codes for autocomplete
   const allPostalCodes = data.features
     .map((f) => f.properties?.code || f.properties?.PLZ || f.properties?.plz)
@@ -139,6 +158,7 @@ export default function PostalCodesViewClient({
             <AddressAutocompleteEnhanced
               onAddressSelect={handleAddressSelect}
               onRadiusSelect={handleRadiusSelect}
+              onDrivingRadiusSelect={handleDrivingRadiusSelect}
               granularity={defaultGranularity}
               triggerClassName="truncate"
             />
