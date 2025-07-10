@@ -11,7 +11,9 @@ export function useMapDrawingTools() {
 
   // Memoized handlers to prevent unnecessary re-renders
   const handleDrawingModeChange = useCallback((mode: TerraDrawMode | null) => {
-    console.log("[useMapDrawingTools] Drawing mode changed:", mode);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[useMapDrawingTools] Drawing mode changed:", mode);
+    }
     setCurrentDrawingMode(mode);
   }, []);
 
