@@ -1,5 +1,6 @@
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import type { TerraDrawMode } from "@/lib/hooks/use-terradraw";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 /**
  * Hook for managing drawing tools state and visibility
@@ -10,24 +11,24 @@ export function useMapDrawingTools() {
   const [isDrawingToolsVisible, setIsDrawingToolsVisible] = useState(true);
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleDrawingModeChange = useCallback((mode: TerraDrawMode | null) => {
+  const handleDrawingModeChange = useStableCallback((mode: TerraDrawMode | null) => {
     if (process.env.NODE_ENV === "development") {
       console.log("[useMapDrawingTools] Drawing mode changed:", mode);
     }
     setCurrentDrawingMode(mode);
-  }, []);
+  });
 
-  const toggleToolsVisibility = useCallback(() => {
+  const toggleToolsVisibility = useStableCallback(() => {
     setIsDrawingToolsVisible((prev) => !prev);
-  }, []);
+  });
 
-  const showTools = useCallback(() => {
+  const showTools = useStableCallback(() => {
     setIsDrawingToolsVisible(true);
-  }, []);
+  });
 
-  const hideTools = useCallback(() => {
+  const hideTools = useStableCallback(() => {
     setIsDrawingToolsVisible(false);
-  }, []);
+  });
 
   // Check if currently in cursor mode (for hover/click interactions)
   const isCursorMode = currentDrawingMode === "cursor" || currentDrawingMode === null;

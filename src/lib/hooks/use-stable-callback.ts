@@ -7,7 +7,7 @@ import { useCallback, useRef } from "react";
  *
  * This is the standard "useEvent" pattern recommended by React team
  */
-export function useStableCallback<T extends (...args: unknown[]) => unknown>(
+export function useStableCallback<T extends (...args: any[]) => any>(
   callback: T
 ): T {
   const callbackRef = useRef<T | undefined>(undefined);

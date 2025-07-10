@@ -1,3 +1,4 @@
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { ErrorBoundary } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMapCenterZoomSync } from "@/lib/hooks/use-map-center-zoom-sync";
@@ -163,23 +164,23 @@ const BaseMapComponent = ({
   });
 
   // Memoized toggle handlers with React 19 batching optimization
-  const handleShowTools = useCallback(() => {
+  const handleShowTools = useStableCallback(() => {
     startTransition(() => {
       interactions.showTools();
     });
-  }, [interactions]);
+  });
 
-  const handleHideTools = useCallback(() => {
+  const handleHideTools = useStableCallback(() => {
     startTransition(() => {
       interactions.hideTools();
     });
-  }, [interactions]);
+  });
 
-  const handleClearAll = useCallback(() => {
+  const handleClearAll = useStableCallback(() => {
     startTransition(() => {
       interactions.clearAll();
     });
-  }, [interactions]);
+  });
 
   // Early return with stable error message
   if (!isDataValid) {

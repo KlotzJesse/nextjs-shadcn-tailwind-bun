@@ -1,5 +1,6 @@
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { MapLibreMap } from "@/types/map";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 
 /**
  * useMapCenterZoomSync
@@ -26,7 +27,7 @@ export function useMapCenterZoomSync({
   setMapCenterZoom: (center: [number, number], zoom: number) => void;
 }) {
   // Memoized handler to update map center/zoom from props
-  const updateMapView = useCallback(() => {
+  const updateMapView = useStableCallback(() => {
     if (!mapRef.current || !isMapLoaded) return;
     const currentCenter = mapRef.current.getCenter();
     const currentZoom = mapRef.current.getZoom();
@@ -43,15 +44,15 @@ export function useMapCenterZoomSync({
     if (Math.abs(currentZoom - zoom) > 1e-6) {
       mapRef.current.setZoom(zoom);
     }
-  }, [center, zoom, isMapLoaded, mapRef]);
+  });
 
   // Memoized handler for move/zoom end
-  const handleMoveOrZoomEnd = useCallback(() => {
+  const handleMoveOrZoomEnd = useStableCallback(() => {
     if (mapRef.current) {
       const c = mapRef.current.getCenter();
       setMapCenterZoom([c.lng, c.lat], mapRef.current.getZoom());
     }
-  }, [setMapCenterZoom, mapRef]);
+  });
 
   // Sync map view when center/zoom props change
   useEffect(() => {

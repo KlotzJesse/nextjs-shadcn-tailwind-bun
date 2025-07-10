@@ -196,9 +196,9 @@ export function useTerraDraw({
       console.error("[TerraDraw] Failed to initialize TerraDraw:", error);
       isInitializedRef.current = false;
     }
-  }, [mapRef, isMapLoaded, styleLoaded, stableOnSelectionChange]);
+  }, [mapRef, isMapLoaded, styleLoaded]); // Removed stableOnSelectionChange from deps since it's stable
 
-  const clearAll = useCallback(() => {
+  const clearAll = useStableCallback(() => {
     if (!drawRef.current) return;
 
     try {
@@ -206,37 +206,37 @@ export function useTerraDraw({
     } catch (error) {
       console.error("Failed to clear drawings:", error);
     }
-  }, []);
+  });
 
-  const getSnapshot = useCallback(() => {
+  const getSnapshot = useStableCallback(() => {
     if (!drawRef.current) return [];
     return drawRef.current.getSnapshot();
-  }, []);
+  });
 
-  const addFeatures = useCallback((features: GeoJSONStoreFeatures[]) => {
+  const addFeatures = useStableCallback((features: GeoJSONStoreFeatures[]) => {
     if (!drawRef.current) return [];
     return drawRef.current.addFeatures(features);
-  }, []);
+  });
 
-  const removeFeatures = useCallback((featureIds: string[]) => {
+  const removeFeatures = useStableCallback((featureIds: string[]) => {
     if (!drawRef.current) return;
     drawRef.current.removeFeatures(featureIds);
-  }, []);
+  });
 
-  const selectFeature = useCallback((featureId: string) => {
+  const selectFeature = useStableCallback((featureId: string) => {
     if (!drawRef.current) return;
     drawRef.current.selectFeature(featureId);
-  }, []);
+  });
 
-  const deselectFeature = useCallback((featureId: string) => {
+  const deselectFeature = useStableCallback((featureId: string) => {
     if (!drawRef.current) return;
     drawRef.current.deselectFeature(featureId);
-  }, []);
+  });
 
-  const getModeState = useCallback(() => {
+  const getModeState = useStableCallback(() => {
     if (!drawRef.current) return null;
     return drawRef.current.getModeState();
-  }, []);
+  });
 
   // Debug function to test TerraDraw manually
   const debugTerraDraw = useCallback(() => {
