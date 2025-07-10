@@ -3,31 +3,33 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
+    Command,
+    CommandEmpty,
+    CommandInput,
+    CommandItem,
+    CommandList,
 } from "@/components/ui/command";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/ui/popover";
+import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
+import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
 import {
-  FeatureCollection,
-  GeoJsonProperties,
-  MultiPolygon,
-  Polygon,
+    FeatureCollection,
+    GeoJsonProperties,
+    MultiPolygon,
+    Polygon,
 } from "geojson";
 import { ChevronsUpDownIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const AddressAutocomplete = dynamic(
-  () => import("./address-autocomplete").then((m) => m.AddressAutocomplete),
+const AddressAutocompleteEnhanced = dynamic(
+  () => import("./address-autocomplete-enhanced").then((m) => m.AddressAutocompleteEnhanced),
   { ssr: false }
 );
 
@@ -51,6 +53,13 @@ export default function PostalCodesViewClient({
     );
   const router = useRouter();
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
+  const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
+  const { performRadiusSearch } = useRadiusSearch({
+    onRadiusComplete: (postalCodes) => {
+      // Add all postal codes from radius search to selection
+      postalCodes.forEach(code => selectPostalCode(code));
+    }
+  });
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
   const [postalCodeOpen, setPostalCodeOpen] = useState(false);
   const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(
@@ -63,61 +72,25 @@ export default function PostalCodesViewClient({
     }
   };
 
-  // Helper: find postal code region containing a point
-  const findPostalCodeByCoords = (lng: number, lat: number) => {
-    for (const feature of data.features) {
-      if (feature.geometry.type === "Polygon") {
-        const polygon = feature.geometry.coordinates[0];
-        if (isPointInPolygon([lng, lat], polygon as number[][])) {
-          return (
-            feature.properties?.code ||
-            feature.properties?.PLZ ||
-            feature.properties?.plz
-          );
-        }
-      } else if (feature.geometry.type === "MultiPolygon") {
-        for (const poly of feature.geometry.coordinates) {
-          if (Array.isArray(poly) && Array.isArray(poly[0])) {
-            if (isPointInPolygon([lng, lat], poly[0] as number[][])) {
-              return (
-                feature.properties?.code ||
-                feature.properties?.PLZ ||
-                feature.properties?.plz
-              );
-            }
-          }
-        }
-      }
-    }
-    return null;
-  };
-
-  // Point-in-polygon helper (ray-casting)
-  function isPointInPolygon(
-    point: [number, number],
-    polygon: number[][]
-  ): boolean {
-    let inside = false;
-    const [x, y] = point;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const [xi, yi] = polygon[i];
-      const [xj, yj] = polygon[j];
-      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
-        inside = !inside;
-      }
-    }
-    return inside;
-  }
-
-  // Handle address select
-  const handleAddressSelect = (coords: [number, number]) => {
-    const [lng, lat] = coords;
-    const postalCode = findPostalCodeByCoords(lng, lat);
+  // Handle direct address selection (pin icon)
+  const handleAddressSelect = (coords: [number, number], _label: string, postalCode?: string) => {
     if (postalCode) {
+      // If we have a postal code from geocoding, use it directly
       selectPostalCode(postalCode);
     } else {
-      alert("No postal code region found for this address.");
+      // Otherwise, find the postal code by coordinates
+      const foundCode = findPostalCodeByCoords(coords[0], coords[1]);
+      if (foundCode) {
+        selectPostalCode(foundCode);
+      } else {
+        alert("No postal code region found for this address.");
+      }
     }
+  };
+
+  // Handle radius selection (radius icon)
+  const handleRadiusSelect = async (coords: [number, number], radius: number, granularity: string) => {
+    await performRadiusSearch(coords, radius, granularity);
   };
 
   // Get all postal codes for autocomplete
@@ -130,10 +103,11 @@ export default function PostalCodesViewClient({
       {/* Address and Postal Code Tools - horizontal, top right */}
       <div className="absolute top-4 right-4 z-30 flex flex-row gap-3 w-auto">
         <div className="w-80">
-          <AddressAutocomplete
-            onSelect={handleAddressSelect}
+          <AddressAutocompleteEnhanced
+            onAddressSelect={handleAddressSelect}
+            onRadiusSelect={handleRadiusSelect}
+            granularity={defaultGranularity}
             triggerClassName="truncate"
-            itemClassName="truncate"
           />
         </div>
         <div className="w-80">

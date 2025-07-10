@@ -36,25 +36,25 @@ export function useMapState() {
     if (!current.includes(region)) {
       setSelectedRegions(JSON.stringify([...current, region]))
     }
-  }, [selectedRegions])
+  }, [selectedRegions, setSelectedRegions])
 
   const removeSelectedRegion = useCallback((region: string) => {
     const current = selectedRegions ? JSON.parse(selectedRegions) : []
     setSelectedRegions(JSON.stringify(current.filter((r: string) => r !== region)))
-  }, [selectedRegions])
+  }, [selectedRegions, setSelectedRegions])
 
   const clearSelectedRegions = useCallback(() => {
     setSelectedRegions(null)
-  }, [])
+  }, [setSelectedRegions])
 
   const setSelectedRegionsArray = useCallback((regions: string[]) => {
     setSelectedRegions(JSON.stringify(regions))
-  }, [])
+  }, [setSelectedRegions])
 
   // --- Atomic map view helpers ---
   const setMapCenterZoom = useCallback((center: [number, number], zoom: number) => {
     setMapView({ center, zoom })
-  }, [])
+  }, [setMapView])
 
   return {
     // State
@@ -69,7 +69,7 @@ export function useMapState() {
     setSelectionMode,
     setGranularity,
     setMapCenterZoom, // atomic
-    setRadius: useCallback((radiusValue: number) => setRadius(radiusValue.toString()), []),
+    setRadius: useCallback((radiusValue: number) => setRadius(radiusValue.toString()), [setRadius]),
     // Helper functions
     addSelectedRegion,
     removeSelectedRegion,
