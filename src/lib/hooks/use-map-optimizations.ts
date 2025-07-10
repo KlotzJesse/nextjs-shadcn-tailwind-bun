@@ -1,6 +1,6 @@
 import { featureCollectionFromIds, makeLabelPoints } from "@/lib/utils/map-data";
 import type { FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Polygon } from "geojson";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 interface UseMapOptimizationsProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -78,17 +78,14 @@ export function useMapOptimizations({
     return { minLng, maxLng, minLat, maxLat };
   }, [data]);
 
-  // Memoized getter functions for layer usage
-  const getSelectedFeatureCollection = useMemo(
-    () => () => selectedFeatureCollection,
-    [selectedFeatureCollection]
-  );
+  // Stable callback functions for layer usage
+  const getSelectedFeatureCollection = useCallback(() => {
+    return featureCollectionFromIds(data, selectedRegions) as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
+  }, [data, selectedRegions]);
 
-  const getLabelPoints = useMemo(
-    () => (d: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>) =>
-      d === data ? labelPoints : makeLabelPoints(d) as FeatureCollection<Geometry, GeoJsonProperties>,
-    [data, labelPoints]
-  );
+  const getLabelPoints = useCallback((d: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>) => {
+    return makeLabelPoints(d) as FeatureCollection<Geometry, GeoJsonProperties>;
+  }, []);
 
   return {
     selectedFeatureCollection,

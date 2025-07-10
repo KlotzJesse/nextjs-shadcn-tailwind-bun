@@ -1,6 +1,6 @@
 import type { FeatureCollection, GeoJsonProperties, Geometry, MultiPolygon, Polygon } from "geojson";
 import type { GeoJSONSource, LayerSpecification, Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 interface UseMapLayersProps {
   map: MapLibreMap | null;
@@ -31,7 +31,8 @@ export function useMapLayers({
   getSelectedFeatureCollection,
   getLabelPoints,
 }: UseMapLayersProps) {
-  const [layersLoaded, setLayersLoaded] = useState(false);
+  // Remove separate layersLoaded state - derive it from other conditions
+  const layersLoaded = !!(map && isMapLoaded && styleLoaded && data);
 
   // Memoize all IDs for stable references
   const ids = useMemo(() => ({
@@ -50,11 +51,14 @@ export function useMapLayers({
 
   // Helper to add a layer with beforeId if it exists
 
-  // Main effect: initialize/update all sources and layers
+  // Main effect: initialize all sources and layers (only when map/data changes)
   useEffect(() => {
     if (!map || !isMapLoaded || !styleLoaded || !data) {
-      setLayersLoaded(false);
       return;
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[useMapLayers] Initializing layers...");
     }
     // --- Robust source creation ---
     // Always create all sources first
@@ -267,9 +271,12 @@ export function useMapLayers({
         },
       }, statesData ? "state-boundaries-label" : ids.hoverLayerId);
     }
-    setLayersLoaded(true);
 
-  }, [map, isMapLoaded, styleLoaded, data, statesData, selectedRegions, hoveredRegionId, getSelectedFeatureCollection, getLabelPoints, ids, layerId]);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[useMapLayers] Layers initialized successfully");
+    }
+
+  }, [map, isMapLoaded, styleLoaded, data, statesData, ids, layerId]); // Removed getSelectedFeatureCollection and getLabelPoints to prevent function reference changes
 
   // Update selected features source when selection changes
   useEffect(() => {
@@ -311,7 +318,6 @@ export function useMapLayers({
           if (map.getSource(id)) map.removeSource(id);
         } catch {}
       });
-      setLayersLoaded(false);
     };
 
   }, [map, ids]);

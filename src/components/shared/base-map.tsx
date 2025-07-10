@@ -114,7 +114,7 @@ const BaseMapComponent = ({
     layerId,
     data,
     statesData,
-    selectedRegions,
+    selectedRegions: Array.from(selectedRegions),
     hoveredRegionId: hoveredRegionIdRef.current,
     getSelectedFeatureCollection: optimizations.getSelectedFeatureCollection,
     getLabelPoints: optimizations.getLabelPoints,
