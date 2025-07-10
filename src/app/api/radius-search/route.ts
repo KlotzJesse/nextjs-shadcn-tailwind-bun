@@ -1,19 +1,20 @@
-import { db } from '@/lib/db';
-import { sql } from 'drizzle-orm';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { db } from "@/lib/db";
+import { sql } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 // Define the request schema for validation
 const RadiusRequestSchema = z.object({
   coordinates: z.tuple([z.number(), z.number()]),
-  radius: z.number().min(0.1).max(100), // radius in kilometers
-  granularity: z.enum(['1digit', '2digit', '3digit', '5digit']),
+  radius: z.number().min(0.1).max(200), // radius in kilometers - extended for larger territories
+  granularity: z.enum(["1digit", "2digit", "3digit", "5digit"]),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { coordinates, radius, granularity } = RadiusRequestSchema.parse(body);
+    const { coordinates, radius, granularity } =
+      RadiusRequestSchema.parse(body);
 
     const [longitude, latitude] = coordinates;
 
@@ -41,8 +42,12 @@ export async function POST(request: NextRequest) {
       `
     );
 
-    const postalCodes = rows.map(row => {
-      const typedRow = row as { code: string; geometry: string; distance: number };
+    const postalCodes = rows.map((row) => {
+      const typedRow = row as {
+        code: string;
+        geometry: string;
+        distance: number;
+      };
       return {
         code: typedRow.code,
         geometry: JSON.parse(typedRow.geometry),
@@ -58,17 +63,17 @@ export async function POST(request: NextRequest) {
       count: postalCodes.length,
     });
   } catch (error) {
-    console.error('Radius search error:', error);
+    console.error("Radius search error:", error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request', details: error.errors },
+        { error: "Invalid request", details: error.errors },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -76,14 +81,14 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const lat = searchParams.get('lat');
-  const lon = searchParams.get('lon');
-  const radius = searchParams.get('radius');
-  const granularity = searchParams.get('granularity');
+  const lat = searchParams.get("lat");
+  const lon = searchParams.get("lon");
+  const radius = searchParams.get("radius");
+  const granularity = searchParams.get("granularity");
 
   if (!lat || !lon || !radius || !granularity) {
     return NextResponse.json(
-      { error: 'Missing required parameters: lat, lon, radius, granularity' },
+      { error: "Missing required parameters: lat, lon, radius, granularity" },
       { status: 400 }
     );
   }
@@ -119,8 +124,12 @@ export async function GET(request: NextRequest) {
       `
     );
 
-    const postalCodes = rows.map(row => {
-      const typedRow = row as { code: string; geometry: string; distance: number };
+    const postalCodes = rows.map((row) => {
+      const typedRow = row as {
+        code: string;
+        geometry: string;
+        distance: number;
+      };
       return {
         code: typedRow.code,
         geometry: JSON.parse(typedRow.geometry),
@@ -136,17 +145,17 @@ export async function GET(request: NextRequest) {
       count: postalCodes.length,
     });
   } catch (error) {
-    console.error('Radius search error:', error);
+    console.error("Radius search error:", error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid parameters', details: error.errors },
+        { error: "Invalid parameters", details: error.errors },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

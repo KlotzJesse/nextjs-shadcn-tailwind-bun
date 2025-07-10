@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -65,7 +66,23 @@ export function AddressAutocompleteEnhanced({
     null
   );
   const [radius, setRadius] = useState<number>(5);
+  const [customRadiusInput, setCustomRadiusInput] = useState<string>("5");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync input field with slider value
+  const syncInputWithRadius = useStableCallback((newRadius: number) => {
+    setRadius(newRadius);
+    setCustomRadiusInput(newRadius.toString());
+  });
+
+  // Update radius from input and sync with slider if within range
+  const handleRadiusInputChange = useStableCallback((inputValue: string) => {
+    setCustomRadiusInput(inputValue);
+    const numValue = parseFloat(inputValue);
+    if (!isNaN(numValue) && numValue >= 0.5 && numValue <= 200) {
+      setRadius(numValue);
+    }
+  });
 
   const handleInputChange = useStableCallback((value: string) => {
     setQuery(value);
@@ -158,10 +175,20 @@ export function AddressAutocompleteEnhanced({
 
   const handleRadiusConfirm = useStableCallback(() => {
     if (selectedCoords) {
-      onRadiusSelect(selectedCoords, radius, granularity);
+      const finalRadius = parseFloat(customRadiusInput);
+
+      // Validate radius
+      if (isNaN(finalRadius) || finalRadius < 0.1 || finalRadius > 200) {
+        toast.error(
+          "Bitte geben Sie einen gültigen Radius zwischen 0.1km und 200km ein"
+        );
+        return;
+      }
+
+      onRadiusSelect(selectedCoords, finalRadius, granularity);
       setRadiusDialogOpen(false);
       setSelectedCoords(null);
-      toast.success(`${radius}km Umkreis um Standort ausgewählt`);
+      toast.success(`${finalRadius}km Umkreis um Standort ausgewählt`);
     }
   });
 
@@ -258,27 +285,97 @@ export function AddressAutocompleteEnhanced({
       </Popover>
 
       <Dialog open={radiusDialogOpen} onOpenChange={setRadiusDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Umkreis auswählen</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Wählen Sie den gewünschten Radius für die PLZ-Auswahl
+            </p>
           </DialogHeader>
           <div className="space-y-6">
+            {/* Quick preset buttons */}
             <div className="space-y-2">
-              <Label htmlFor="radius">Umkreis: {radius} km</Label>
+              <Label className="text-sm font-medium">
+                Häufige Entfernungen
+              </Label>
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 5, 10, 25].map((preset) => (
+                  <Button
+                    key={preset}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => syncInputWithRadius(preset)}
+                    className="text-xs"
+                  >
+                    {preset}km
+                  </Button>
+                ))}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {[50, 75, 100, 150].map((preset) => (
+                  <Button
+                    key={preset}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCustomRadiusInput(preset.toString());
+                      setRadius(preset);
+                    }}
+                    className="text-xs"
+                  >
+                    {preset}km
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Slider for 0.5-200km range */}
+            <div className="space-y-2">
+              <Label htmlFor="radius-slider">
+                Präzise Auswahl (0.5-200km): {radius} km
+              </Label>
               <Slider
-                id="radius"
+                id="radius-slider"
                 min={0.5}
-                max={50}
+                max={200}
                 step={0.5}
                 value={[radius]}
-                onValueChange={(value) => setRadius(value[0])}
+                onValueChange={(value) => syncInputWithRadius(value[0])}
                 className="w-full"
               />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>0.5km</span>
+                <span>200km</span>
+              </div>
             </div>
-            <div className="text-sm text-muted-foreground">
-              Alle PLZ innerhalb von {radius}km des gewählten Standorts werden
-              ausgewählt.
+
+            {/* Direct input for any value */}
+            <div className="space-y-2">
+              <Label htmlFor="radius-input">Exakte Eingabe (0.1-200km)</Label>
+              <Input
+                id="radius-input"
+                type="number"
+                min="0.1"
+                max="200"
+                step="0.1"
+                value={customRadiusInput}
+                onChange={(e) => handleRadiusInputChange(e.target.value)}
+                placeholder="z.B. 75.5"
+                className="w-full"
+              />
+              <div className="text-xs text-muted-foreground">
+                Werte zwischen 0.1km und 200km sind möglich
+              </div>
             </div>
+
+            <div className="text-sm text-muted-foreground border-t pt-4">
+              Alle PLZ innerhalb von{" "}
+              <span className="font-medium text-foreground">
+                {customRadiusInput}km
+              </span>{" "}
+              des gewählten Standorts werden ausgewählt.
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -287,7 +384,7 @@ export function AddressAutocompleteEnhanced({
                 Abbrechen
               </Button>
               <Button onClick={handleRadiusConfirm}>
-                {radius}km Umkreis auswählen
+                {customRadiusInput}km Umkreis auswählen
               </Button>
             </div>
           </div>
