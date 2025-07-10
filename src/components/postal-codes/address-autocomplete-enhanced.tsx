@@ -19,7 +19,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Slider } from "@/components/ui/slider";
 import {
   Tooltip,
   TooltipContent,
@@ -75,12 +74,11 @@ export function AddressAutocompleteEnhanced({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [radiusDialogOpen, setRadiusDialogOpen] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<[number, number] | null>(
     null
   );
-  const [radius, setRadius] = useState<number>(5);
+  const [, setRadius] = useState<number>(5);
   const [customRadiusInput, setCustomRadiusInput] = useState<string>("5");
   const [searchMode, setSearchMode] = useState<
     "straight" | "distance" | "time"
@@ -168,9 +166,6 @@ export function AddressAutocompleteEnhanced({
   );
 
   const handleDirectSelect = useStableCallback((result: GeocodeResult) => {
-    setSelectedLabel(result.display_name);
-    setQuery("");
-    setResults([]);
     setOpen(false);
 
     // Convert postal code to match current granularity
@@ -187,9 +182,7 @@ export function AddressAutocompleteEnhanced({
 
   const handleRadiusSelect = useStableCallback((result: GeocodeResult) => {
     setSelectedCoords(result.coordinates);
-    setSelectedLabel(result.display_name);
-    setQuery("");
-    setResults([]);
+
     setOpen(false);
     setRadiusDialogOpen(true);
   });
@@ -286,12 +279,12 @@ export function AddressAutocompleteEnhanced({
             className={`w-full justify-between ${triggerClassName}`}
           >
             <span className="truncate block w-full text-left">
-              {selectedLabel ? selectedLabel : "PLZ oder Adresse suchen..."}
+              {query ? query : "PLZ oder Adresse suchen..."}
             </span>
             <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0">
+        <PopoverContent className="w-[320px] p-0">
           <Command>
             <CommandInput
               placeholder="PLZ oder Adresse suchen..."
@@ -389,14 +382,6 @@ export function AddressAutocompleteEnhanced({
           <div className="space-y-6">
             {/* Enhanced search mode selector with better UX */}
             <div className="space-y-4">
-              <div>
-                <Label className="text-base font-semibold">
-                  Suchmethode wählen
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Wählen Sie, wie der Umkreis berechnet werden soll
-                </p>
-              </div>
               <div className="grid grid-cols-1 gap-3">
                 <Button
                   variant={searchMode === "straight" ? "default" : "outline"}
@@ -414,8 +399,7 @@ export function AddressAutocompleteEnhanced({
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    Direkte Entfernung (wie der Vogel fliegt) - ⚡ Sofortige
-                    Ergebnisse
+                    Direkte Entfernung (wie der Vogel fliegt)
                   </span>
                 </Button>
                 <Button
@@ -436,7 +420,7 @@ export function AddressAutocompleteEnhanced({
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    Tatsächliche Straßenentfernung - 🎯 OSRM-Routenberechnung
+                    Tatsächliche Straßenentfernung
                   </span>
                 </Button>
                 <Button
@@ -457,8 +441,7 @@ export function AddressAutocompleteEnhanced({
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    Geschätzte Fahrtdauer - 🚗 Verkehrsbedingungen
-                    berücksichtigt
+                    Geschätzte Fahrtdauer
                   </span>
                 </Button>
               </div>
@@ -525,24 +508,25 @@ export function AddressAutocompleteEnhanced({
             </div>
 
             {/* Slider for 0.5-200 range */}
-            <div className="space-y-2">
-              <Label htmlFor="radius-slider">
-                Präzise Auswahl: {radius} {searchMode === "time" ? "min" : "km"}
-              </Label>
-              <Slider
-                id="radius-slider"
-                min={0.5}
-                max={200}
-                step={0.5}
-                value={[radius]}
-                onValueChange={(value) => syncInputWithRadius(value[0])}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>0.5{searchMode === "time" ? "min" : "km"}</span>
-                <span>200{searchMode === "time" ? "min" : "km"}</span>
-              </div>
-            </div>
+            {/* <div className="space-y-2">
+                <Label htmlFor="radius-slider">
+                  Präzise Auswahl: {radius}{" "}
+                  {searchMode === "time" ? "min" : "km"}
+                </Label>
+                <Slider
+                  id="radius-slider"
+                  min={0.5}
+                  max={200}
+                  step={0.5}
+                  value={[radius]}
+                  onValueChange={(value) => syncInputWithRadius(value[0])}
+                  className="w-full pt-4"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>0.5{searchMode === "time" ? "min" : "km"}</span>
+                  <span>200{searchMode === "time" ? "min" : "km"}</span>
+                </div>
+              </div>*/}
 
             {/* Direct input for any value */}
             <div className="space-y-2">
@@ -565,52 +549,27 @@ export function AddressAutocompleteEnhanced({
                 {searchMode === "time" ? "min" : "km"} sind möglich
               </div>
             </div>
-
-            {/* Enhanced result summary with accuracy indicators */}
-            <div className="text-sm border-t pt-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  Ausgewählter Radius:
-                </span>
-                <span className="font-medium text-foreground">
-                  {customRadiusInput}
-                  {searchMode === "time" ? "min" : "km"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Suchmethode:</span>
-                <span className="font-medium text-foreground">
-                  {searchMode === "straight"
-                    ? "📏 Luftlinie"
-                    : searchMode === "distance"
-                    ? "🛣️ Fahrstrecke"
-                    : "⏱️ Fahrzeit"}
-                </span>
-              </div>
-              <div className="p-3 bg-muted/50 rounded-lg mt-3">
-                <p className="text-sm font-medium mb-1">
-                  ✅ Alle PLZ innerhalb von {customRadiusInput}
-                  {searchMode === "time" ? "min" : "km"}{" "}
-                  {searchMode === "straight"
-                    ? "Luftlinie"
-                    : searchMode === "distance"
-                    ? "Fahrstrecke"
-                    : "Fahrzeit"}{" "}
-                  werden ausgewählt
-                </p>
-                {searchMode !== "straight" && (
-                  <div className="text-xs text-blue-600 flex items-center gap-1 mt-2">
-                    <span>🎯</span>
-                    <span>Präzisionsmodus (OSRM) für höchste Genauigkeit</span>
-                  </div>
-                )}
-                {searchMode === "straight" && (
-                  <div className="text-xs text-green-600 flex items-center gap-1 mt-2">
-                    <span>⚡</span>
-                    <span>Schnellste Berechnung, sofortige Ergebnisse</span>
-                  </div>
-                )}
-              </div>
+          </div>
+          {/* Enhanced result summary with accuracy indicators */}
+          <div className="text-sm border-t pt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                Ausgewählter Radius:
+              </span>
+              <span className="font-medium text-foreground">
+                {customRadiusInput}
+                {searchMode === "time" ? "min" : "km"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Suchmethode:</span>
+              <span className="font-medium text-foreground">
+                {searchMode === "straight"
+                  ? "📏 Luftlinie"
+                  : searchMode === "distance"
+                  ? "🛣️ Fahrstrecke"
+                  : "⏱️ Fahrzeit"}
+              </span>
             </div>
 
             <div className="flex justify-end gap-2">
