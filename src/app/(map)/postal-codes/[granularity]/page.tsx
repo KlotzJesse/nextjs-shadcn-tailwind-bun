@@ -1,6 +1,16 @@
-import ServerPostalCodesView from "@/components/postal-codes/server-postal-codes-view";
+import { PostalCodesErrorBoundary } from "@/components/ui/error-boundaries";
+import { PostalCodesViewSkeleton } from "@/components/ui/loading-skeletons";
 import { Metadata } from "next";
+import nextDynamic from "next/dynamic";
 import { Suspense } from "react";
+
+const ServerPostalCodesView = nextDynamic(
+  () => import("@/components/postal-codes/server-postal-codes-view"),
+  {
+    loading: () => <PostalCodesViewSkeleton />,
+    ssr: true,
+  }
+);
 
 export const experimental_ppr = true;
 export const dynamic = "force-static";
@@ -50,23 +60,11 @@ export default async function PostalCodesPage({
 
   return (
     <div className="h-full px-4 lg:px-6">
-      <Suspense fallback={<PostalCodesLoading />}>
-        <ServerPostalCodesView defaultGranularity={granularity} />
-      </Suspense>
-    </div>
-  );
-}
-
-function PostalCodesLoading() {
-  return (
-    <div className="grid grid-cols-12 gap-4 px-4 lg:px-6 @container/main:h-full h-full">
-      <div className="col-span-3 space-y-4">
-        <div className="h-64 bg-muted animate-pulse rounded-lg" />
-        <div className="h-32 bg-muted animate-pulse rounded-lg" />
-      </div>
-      <div className="col-span-9">
-        <div className="h-full bg-muted animate-pulse rounded-lg" />
-      </div>
+      <PostalCodesErrorBoundary>
+        <Suspense fallback={<PostalCodesViewSkeleton />}>
+          <ServerPostalCodesView defaultGranularity={granularity} />
+        </Suspense>
+      </PostalCodesErrorBoundary>
     </div>
   );
 }

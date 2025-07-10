@@ -1,5 +1,8 @@
-import { ErrorBoundary } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DrawingToolsErrorBoundary,
+  MapErrorBoundary,
+} from "@/components/ui/error-boundaries";
+import { DrawingToolsSkeleton } from "@/components/ui/loading-skeletons";
 import { useMapCenterZoomSync } from "@/lib/hooks/use-map-center-zoom-sync";
 import { useMapConfig } from "@/lib/hooks/use-map-config";
 import { useMapDataValidation } from "@/lib/hooks/use-map-data-validation";
@@ -26,7 +29,7 @@ const DrawingTools = dynamic(
   () => import("./drawing-tools").then((m) => m.DrawingTools),
   {
     ssr: false,
-    loading: () => <Skeleton className="w-56 h-80 rounded-lg" />,
+    loading: () => <DrawingToolsSkeleton />,
   }
 );
 
@@ -184,7 +187,7 @@ const BaseMapComponent = ({
   }
 
   return (
-    <ErrorBoundary>
+    <MapErrorBoundary>
       <div
         ref={mapContainer}
         className="w-full h-full min-h-[400px] rounded-lg"
@@ -198,8 +201,8 @@ const BaseMapComponent = ({
           role="region"
           aria-label="Kartentools-Panel"
         >
-          <ErrorBoundary>
-            <Suspense>
+          <DrawingToolsErrorBoundary>
+            <Suspense fallback={<DrawingToolsSkeleton />}>
               <DrawingTools
                 currentMode={interactions.currentDrawingMode}
                 onModeChange={interactions.handleDrawingModeChange}
@@ -210,7 +213,7 @@ const BaseMapComponent = ({
                 postalCodesData={data}
               />
             </Suspense>
-          </ErrorBoundary>
+          </DrawingToolsErrorBoundary>
         </div>
       )}
       {!interactions.isDrawingToolsVisible && (
@@ -228,7 +231,7 @@ const BaseMapComponent = ({
           </ToggleButton>
         </div>
       )}
-    </ErrorBoundary>
+    </MapErrorBoundary>
   );
 };
 

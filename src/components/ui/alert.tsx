@@ -1,7 +1,7 @@
-import { cva, type VariantProps } from "class-variance-authority"
-import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 const alertVariants = cva(
   "relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
@@ -17,7 +17,7 @@ const alertVariants = cva(
       variant: "default",
     },
   }
-)
+);
 
 function Alert({
   className,
@@ -31,7 +31,7 @@ function Alert({
       className={cn(alertVariants({ variant }), className)}
       {...props}
     />
-  )
+  );
 }
 
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
@@ -44,7 +44,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
       )}
       {...props}
     />
-  )
+  );
 }
 
 function AlertDescription({
@@ -60,65 +60,25 @@ function AlertDescription({
       )}
       {...props}
     />
-  )
+  );
 }
 
-export function AlertError({ message, children }: { message?: string; children?: React.ReactNode }) {
+export function AlertError({
+  message,
+  children,
+}: {
+  message?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <Alert variant="destructive" role="alert">
       <AlertTitle>Error</AlertTitle>
       <AlertDescription>
-        {message || 'Something went wrong.'}
+        {message || "Something went wrong."}
         {children}
       </AlertDescription>
     </Alert>
-  )
+  );
 }
 
-// --- ErrorBoundary component ---
-interface ErrorBoundaryProps {
-  children: React.ReactNode
-  fallback?: React.ReactNode
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean
-  error: Error | null
-}
-
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  componentDidCatch(_error: Error, _errorInfo: unknown) {
-    // You can log error to a service here
-    // console.error('ErrorBoundary caught:', _error, _errorInfo)
-  }
-
-  handleRetry = () => {
-    this.setState({ hasError: false, error: null })
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback || (
-        <AlertError message={this.state.error?.message}>
-          <button onClick={this.handleRetry} className="mt-2 underline text-primary">
-            Retry
-          </button>
-        </AlertError>
-      )
-    }
-    return this.props.children
-  }
-}
-
-export { Alert, AlertDescription, AlertTitle }
-
+export { Alert, AlertDescription, AlertTitle };

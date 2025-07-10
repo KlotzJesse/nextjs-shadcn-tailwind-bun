@@ -29,15 +29,34 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import {
+  AddressAutocompleteErrorBoundary,
+  MapErrorBoundary,
+} from "@/components/ui/error-boundaries";
+import {
+  AddressAutocompleteSkeleton,
+  MapSkeleton,
+} from "@/components/ui/loading-skeletons";
+
 const AddressAutocompleteEnhanced = dynamic(
   () =>
     import("./address-autocomplete-enhanced").then(
       (m) => m.AddressAutocompleteEnhanced
     ),
-  { ssr: false }
+  {
+    ssr: false,
+    loading: () => <AddressAutocompleteSkeleton />,
+  }
 );
 
-import { PostalCodesMap } from "./postal-codes-map";
+const PostalCodesMap = dynamic(
+  () =>
+    import("./postal-codes-map").then((m) => ({ default: m.PostalCodesMap })),
+  {
+    ssr: false,
+    loading: () => <MapSkeleton />,
+  }
+);
 
 interface PostalCodesViewClientProps {
   initialData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -116,12 +135,14 @@ export default function PostalCodesViewClient({
       {/* Address and Postal Code Tools - horizontal, top right */}
       <div className="absolute top-4 right-4 z-30 flex flex-row gap-3 w-auto">
         <div className="w-80">
-          <AddressAutocompleteEnhanced
-            onAddressSelect={handleAddressSelect}
-            onRadiusSelect={handleRadiusSelect}
-            granularity={defaultGranularity}
-            triggerClassName="truncate"
-          />
+          <AddressAutocompleteErrorBoundary>
+            <AddressAutocompleteEnhanced
+              onAddressSelect={handleAddressSelect}
+              onRadiusSelect={handleRadiusSelect}
+              granularity={defaultGranularity}
+              triggerClassName="truncate"
+            />
+          </AddressAutocompleteErrorBoundary>
         </div>
         <div className="w-80">
           <Popover open={postalCodeOpen} onOpenChange={setPostalCodeOpen}>
@@ -210,13 +231,15 @@ export default function PostalCodesViewClient({
       )}
       {/* Map with integrated tools */}
       <div className="h-full">
-        <PostalCodesMap
-          data={data}
-          statesData={statesData}
-          onSearch={searchPostalCodes}
-          granularity={defaultGranularity}
-          onGranularityChange={handleGranularityChange}
-        />
+        <MapErrorBoundary>
+          <PostalCodesMap
+            data={data}
+            statesData={statesData}
+            onSearch={searchPostalCodes}
+            granularity={defaultGranularity}
+            onGranularityChange={handleGranularityChange}
+          />
+        </MapErrorBoundary>
       </div>
     </div>
   );
