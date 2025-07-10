@@ -17,7 +17,7 @@ import type {
 } from "@/types/base-map";
 import { PlusIcon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { memo, Suspense, useCallback, useMemo, useRef } from "react";
+import { memo, startTransition, Suspense, useCallback, useMemo, useRef } from "react";
 import { Button } from "../ui/button";
 
 // Memoized drawing tools component with lazy loading for performance
@@ -162,17 +162,23 @@ const BaseMapComponent = ({
     componentName: "BaseMap",
   });
 
-  // Memoized toggle handlers to prevent re-renders
+  // Memoized toggle handlers with React 19 batching optimization
   const handleShowTools = useCallback(() => {
-    interactions.showTools();
+    startTransition(() => {
+      interactions.showTools();
+    });
   }, [interactions]);
 
   const handleHideTools = useCallback(() => {
-    interactions.hideTools();
+    startTransition(() => {
+      interactions.hideTools();
+    });
   }, [interactions]);
 
   const handleClearAll = useCallback(() => {
-    interactions.clearAll();
+    startTransition(() => {
+      interactions.clearAll();
+    });
   }, [interactions]);
 
   // Early return with stable error message

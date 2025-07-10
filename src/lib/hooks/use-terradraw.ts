@@ -1,3 +1,4 @@
+import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import type { Map as MapLibre } from "maplibre-gl";
 import { RefObject, useCallback, useEffect, useRef } from "react";
 import {
@@ -53,19 +54,18 @@ export function useTerraDraw({
   const drawRef = useRef<TerraDraw | null>(null);
   const isInitializedRef = useRef(false);
 
-  // Memoize the callback to prevent unnecessary re-initializations
-  const stableOnSelectionChange = useCallback((features: (string | number)[]) => {
+  // Stable callbacks to prevent unnecessary re-initializations
+  const stableOnSelectionChange = useStableCallback((features: (string | number)[]) => {
     onSelectionChange?.(features);
-  }, [onSelectionChange]);
+  });
 
-  // Memoize start and stop callbacks to prevent unnecessary re-initializations
-  const stableOnStart = useCallback(() => {
+  const stableOnStart = useStableCallback(() => {
     onStart?.();
-  }, [onStart]);
+  });
 
-  const stableOnStop = useCallback(() => {
+  const stableOnStop = useStableCallback(() => {
     onStop?.();
-  }, [onStop]);
+  });
 
   // Debug logging only on mount/unmount to prevent rerender triggers
   useEffect(() => {

@@ -87,7 +87,7 @@ export function useMapPerformanceMonitor({
         );
       }
     }
-  }); // No dependency array to run on every render
+  }, [featureCount, selectedCount, isMapLoaded, layersLoaded, currentDrawingMode, componentName]); // Add dependency array to only run when these values change
 
   // Log mount/unmount in development
   useEffect(() => {
