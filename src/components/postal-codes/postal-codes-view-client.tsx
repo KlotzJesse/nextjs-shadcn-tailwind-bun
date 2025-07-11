@@ -3,16 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
+    Command,
+    CommandEmpty,
+    CommandInput,
+    CommandItem,
+    CommandList,
 } from "@/components/ui/command";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/ui/popover";
 import { useDrivingRadiusSearch } from "@/lib/hooks/use-driving-radius-search";
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
@@ -20,24 +20,24 @@ import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
 import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
 import { useMapState } from "@/lib/url-state/map-state";
 import {
-  FeatureCollection,
-  GeoJsonProperties,
-  MultiPolygon,
-  Polygon,
+    FeatureCollection,
+    GeoJsonProperties,
+    MultiPolygon,
+    Polygon,
 } from "geojson";
-import { ChevronsUpDownIcon } from "lucide-react";
+import { ChevronsUpDownIcon, FileUpIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-  AddressAutocompleteErrorBoundary,
-  MapErrorBoundary,
+    AddressAutocompleteErrorBoundary,
+    MapErrorBoundary,
 } from "@/components/ui/error-boundaries";
 import {
-  AddressAutocompleteSkeleton,
-  MapSkeleton,
+    AddressAutocompleteSkeleton,
+    MapSkeleton,
 } from "@/components/ui/loading-skeletons";
 
 const AddressAutocompleteEnhanced = dynamic(
@@ -57,6 +57,16 @@ const PostalCodesMap = dynamic(
   {
     ssr: false,
     loading: () => <MapSkeleton />,
+  }
+);
+
+const PostalCodeImportDialog = dynamic(
+  () =>
+    import("./postal-code-import-dialog").then(
+      (m) => ({ default: m.PostalCodeImportDialog })
+    ),
+  {
+    ssr: false,
   }
 );
 
@@ -98,6 +108,7 @@ export default function PostalCodesViewClient({
   const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(
     null
   );
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const handleGranularityChange = (newGranularity: string) => {
     if (newGranularity !== defaultGranularity) {
@@ -159,6 +170,11 @@ export default function PostalCodesViewClient({
     granularity: string
   ) => {
     await performRadiusSearch(coords, radius, granularity);
+  };
+
+  // Handle bulk postal code import
+  const handleImport = (postalCodes: string[]) => {
+    addSelectedRegions(postalCodes);
   };
 
   // Get all postal codes for autocomplete
@@ -239,6 +255,18 @@ export default function PostalCodesViewClient({
             </PopoverContent>
           </Popover>
         </div>
+        {/* Import Button - Opens the import dialog */}
+        <div className="flex-shrink-0">
+          <Button
+            onClick={() => setImportDialogOpen(true)}
+            variant="outline"
+            size="default"
+            className="h-10 px-4"
+            title="PLZ-Regionen importieren"
+          >
+            <FileUpIcon className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       {/* Search Results Panel - Only show when there are results */}
       {searchResults.length > 0 && (
@@ -278,6 +306,15 @@ export default function PostalCodesViewClient({
           />
         </MapErrorBoundary>
       </div>
+
+      {/* Import Dialog */}
+      <PostalCodeImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        data={data}
+        granularity={defaultGranularity}
+        onImport={handleImport}
+      />
     </div>
   );
 }
