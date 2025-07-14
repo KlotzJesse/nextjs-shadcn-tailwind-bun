@@ -13,7 +13,7 @@ const ServerPostalCodesView = nextDynamic(
 );
 
 export const experimental_ppr = true;
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic"; // Changed from force-static to allow database access
 
 const VALID_GRANULARITIES = ["1digit", "2digit", "3digit", "5digit"] as const;
 

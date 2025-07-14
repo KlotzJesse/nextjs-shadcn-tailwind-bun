@@ -31,13 +31,14 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface GeocodeResult {
-  id: number;
+  id: number | string;
   display_name: string;
   coordinates: [number, number];
   postal_code?: string;
   city?: string;
   state?: string;
   country?: string;
+  isLocationBased?: boolean; // Flag for results from location search
 }
 
 interface AddressAutocompleteEnhancedProps {
@@ -46,6 +47,7 @@ interface AddressAutocompleteEnhancedProps {
     label: string,
     postalCode?: string
   ) => void;
+  onBoundarySelect?: (postalCodes: string[]) => void; // For selecting all postal codes in an administrative area
   onRadiusSelect: (
     coords: [number, number],
     radius: number,
@@ -64,6 +66,7 @@ interface AddressAutocompleteEnhancedProps {
 
 export function AddressAutocompleteEnhanced({
   onAddressSelect,
+  onBoundarySelect,
   onRadiusSelect,
   performDrivingRadiusSearch,
   granularity,
@@ -113,6 +116,10 @@ export function AddressAutocompleteEnhanced({
       // Create a promise for toast feedback
       const geocodePromise = async () => {
         try {
+          // Detect if query is likely an address (contains numbers) or a place name (only letters)
+          const looksLikeAddress = /\d/.test(value.trim());
+          
+          // Enhanced search with German/English support and city/state handling
           const response = await fetch("/api/geocode", {
             method: "POST",
             headers: {
@@ -120,8 +127,9 @@ export function AddressAutocompleteEnhanced({
             },
             body: JSON.stringify({
               query: value,
-              includePostalCode: true,
+              includePostalCode: looksLikeAddress, // Only require postal codes for address-like queries
               limit: 8,
+              enhancedSearch: true, // Enable enhanced German/English search
             }),
           });
 
@@ -130,15 +138,57 @@ export function AddressAutocompleteEnhanced({
           }
 
           const data = await response.json();
-          const results = data.results || [];
+          let results = data.results || [];
+
+          // If no direct geocoding results and input looks like a city/state, try location search
+          if (results.length === 0 && !/^\d/.test(value.trim())) {
+            try {
+              const locationResponse = await fetch("/api/postal-codes/search-by-location", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  location: value,
+                  granularity: granularity,
+                  limit: 10,
+                }),
+              });
+
+              if (locationResponse.ok) {
+                const locationData = await locationResponse.json();
+                
+                // Convert postal code results to geocode format for consistent UI
+                if (locationData.postalCodes && locationData.postalCodes.length > 0) {
+                  // Create virtual geocode results for postal codes found by location
+                  const virtualResults = locationData.postalCodes.slice(0, 5).map((code: string, index: number) => ({
+                    id: `location-${index}`,
+                    display_name: `${code} - ${value} (gefunden in ${locationData.searchVariants.join(', ')})`,
+                    coordinates: [0, 0], // Will be filled by actual geocoding if needed
+                    postal_code: code,
+                    city: value,
+                    state: undefined,
+                    country: "Deutschland",
+                    isLocationBased: true,
+                  }));
+                  
+                  results = virtualResults;
+                }
+              }
+            } catch (locationError) {
+              console.warn("Location search failed:", locationError);
+            }
+          }
+
           setResults(results);
 
           if (results.length === 0) {
-            throw new Error(`Keine Ergebnisse für "${value}" gefunden`);
+            throw new Error(`Keine Ergebnisse für "${value}" gefunden. Versuchen Sie deutsche Stadtnamen (z.B. München statt Munich) oder PLZ.`);
           }
 
-          return `${results.length} Adresse${
-            results.length > 1 ? "n" : ""
+          const resultType = results[0]?.isLocationBased ? "Standorte" : "Adressen";
+          return `${results.length} ${resultType}${
+            results.length > 1 ? "" : ""
           } gefunden`;
         } catch (error) {
           console.error("Geocoding error:", error);
@@ -151,7 +201,7 @@ export function AddressAutocompleteEnhanced({
 
       // Use promise-based toast for geocoding feedback
       toast.promise(geocodePromise(), {
-        loading: `🔍 Suche nach "${value}"...`,
+        loading: `🔍 Suche nach "${value}"... (DE/EN unterstützt)`,
         success: (message) => message,
         error: (error) =>
           error instanceof Error ? error.message : "Adresssuche fehlgeschlagen",
@@ -183,6 +233,74 @@ export function AddressAutocompleteEnhanced({
 
   const handleDirectSelect = useStableCallback((result: GeocodeResult) => {
     setOpen(false);
+
+    // For location-based results, we need to handle differently
+    if (result.isLocationBased) {
+      // For location-based results, we focus on the postal code
+      const adjustedPostalCode = result.postal_code
+        ? convertPostalCodeToGranularity(result.postal_code, granularity)
+        : result.postal_code;
+
+      // Use postal code as the main identifier for location-based results
+      onAddressSelect(
+        [0, 0], // Coordinates will be filled by the system when needed
+        `PLZ ${adjustedPostalCode} - ${result.city || 'Unbekannt'}`,
+        adjustedPostalCode
+      );
+      return;
+    }
+
+    // Detect if this is an administrative area (city, state, etc.) without postal code
+    const isAdministrativeArea = !result.postal_code && 
+      (result.city || result.state || 
+       result.display_name.includes(', Deutschland') ||
+       result.display_name.includes(', Bayern') ||
+       result.display_name.includes(', Nordrhein-Westfalen') ||
+       result.display_name.includes(' Deutschland') ||
+       /\b(Stadt|Kreis|Landkreis|Region|Bundesland)\b/i.test(result.display_name));
+
+    // If this is an administrative area and we have boundary selection capability
+    if (isAdministrativeArea && onBoundarySelect) {
+      const boundarySearchPromise = async () => {
+        try {
+          const response = await fetch("/api/postal-codes/search-by-boundary", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              areaName: result.city || result.state || result.display_name.split(',')[0],
+              granularity: granularity,
+              limit: 3000, // Increased to handle large states like Bayern (2320 postal codes)
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Boundary search failed");
+          }
+
+          const data = await response.json();
+          
+          if (data.postalCodes && data.postalCodes.length > 0) {
+            onBoundarySelect(data.postalCodes);
+            return `${data.count} PLZ-Regionen in ${data.areaInfo.name} ausgewählt`;
+          } else {
+            throw new Error("Keine PLZ-Regionen in diesem Gebiet gefunden");
+          }
+        } catch (error) {
+          console.error("Boundary search failed:", error);
+          throw new Error("Gebietsauswahl fehlgeschlagen");
+        }
+      };
+
+      toast.promise(boundarySearchPromise(), {
+        loading: `🗺️ Suche PLZ-Regionen in ${result.display_name}...`,
+        success: (message: string) => message,
+        error: (error: Error) => error.message,
+      });
+
+      return;
+    }
 
     // Convert postal code to match current granularity
     const adjustedPostalCode = result.postal_code
@@ -256,6 +374,23 @@ export function AddressAutocompleteEnhanced({
   });
 
   const formatDisplayName = (result: GeocodeResult): string => {
+    if (result.isLocationBased) {
+      return `${result.postal_code} - ${result.city || 'Unbekannt'} (Bereich)`;
+    }
+    
+    // Detect administrative areas for display
+    const isAdministrativeArea = !result.postal_code && 
+      (result.city || result.state || 
+       result.display_name.includes(', Deutschland') ||
+       result.display_name.includes(', Bayern') ||
+       result.display_name.includes(', Nordrhein-Westfalen') ||
+       result.display_name.includes(' Deutschland') ||
+       /\b(Stadt|Kreis|Landkreis|Region|Bundesland)\b/i.test(result.display_name));
+    
+    if (isAdministrativeArea && onBoundarySelect) {
+      return `🗺️ ${result.city || result.state || result.display_name.split(',')[0]} (Gebiet)`;
+    }
+    
     if (result.postal_code) {
       return `${result.postal_code} - ${result.city || result.display_name}`;
     }
@@ -272,7 +407,7 @@ export function AddressAutocompleteEnhanced({
             className={`w-full justify-between ${triggerClassName}`}
           >
             <span className="truncate block w-full text-left">
-              {query ? query : "PLZ oder Adresse suchen..."}
+              {query ? query : "PLZ, Adresse, Stadt oder Region suchen... (DE/EN)"}
             </span>
             <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -280,7 +415,7 @@ export function AddressAutocompleteEnhanced({
         <PopoverContent className="w-[320px] p-0">
           <Command>
             <CommandInput
-              placeholder="PLZ oder Adresse suchen..."
+              placeholder="PLZ, Adresse, Stadt oder Region suchen... (München, Munich, Berlin, Bayern, etc.)"
               value={query}
               onValueChange={handleInputChange}
               autoFocus
@@ -330,7 +465,14 @@ export function AddressAutocompleteEnhanced({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Exakte Position auswählen</p>
+                            <p>
+                              {!result.postal_code && 
+                               (result.city || result.state || 
+                                result.display_name.includes(', Deutschland')) && 
+                               onBoundarySelect
+                                ? "Alle PLZ-Regionen in diesem Gebiet auswählen"
+                                : "Exakte Position auswählen"}
+                            </p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>

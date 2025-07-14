@@ -101,8 +101,8 @@ export function useMapBusinessLogic({
 
   // Business rules: selection limits
   const selectionLimits = useMemo(() => ({
-    maxSelections: 1000, // Prevent performance issues
-    warnThreshold: 100,  // Warn user about performance
+    maxSelections: 5000, // Increased to handle large states like Bayern (2320 postal codes)
+    warnThreshold: 1000,  // Warn user about performance when selecting many postal codes
   }), []);
 
   return {

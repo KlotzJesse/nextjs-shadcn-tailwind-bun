@@ -190,6 +190,7 @@ export default function PostalCodesViewClient({
           <AddressAutocompleteErrorBoundary>
             <AddressAutocompleteEnhanced
               onAddressSelect={handleAddressSelect}
+              onBoundarySelect={addSelectedRegions}
               onRadiusSelect={handleRadiusSelect}
               performDrivingRadiusSearch={performDrivingRadiusSearch}
               granularity={defaultGranularity}
