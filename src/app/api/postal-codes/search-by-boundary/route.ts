@@ -102,7 +102,10 @@ async function postHandler(request: NextRequest) {
       });
     }
 
-    // Find all postal codes that intersect with the boundary
+    // Find all postal codes where the centroid is contained within the boundary
+    // This approach uses the center point of each postal code region to determine
+    // if it belongs to the administrative area, avoiding edge cases where
+    // postal codes might slightly overlap boundaries
     const intersectingCodes = await db
       .select({
         code: postalCodes.code,
@@ -113,9 +116,9 @@ async function postHandler(request: NextRequest) {
       .from(postalCodes)
       .where(
         sql`${postalCodes.granularity} = ${granularity}
-            AND ST_Intersects(
-              ${postalCodes.geometry},
-              ST_GeomFromGeoJSON(${boundaryGeometry})
+            AND ST_Contains(
+              ST_GeomFromGeoJSON(${boundaryGeometry}),
+              ST_Centroid(${postalCodes.geometry})
             )`
       )
       .limit(limit);
