@@ -37,9 +37,7 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorResponse> {
 
   // Handle Zod validation errors
   if (error instanceof ZodError) {
-    const message = error.errors
-      .map((e) => `${e.path.join(".")}: ${e.message}`)
-      .join(", ");
+    const message = JSON.stringify(error);
     return NextResponse.json(
       createApiError(400, `Validation error: ${message}`, "Validation Error"),
       { status: 400 }

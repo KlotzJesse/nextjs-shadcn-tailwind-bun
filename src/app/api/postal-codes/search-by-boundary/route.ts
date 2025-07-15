@@ -15,19 +15,6 @@ const BoundarySearchRequestSchema = z.object({
   limit: z.number().max(5000).default(3000), // Increased to handle large states like Bayern (2320 postal codes)
 });
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-  geojson?: {
-    type: string;
-    coordinates: number[][][] | number[][][][];
-  };
-  boundingbox: [string, string, string, string]; // [south, north, west, east]
-  [key: string]: unknown;
-}
-
 async function postHandler(request: NextRequest) {
   const body = await request.json();
   const { areaName, granularity, limit } =

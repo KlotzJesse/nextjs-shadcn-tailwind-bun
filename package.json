@@ -72,7 +72,7 @@
   "name": "krauss-territory-management",
   "private": true,
   "scripts": {
-    "build": "next build --turbopack",
+    "build": "next build",
     "dev": "next dev --turbopack",
     "lint": "next lint",
     "start": "next start"

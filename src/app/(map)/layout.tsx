@@ -22,7 +22,11 @@ const SiteHeader = dynamic(
 
 export const experimental_ppr = true;
 
-export default function MapLayout({ children }: { children: React.ReactNode }) {
+export default async function MapLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <FeatureErrorBoundary fallbackMessage="Fehler beim Laden der Anwendung">
       <SidebarProvider

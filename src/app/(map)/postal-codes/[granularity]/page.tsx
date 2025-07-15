@@ -2,6 +2,7 @@ import { PostalCodesErrorBoundary } from "@/components/ui/error-boundaries";
 import { PostalCodesViewSkeleton } from "@/components/ui/loading-skeletons";
 import { Metadata } from "next";
 import nextDynamic from "next/dynamic";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 const ServerPostalCodesView = nextDynamic(
@@ -55,6 +56,7 @@ export async function generateMetadata({
 export default async function PostalCodesPage({
   params,
 }: PostalCodesPageProps) {
+  await connection();
   const { granularity } = await params;
 
   return (

@@ -16,8 +16,6 @@ interface ServerPostalCodesViewProps {
   defaultGranularity: string;
 }
 
-export const dynamic = "force-static";
-
 export default async function ServerPostalCodesView({
   defaultGranularity,
 }: ServerPostalCodesViewProps) {

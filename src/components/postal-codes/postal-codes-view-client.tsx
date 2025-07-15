@@ -260,7 +260,6 @@ export default function PostalCodesViewClient({
         <div className="flex-shrink-0">
           <Button
             onClick={() => setImportDialogOpen(true)}
-            variant="outline"
             size="default"
             className="h-10 px-4"
             title="PLZ-Regionen importieren"
