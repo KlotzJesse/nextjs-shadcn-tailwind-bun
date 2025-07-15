@@ -8,39 +8,39 @@ The enhanced address search now supports both German and English place names, pl
 
 ### 1. City Names (Both Languages Work)
 
-| German | English | Result |
-|--------|---------|--------|
-| `München` | `Munich` | All Munich postal codes and addresses |
-| `Köln` | `Cologne` | All Cologne postal codes and addresses |
+| German       | English      | Result                                    |
+| ------------ | ------------ | ----------------------------------------- |
+| `München`    | `Munich`     | All Munich postal codes and addresses     |
+| `Köln`       | `Cologne`    | All Cologne postal codes and addresses    |
 | `Düsseldorf` | `Dusseldorf` | All Düsseldorf postal codes and addresses |
-| `Nürnberg` | `Nuremberg` | All Nuremberg postal codes and addresses |
+| `Nürnberg`   | `Nuremberg`  | All Nuremberg postal codes and addresses  |
 
 ### 2. State Names (Multiple Variants)
 
-| German | English | Abbreviation | Result |
-|--------|---------|-------------|--------|
-| `Bayern` | `Bavaria` | `BY` | All Bavarian postal codes |
-| `Nordrhein-Westfalen` | `North Rhine-Westphalia` | `NRW` | All NRW postal codes |
-| `Baden-Württemberg` | `Baden-Württemberg` | `BW` | All BW postal codes |
-| `Hessen` | `Hesse` | `HE` | All Hessen postal codes |
+| German                | English                  | Abbreviation | Result                    |
+| --------------------- | ------------------------ | ------------ | ------------------------- |
+| `Bayern`              | `Bavaria`                | `BY`         | All Bavarian postal codes |
+| `Nordrhein-Westfalen` | `North Rhine-Westphalia` | `NRW`        | All NRW postal codes      |
+| `Baden-Württemberg`   | `Baden-Württemberg`      | `BW`         | All BW postal codes       |
+| `Hessen`              | `Hesse`                  | `HE`         | All Hessen postal codes   |
 
 ### 3. Character Variations (Automatic Handling)
 
-| Input | Finds |
-|-------|-------|
-| `Muenchen` | München |
-| `Koeln` | Köln |
+| Input        | Finds      |
+| ------------ | ---------- |
+| `Muenchen`   | München    |
+| `Koeln`      | Köln       |
 | `Dusseldorf` | Düsseldorf |
-| `Thueringen` | Thüringen |
+| `Thueringen` | Thüringen  |
 
 ### 4. Postal Code Searches (Enhanced)
 
-| Input | Granularity | Result |
-|-------|-------------|--------|
-| `8` | 1digit | All postal codes 80000-89999 |
-| `86` | 2digit | All postal codes 86000-86999 |
-| `86899` | 5digit | Exact postal code 86899 |
-| `D-86899` | Any | Auto-removes D- prefix |
+| Input     | Granularity | Result                       |
+| --------- | ----------- | ---------------------------- |
+| `8`       | 1digit      | All postal codes 80000-89999 |
+| `86`      | 2digit      | All postal codes 86000-86999 |
+| `86899`   | 5digit      | Exact postal code 86899      |
+| `D-86899` | Any         | Auto-removes D- prefix       |
 
 ## Advanced Features
 
@@ -56,9 +56,10 @@ When you search for a city name, you get two types of results:
 **User searches: "Munich"**
 
 1. **Instant Results**:
+
    ```
    📍 80331 - München, Altstadt-Lehel
-   📍 80333 - München, Maxvorstadt  
+   📍 80333 - München, Maxvorstadt
    📍 80335 - München, Ludwigsvorstadt
    🏙️ München (Bereich) - All Munich postal codes
    ```
@@ -85,15 +86,15 @@ The radius search now works with any found location:
 
 ```javascript
 // Search with enhanced German/English support
-const response = await fetch('/api/geocode', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+const response = await fetch("/api/geocode", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    query: 'Munich',           // Works with German or English
-    enhancedSearch: true,      // Enable multi-variant search
+    query: "Munich", // Works with German or English
+    enhancedSearch: true, // Enable multi-variant search
     includePostalCode: true,
-    limit: 8
-  })
+    limit: 8,
+  }),
 });
 
 const data = await response.json();
@@ -104,14 +105,14 @@ const data = await response.json();
 
 ```javascript
 // Find all postal codes in a city/state
-const response = await fetch('/api/postal-codes/search-by-location', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+const response = await fetch("/api/postal-codes/search-by-location", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    location: 'Bavaria',       // Works with "Bayern" too
-    granularity: '5digit',
-    limit: 100
-  })
+    location: "Bavaria", // Works with "Bayern" too
+    granularity: "5digit",
+    limit: 100,
+  }),
 });
 
 const data = await response.json();
@@ -125,6 +126,7 @@ const data = await response.json();
 **Problem**: Tourist searches "Munich" but only German results appear
 
 **Solution**: Enhanced search automatically tries:
+
 - "Munich" → "München" → "Munich, Germany"
 - Returns comprehensive results in user's language
 
@@ -132,7 +134,8 @@ const data = await response.json();
 
 **Problem**: Need to select all postal codes in Bavaria
 
-**Solution**: 
+**Solution**:
+
 1. Search "Bavaria" or "Bayern"
 2. Click area selection
 3. Get all Bavarian postal codes instantly
@@ -142,7 +145,8 @@ const data = await response.json();
 **Problem**: Define territories by major cities
 
 **Solution**:
-1. Search "Stuttgart" 
+
+1. Search "Stuttgart"
 2. Use radius tool with 25km
 3. Get all postal codes within driving distance
 
@@ -151,6 +155,7 @@ const data = await response.json();
 **Problem**: Need postal codes along specific corridors
 
 **Solution**:
+
 1. Search for multiple cities: "Hamburg", "Bremen", "Hannover"
 2. Use radius selection for each
 3. Combine results for route planning
@@ -182,16 +187,17 @@ const data = await response.json();
 
 ### Common Issues
 
-| Problem | Solution |
-|---------|----------|
-| "Munich" finds nothing | Try "München" or check internet connection |
+| Problem                  | Solution                                         |
+| ------------------------ | ------------------------------------------------ |
+| "Munich" finds nothing   | Try "München" or check internet connection       |
 | Too many Bavaria results | Use more specific granularity (3digit vs 5digit) |
-| Missing postal codes | Ensure postal code data is loaded for the region |
-| Slow search | Check Nominatim API availability |
+| Missing postal codes     | Ensure postal code data is loaded for the region |
+| Slow search              | Check Nominatim API availability                 |
 
 ### Debug Information
 
 Enhanced search provides debug info in API responses:
+
 ```json
 {
   "results": [...],
@@ -221,6 +227,6 @@ Enhanced search provides debug info in API responses:
 ## Future Roadmap
 
 - **🔍 Fuzzy Search**: Typo tolerance and suggestions
-- **🤖 ML Enhancement**: Learn from user search patterns  
+- **🤖 ML Enhancement**: Learn from user search patterns
 - **🌍 Multi-Language**: Support for more European languages
 - **📊 Analytics**: Track search success rates and optimize

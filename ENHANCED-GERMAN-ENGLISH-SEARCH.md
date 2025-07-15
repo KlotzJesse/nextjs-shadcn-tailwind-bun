@@ -16,11 +16,13 @@ This enhancement addresses the issues with German vs English place name searchin
 ### 1. Enhanced Postal Code Parser (`src/lib/utils/postal-code-parser.ts`)
 
 #### City/State Name Mappings
+
 - **German ↔ English**: München/Munich, Köln/Cologne, Düsseldorf/Dusseldorf
 - **Alternative Spellings**: ä/ae, ö/oe, ü/ue, ß/ss translations
 - **State Abbreviations**: Bayern/Bavaria/BY, Nordrhein-Westfalen/NRW
 
 #### New Functions
+
 - `normalizeCityStateName()`: Converts input to multiple search variants
 - `buildSearchQuery()`: Creates multiple query variations for Nominatim
 - `findPostalCodesByLocation()`: Searches postal codes by city/state name
@@ -29,16 +31,19 @@ This enhancement addresses the issues with German vs English place name searchin
 ### 2. Enhanced Geocoding API (`src/app/api/geocode/route.ts`)
 
 #### Multi-Variant Search
+
 - Sends multiple query variations to Nominatim API
 - Tries German name, English name, and context variations
 - Deduplicates results based on coordinates
 
 #### Smart Result Ranking
+
 - Prioritizes exact postal code matches
 - Ranks city/state name matches higher
 - Prefers results with postal codes
 
 #### Enhanced Request Parameters
+
 ```typescript
 {
   query: string,
@@ -51,11 +56,13 @@ This enhancement addresses the issues with German vs English place name searchin
 ### 3. Location-Based Postal Code Search API (`src/app/api/postal-codes/search-by-location/route.ts`)
 
 #### Direct Database Search
+
 - Searches postal code properties for city/state names
 - Uses normalized search variants
 - Returns all postal codes within a location
 
 #### Usage Examples
+
 ```bash
 # Find all postal codes in Munich
 POST /api/postal-codes/search-by-location
@@ -77,11 +84,13 @@ POST /api/postal-codes/search-by-location
 ### 4. Enhanced Address Autocomplete (`src/components/postal-codes/address-autocomplete-enhanced.tsx`)
 
 #### Fallback Search Strategy
+
 1. **Primary**: Enhanced geocoding with multi-variant search
 2. **Fallback**: Location-based postal code search for city/state queries
 3. **Combined Results**: Seamlessly presents both types of results
 
 #### Improved UX
+
 - Updated placeholder text indicating DE/EN support
 - Better loading messages mentioning language support
 - Distinguished display for location-based vs address-based results
@@ -91,19 +100,23 @@ POST /api/postal-codes/search-by-location
 ### Supported Search Terms
 
 #### Cities (German/English)
+
 - ✅ "München" or "Munich" → All Munich postal codes
-- ✅ "Köln" or "Cologne" → All Cologne postal codes  
+- ✅ "Köln" or "Cologne" → All Cologne postal codes
 - ✅ "Frankfurt" or "Frankfurt am Main" → All Frankfurt postal codes
 
 #### States (German/English)
+
 - ✅ "Bayern" or "Bavaria" → All Bavarian postal codes
 - ✅ "Nordrhein-Westfalen" or "North Rhine-Westphalia" or "NRW" → All NRW postal codes
 
 #### Character Handling
+
 - ✅ "Düsseldorf" or "Dusseldorf" → Same results
 - ✅ "Nürnberg" or "Nuremberg" → Same results
 
 #### Partial Postal Codes
+
 - ✅ "8" → All postal codes starting with 8
 - ✅ "86" → All postal codes starting with 86
 - ✅ "86899" → Exact postal code match
@@ -113,7 +126,7 @@ POST /api/postal-codes/search-by-location
 1. **User types**: "Munich"
 2. **System tries**:
    - Geocoding with "Munich"
-   - Geocoding with "München" 
+   - Geocoding with "München"
    - Geocoding with "Munich, Germany"
    - Location search in postal code database
 3. **Results show**: Addresses in Munich + option to select all Munich postal codes
@@ -123,11 +136,12 @@ POST /api/postal-codes/search-by-location
 ### Database Considerations
 
 The location search relies on properties stored in the `postal_codes.properties` JSONB field:
+
 ```sql
 -- Expected properties structure
 {
   "name": "München",
-  "city": "München", 
+  "city": "München",
   "state": "Bayern",
   "region": "Oberbayern"
 }
@@ -149,11 +163,14 @@ The location search relies on properties stored in the `postal_codes.properties`
 ## Configuration
 
 ### Environment Variables
+
 No additional environment variables required. The system uses:
+
 - Existing Nominatim OpenStreetMap API
 - Existing database configuration
 
 ### Rate Limiting Considerations
+
 - Enhanced search makes more API calls to Nominatim
 - Consider implementing request caching in production
 - Monitor Nominatim usage policies
@@ -163,14 +180,17 @@ No additional environment variables required. The system uses:
 ### Manual Test Cases
 
 1. **English City Names**:
+
    - Search "Munich" → Should find München results
    - Search "Cologne" → Should find Köln results
 
 2. **State Names**:
+
    - Search "Bavaria" → Should find Bayern postal codes
    - Search "NRW" → Should find Nordrhein-Westfalen postal codes
 
 3. **Character Variations**:
+
    - Search "Dusseldorf" → Should find Düsseldorf
    - Search "Munchen" → Should find München
 
@@ -179,6 +199,7 @@ No additional environment variables required. The system uses:
    - Search "Hamburg" → Works in both languages
 
 ### API Testing
+
 ```bash
 # Test enhanced geocoding
 curl -X POST http://localhost:3000/api/geocode \
@@ -194,7 +215,7 @@ curl -X POST http://localhost:3000/api/postal-codes/search-by-location \
 ## Future Enhancements
 
 1. **Fuzzy Matching**: Implement Levenshtein distance for typo tolerance
-2. **Machine Learning**: Train on common search patterns 
+2. **Machine Learning**: Train on common search patterns
 3. **Caching Layer**: Redis cache for frequent searches
 4. **Analytics**: Track which search variants work best
 5. **User Preferences**: Remember user's preferred language

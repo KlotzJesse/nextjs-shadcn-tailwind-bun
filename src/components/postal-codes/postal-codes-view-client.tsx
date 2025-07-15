@@ -3,16 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    Command,
-    CommandEmpty,
-    CommandInput,
-    CommandItem,
-    CommandList,
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import { useDrivingRadiusSearch } from "@/lib/hooks/use-driving-radius-search";
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
@@ -20,10 +20,10 @@ import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
 import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
 import { useMapState } from "@/lib/url-state/map-state";
 import {
-    FeatureCollection,
-    GeoJsonProperties,
-    MultiPolygon,
-    Polygon,
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
 } from "geojson";
 import { ChevronsUpDownIcon, FileUpIcon } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -32,12 +32,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-    AddressAutocompleteErrorBoundary,
-    MapErrorBoundary,
+  AddressAutocompleteErrorBoundary,
+  MapErrorBoundary,
 } from "@/components/ui/error-boundaries";
 import {
-    AddressAutocompleteSkeleton,
-    MapSkeleton,
+  AddressAutocompleteSkeleton,
+  MapSkeleton,
 } from "@/components/ui/loading-skeletons";
 
 const AddressAutocompleteEnhanced = dynamic(
@@ -62,9 +62,9 @@ const PostalCodesMap = dynamic(
 
 const PostalCodeImportDialog = dynamic(
   () =>
-    import("./postal-code-import-dialog").then(
-      (m) => ({ default: m.PostalCodeImportDialog })
-    ),
+    import("./postal-code-import-dialog").then((m) => ({
+      default: m.PostalCodeImportDialog,
+    })),
   {
     ssr: false,
   }

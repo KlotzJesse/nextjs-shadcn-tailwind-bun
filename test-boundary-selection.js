@@ -11,19 +11,22 @@ async function testBoundarySelection() {
 
   for (const testCase of testCases) {
     console.log(`\n🧪 Testing: ${testCase.name} (${testCase.granularity})`);
-    
+
     try {
-      const response = await fetch("http://localhost:3000/api/postal-codes/search-by-boundary", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          areaName: testCase.name,
-          granularity: testCase.granularity,
-          limit: 100,
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:3000/api/postal-codes/search-by-boundary",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            areaName: testCase.name,
+            granularity: testCase.granularity,
+            limit: 100,
+          }),
+        }
+      );
 
       if (!response.ok) {
         console.log(`❌ Failed: ${response.status} ${response.statusText}`);
@@ -31,12 +34,16 @@ async function testBoundarySelection() {
       }
 
       const data = await response.json();
-      
+
       if (data.postalCodes && data.postalCodes.length > 0) {
         console.log(`✅ Success: Found ${data.count} postal codes`);
         console.log(`📍 Area: ${data.areaInfo.name}`);
         console.log(`🗺️ Geometry: ${data.searchInfo.geometryType}`);
-        console.log(`📮 First few codes: ${data.postalCodes.slice(0, 5).join(", ")}${data.postalCodes.length > 5 ? "..." : ""}`);
+        console.log(
+          `📮 First few codes: ${data.postalCodes.slice(0, 5).join(", ")}${
+            data.postalCodes.length > 5 ? "..." : ""
+          }`
+        );
       } else {
         console.log(`⚠️ No postal codes found in ${testCase.name}`);
       }

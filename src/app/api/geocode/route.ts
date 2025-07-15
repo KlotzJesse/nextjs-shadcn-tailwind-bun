@@ -39,7 +39,8 @@ interface GeocodeResult {
 
 async function postHandler(request: NextRequest) {
   const body = await request.json();
-  const { query, includePostalCode, limit, enhancedSearch } = GeocodeRequestSchema.parse(body);
+  const { query, includePostalCode, limit, enhancedSearch } =
+    GeocodeRequestSchema.parse(body);
 
   let allResults: GeocodeResult[] = [];
 
@@ -48,11 +49,15 @@ async function postHandler(request: NextRequest) {
     const searchQueries = buildSearchQuery(query);
     const maxResultsPerQuery = Math.ceil(limit / searchQueries.length);
 
-    for (const searchQuery of searchQueries.slice(0, 3)) { // Limit to 3 variants to avoid too many requests
+    for (const searchQuery of searchQueries.slice(0, 3)) {
+      // Limit to 3 variants to avoid too many requests
       try {
-        const results = await performNominatimSearch(searchQuery, maxResultsPerQuery);
+        const results = await performNominatimSearch(
+          searchQuery,
+          maxResultsPerQuery
+        );
         allResults.push(...results);
-        
+
         // Break early if we have enough results
         if (allResults.length >= limit) break;
       } catch (error) {
@@ -79,33 +84,41 @@ async function postHandler(request: NextRequest) {
     ? limitedResults.filter((result) => result.postal_code)
     : limitedResults;
 
-  return NextResponse.json({ 
+  return NextResponse.json({
     results: filteredResults,
     searchInfo: {
       originalQuery: query,
-      variantsUsed: enhancedSearch ? buildSearchQuery(query).slice(0, 3) : [query],
+      variantsUsed: enhancedSearch
+        ? buildSearchQuery(query).slice(0, 3)
+        : [query],
       totalResults: allResults.length,
       uniqueResults: uniqueResults.length,
-    }
+    },
   });
 }
 
-async function performNominatimSearch(query: string, limit: number): Promise<GeocodeResult[]> {
+async function performNominatimSearch(
+  query: string,
+  limit: number
+): Promise<GeocodeResult[]> {
   // Use Nominatim for geocoding with enhanced parameters
-  const nominatimUrl = `https://nominatim.openstreetmap.org/search?` + new URLSearchParams({
-    format: 'json',
-    q: query,
-    addressdetails: '1',
-    limit: limit.toString(),
-    countrycodes: 'de',
-    'accept-language': 'de,en', // Prefer German, fallback to English
-    bounded: '1', // Prefer results within the country bounds
-    viewbox: '5.8663,47.2701,15.0420,55.0581', // Germany bounding box
-  });
+  const nominatimUrl =
+    `https://nominatim.openstreetmap.org/search?` +
+    new URLSearchParams({
+      format: "json",
+      q: query,
+      addressdetails: "1",
+      limit: limit.toString(),
+      countrycodes: "de",
+      "accept-language": "de,en", // Prefer German, fallback to English
+      bounded: "1", // Prefer results within the country bounds
+      viewbox: "5.8663,47.2701,15.0420,55.0581", // Germany bounding box
+    });
 
   const response = await fetch(nominatimUrl, {
     headers: {
-      "User-Agent": "KRAUSS Territory Management/1.0 (Enhanced German/English Search)",
+      "User-Agent":
+        "KRAUSS Territory Management/1.0 (Enhanced German/English Search)",
     },
   });
 
@@ -137,9 +150,12 @@ function removeDuplicateResults(results: GeocodeResult[]): GeocodeResult[] {
   const DISTANCE_THRESHOLD = 0.001; // ~100m in degrees
 
   for (const result of results) {
-    const isDuplicate = unique.some(existing =>
-      Math.abs(existing.coordinates[0] - result.coordinates[0]) < DISTANCE_THRESHOLD &&
-      Math.abs(existing.coordinates[1] - result.coordinates[1]) < DISTANCE_THRESHOLD
+    const isDuplicate = unique.some(
+      (existing) =>
+        Math.abs(existing.coordinates[0] - result.coordinates[0]) <
+          DISTANCE_THRESHOLD &&
+        Math.abs(existing.coordinates[1] - result.coordinates[1]) <
+          DISTANCE_THRESHOLD
     );
 
     if (!isDuplicate) {
@@ -150,25 +166,34 @@ function removeDuplicateResults(results: GeocodeResult[]): GeocodeResult[] {
   return unique;
 }
 
-function sortResultsByRelevance(results: GeocodeResult[], originalQuery: string): GeocodeResult[] {
+function sortResultsByRelevance(
+  results: GeocodeResult[],
+  originalQuery: string
+): GeocodeResult[] {
   const queryLower = originalQuery.toLowerCase();
   const isPostalCodeQuery = /^\d{1,5}/.test(originalQuery.trim());
 
   return results.sort((a, b) => {
     // Exact postal code matches get highest priority
     if (isPostalCodeQuery) {
-      const aPostalMatch = a.postal_code?.startsWith(originalQuery.replace(/\D/g, ''));
-      const bPostalMatch = b.postal_code?.startsWith(originalQuery.replace(/\D/g, ''));
-      
+      const aPostalMatch = a.postal_code?.startsWith(
+        originalQuery.replace(/\D/g, "")
+      );
+      const bPostalMatch = b.postal_code?.startsWith(
+        originalQuery.replace(/\D/g, "")
+      );
+
       if (aPostalMatch && !bPostalMatch) return -1;
       if (!aPostalMatch && bPostalMatch) return 1;
     }
 
     // City/state name matches get high priority
-    const aCityMatch = a.city?.toLowerCase().includes(queryLower) || 
-                     a.state?.toLowerCase().includes(queryLower);
-    const bCityMatch = b.city?.toLowerCase().includes(queryLower) || 
-                     b.state?.toLowerCase().includes(queryLower);
+    const aCityMatch =
+      a.city?.toLowerCase().includes(queryLower) ||
+      a.state?.toLowerCase().includes(queryLower);
+    const bCityMatch =
+      b.city?.toLowerCase().includes(queryLower) ||
+      b.state?.toLowerCase().includes(queryLower);
 
     if (aCityMatch && !bCityMatch) return -1;
     if (!aCityMatch && bCityMatch) return 1;
@@ -208,11 +233,15 @@ async function getHandler(request: NextRequest) {
     const searchQueries = buildSearchQuery(query);
     const maxResultsPerQuery = Math.ceil(limit / searchQueries.length);
 
-    for (const searchQuery of searchQueries.slice(0, 3)) { // Limit to 3 variants
+    for (const searchQuery of searchQueries.slice(0, 3)) {
+      // Limit to 3 variants
       try {
-        const results = await performNominatimSearch(searchQuery, maxResultsPerQuery);
+        const results = await performNominatimSearch(
+          searchQuery,
+          maxResultsPerQuery
+        );
         allResults.push(...results);
-        
+
         // Break early if we have enough results
         if (allResults.length >= limit) break;
       } catch (error) {
@@ -235,14 +264,16 @@ async function getHandler(request: NextRequest) {
     ? limitedResults.filter((result) => result.postal_code)
     : limitedResults;
 
-  return NextResponse.json({ 
+  return NextResponse.json({
     results: filteredResults,
     searchInfo: {
       originalQuery: query,
-      variantsUsed: enhancedSearch ? buildSearchQuery(query).slice(0, 3) : [query],
+      variantsUsed: enhancedSearch
+        ? buildSearchQuery(query).slice(0, 3)
+        : [query],
       totalResults: allResults.length,
       uniqueResults: uniqueResults.length,
-    }
+    },
   });
 }
 
