@@ -3,11 +3,12 @@ import {
   MapErrorBoundary,
 } from "@/components/ui/error-boundaries";
 import { DrawingToolsSkeleton } from "@/components/ui/loading-skeletons";
+import { useEnhancedMapConfig } from "@/lib/hooks/use-enhanced-map-config";
 import { useMapCenterZoomSync } from "@/lib/hooks/use-map-center-zoom-sync";
-import { useMapConfig } from "@/lib/hooks/use-map-config";
 import { useMapDataValidation } from "@/lib/hooks/use-map-data-validation";
 import { useMapInitialization } from "@/lib/hooks/use-map-initialization";
 import { useMapInteractions } from "@/lib/hooks/use-map-interactions";
+import { useMapLanguage } from "@/lib/hooks/use-map-language";
 import { useMapLayers } from "@/lib/hooks/use-map-layers";
 import { useMapOptimizations } from "@/lib/hooks/use-map-optimizations";
 import { useMapPerformanceMonitor } from "@/lib/hooks/use-map-performance-monitor";
@@ -64,8 +65,8 @@ const BaseMapComponent = ({
   // Stable ref for map container
   const mapContainer = useRef<HTMLDivElement>(null);
 
-  // Stable map configuration using custom hook
-  const mapConfig = useMapConfig(center, zoom);
+  // Enhanced map configuration with always-visible city names
+  const mapConfig = useEnhancedMapConfig(center, zoom);
 
   // Memoized data validation for early return
   const { isValid: isDataValid, errorMessage } = useMapDataValidation(data);
@@ -148,6 +149,9 @@ const BaseMapComponent = ({
     setMapCenterZoom,
   });
 
+  // Set map language to German
+  useMapLanguage(map, isMapLoaded, "de");
+
   // Performance monitoring (development only)
   useMapPerformanceMonitor({
     featureCount: optimizations.featureCount,
@@ -184,6 +188,26 @@ const BaseMapComponent = ({
         message={errorMessage || "Unknown error occurred with map data."}
       />
     );
+  }
+
+  // Show loading state while enhanced style is being fetched
+  if (mapConfig.isStyleLoading) {
+    return (
+      <div className="w-full h-full min-h-[400px] flex items-center justify-center rounded-lg bg-muted">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+          <p className="text-sm text-muted-foreground">
+            Loading enhanced map style...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if style failed to load
+  if (mapConfig.styleError) {
+    console.warn("Map style error (using fallback):", mapConfig.styleError);
+    // Continue with fallback style - no need to show error to user
   }
 
   return (

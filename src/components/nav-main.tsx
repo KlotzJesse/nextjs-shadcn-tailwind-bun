@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Route } from "next";
 
 // Optimize with memoization
 const MemoizedSidebarMenuButton = memo(SidebarMenuButton);
@@ -46,7 +47,7 @@ export function NavMain({
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title}>
-                <Link href={item.url}>
+                <Link href={item.url as Route}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
                 </Link>

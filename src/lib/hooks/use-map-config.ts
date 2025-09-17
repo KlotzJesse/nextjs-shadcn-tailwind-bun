@@ -4,15 +4,20 @@ import { useMemo } from "react";
 /**
  * Hook for creating stable map configuration object
  * Prevents unnecessary re-renders by memoizing config values
+ *
+ * @deprecated Use useEnhancedMapConfig for better city name visibility
  */
 export function useMapConfig(
   center: [number, number],
   zoom: number
 ): MapConfig {
-  return useMemo(() => ({
-    center,
-    zoom,
-    style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-    minHeight: "400px",
-  }), [center, zoom]);
+  return useMemo(
+    () => ({
+      center,
+      zoom,
+      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+      minHeight: "400px",
+    }),
+    [center, zoom]
+  );
 }

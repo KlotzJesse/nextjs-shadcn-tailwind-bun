@@ -289,24 +289,56 @@ export function useMapLayers({
         ids.selectedLayerId
       );
     }
-    // 6. State label (above all lines/fills)
-    if (statesData && !map.getLayer("state-boundaries-label")) {
+    // 6. State label (above all lines/fills) - High Priority
+    if (statesData && !map.getLayer(ids.stateLabelLayerId)) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Creating state label layer: ${ids.stateLabelLayerId}`);
+      }
       safeAddLayer(
         {
-          id: "state-boundaries-label",
+          id: ids.stateLabelLayerId,
           type: "symbol",
-          source: "state-boundaries-label-points",
+          source: ids.stateLabelSourceId,
           layout: {
             "text-field": ["coalesce", ["get", "name"], ["get", "code"], ""],
             "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-            "text-size": 9,
+            "text-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              12, // Large text even at low zoom
+              4,
+              14, // Larger at medium zoom
+              8,
+              16, // Even larger
+              12,
+              18, // Maximum size
+              18,
+              20, // Max at high zoom
+            ],
             "text-anchor": "center",
             "text-allow-overlap": false,
+            "text-ignore-placement": false,
+            "text-optional": false,
+            "symbol-sort-key": 10,
+            "text-variable-anchor-offset": [
+              "top",
+              [0, 1],
+              "bottom",
+              [0, -1],
+              "left",
+              [1, 0],
+              "right",
+              [-1, 0],
+            ],
+            "text-justify": "auto",
           },
           paint: {
-            "text-color": "#222",
+            "text-color": "#000",
             "text-halo-color": "#fff",
-            "text-halo-width": 2.5,
+            "text-halo-width": 3,
+            "text-opacity": 1.0,
           },
         },
         ids.hoverLayerId
@@ -314,6 +346,9 @@ export function useMapLayers({
     }
     // 7. Postal code label (above all lines/fills but below state label)
     if (!map.getLayer(ids.labelLayerId)) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Creating postal code label layer: ${ids.labelLayerId}`);
+      }
       safeAddLayer(
         {
           id: ids.labelLayerId,
@@ -327,18 +362,50 @@ export function useMapLayers({
               ["get", "code"],
               "",
             ],
-            "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-            "text-size": 9,
+            "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+            "text-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              0, // Hidden at very low zoom
+              6,
+              8, // Small text at low zoom
+              8,
+              9, // Normal text at medium zoom
+              12,
+              11, // Larger text at high zoom
+              18,
+              13, // Max text size
+            ],
             "text-anchor": "center",
             "text-allow-overlap": false,
+            "text-ignore-placement": false,
+            "text-optional": true,
+            "symbol-spacing": 300,
+            "text-padding": 6,
+            "symbol-sort-key": 1, // Lower priority than cities and states
           },
           paint: {
-            "text-color": "#222",
+            "text-color": "#555",
             "text-halo-color": "#fff",
-            "text-halo-width": 2,
+            "text-halo-width": 1.5,
+            "text-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              0, // Hidden at very low zoom
+              6,
+              0.4, // Start showing at medium-low zoom
+              8,
+              0.7, // More visible at medium zoom
+              12,
+              1.0, // Full opacity at high zoom
+            ],
           },
         },
-        statesData ? "state-boundaries-label" : ids.hoverLayerId
+        statesData ? ids.stateLabelLayerId : ids.hoverLayerId
       );
     }
 
@@ -412,7 +479,7 @@ export function useMapLayers({
       // First, remove all layers (order matters: remove layers before sources)
       const layerIds = [
         ids.labelLayerId,
-        "state-boundaries-label",
+        ids.stateLabelLayerId,
         ids.hoverLayerId,
         ids.selectedLayerId,
         `${layerId}-border`,
