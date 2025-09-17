@@ -7,7 +7,7 @@ import type {
 /**
  * Utility functions for cus        // Make text more visible and prioritized - cities should never be hidden
         layout["text-allow-overlap"] = true; // Allow minimal overlap to show more cities
-        layout["text-ignore-placement"] = false; // Keep placement logic  
+        layout["text-ignore-placement"] = false; // Keep placement logic
         layout["text-optional"] = false; // Make text required - cities must showzing map styles to enhance city name visibility
  * and set language preferences for map labels
  */
