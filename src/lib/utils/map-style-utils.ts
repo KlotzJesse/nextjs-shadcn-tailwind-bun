@@ -41,33 +41,29 @@ export function enhanceCityNamesInStyle(
   // Find and modify all city/place label layers
   enhancedStyle.layers = enhancedStyle.layers.map(
     (layer: LayerSpecification) => {
-      // Look for city/place label layers - expanded detection for major cities
+      // Look for major city/place label layers - be very specific to avoid duplicates
       const isCityLayer =
         layer.type === "symbol" &&
         layer.id &&
         layer.layout &&
         typeof layer.layout === "object" &&
         "text-field" in layer.layout &&
-        // Primary city/place identifiers (expanded)
-        (layer.id.includes("city") ||
-          layer.id.includes("place") ||
-          layer.id.includes("town") ||
-          layer.id.includes("village") ||
-          layer.id.includes("locality") ||
-          layer.id.includes("settlement") ||
-          // CartoDB and other map provider patterns
-          layer.id.match(/poi.*label/) ||
-          layer.id.match(/place.*label/) ||
-          layer.id.match(/.*label.*place/) ||
-          layer.id.match(/.*label.*city/) ||
-          layer.id.match(/.*label.*town/) ||
-          // Common label layer patterns that might contain cities
-          (layer.id.includes("label") &&
-            !layer.id.includes("road") &&
-            !layer.id.includes("water") &&
-            !layer.id.includes("poi_") &&
-            layer.layout["text-field"])) &&
-        // Exclude postal codes, boundaries, and administrative layers
+        // Only target major city/place layers - be very specific
+        (layer.id.match(/^place.*city/) ||
+          layer.id.match(/^place.*town/) ||
+          layer.id.match(/^city/) ||
+          layer.id.match(/^town/) ||
+          // CartoDB specific major city patterns
+          layer.id === "place_city" ||
+          layer.id === "place_town" ||
+          layer.id === "place_capital" ||
+          layer.id === "city_label" ||
+          layer.id === "town_label" ||
+          // Only catch major place layers, not all labels
+          (layer.id.includes("place") && 
+           (layer.id.includes("city") || layer.id.includes("town")) &&
+           !layer.id.includes("minor"))) &&
+        // Strict exclusions to prevent duplicates and wrong layers
         !layer.id.includes("postal") &&
         !layer.id.includes("plz") &&
         !layer.id.includes("zip") &&
@@ -77,6 +73,12 @@ export function enhanceCityNamesInStyle(
         !layer.id.includes("region") &&
         !layer.id.includes("country") &&
         !layer.id.includes("continent") &&
+        !layer.id.includes("road") &&
+        !layer.id.includes("water") &&
+        !layer.id.includes("poi") &&
+        !layer.id.includes("village") &&
+        !layer.id.includes("hamlet") &&
+        !layer.id.includes("suburb") &&
         // Exclude our own custom layers
         !layer.id.includes("selected") &&
         !layer.id.includes("hover");
@@ -131,35 +133,39 @@ export function enhanceCityNamesInStyle(
         // Always use the German expression - don't try to include original complex expressions
         layout["text-field"] = germanTextFieldExpression;
 
-        // Make text more visible and prioritized
+        // Make text more visible and prioritized - cities should never be hidden
         layout["text-allow-overlap"] = false; // Keep false to prevent cluttering
-        layout["text-ignore-placement"] = false; // Keep placement logic
-        layout["text-optional"] = false; // Make text required
+        layout["text-ignore-placement"] = false; // Keep placement logic  
+        layout["text-optional"] = false; // Make text required - cities must show
         layout["symbol-avoid-edges"] = false; // Allow labels near edges
         layout["text-keep-upright"] = true; // Keep text readable
         layout["text-max-angle"] = 45; // Allow some rotation for placement
+        // Force cities to always be considered for placement
+        layout["icon-optional"] = true; // Prioritize text over icons
 
-        // Set high-priority text sizing for city names - start larger and earlier
+        // Set high-priority text sizing for major cities - very prominent at low zoom
         layout["text-size"] = [
           "interpolate",
           ["linear"],
           ["zoom"],
           0,
-          14, // Large text from zoom 0 for major cities
+          16, // Very large text from zoom 0 for major cities like Munich
+          1,
+          17, // Even larger at zoom 1
           2,
-          15, // Larger at very low zoom
+          18, // Large at zoom 2
           4,
-          16, // Even larger
+          19, // Even larger
           6,
-          17, // Good size at low-medium zoom
+          20, // Good size at low-medium zoom
           8,
-          18, // Large at medium zoom
+          21, // Large at medium zoom
           12,
-          20, // Very large at high zoom
+          23, // Very large at high zoom
           16,
-          22, // Very large
+          25, // Very large
           20,
-          24, // Maximum size at highest zoom
+          26, // Maximum size at highest zoom
         ];
 
         // Add variable anchor offsets for better label placement
@@ -174,9 +180,11 @@ export function enhanceCityNamesInStyle(
           [-1, 0],
         ];
 
-        // Set high priority for city names
-        layout["symbol-sort-key"] = 5;
+        // Set very high priority for major cities and better spacing
+        layout["symbol-sort-key"] = 100; // Much higher priority
         layout["text-justify"] = "auto";
+        layout["symbol-spacing"] = 500; // More space between symbols to prevent overlap
+        layout["text-padding"] = 10; // More padding around text
 
         // Enhance text contrast and readability for high priority city names
         paint["text-halo-width"] = 3;
@@ -270,23 +278,20 @@ export function setMapLanguage(
         typeof layer.layout === "object" &&
         "text-field" in layer.layout &&
         layer.id &&
-        // Only target actual city/place layers (expanded detection)
-        (layer.id.includes("city") ||
-          layer.id.includes("place") ||
-          layer.id.includes("town") ||
-          layer.id.includes("village") ||
-          layer.id.includes("locality") ||
-          layer.id.includes("settlement") ||
-          layer.id.match(/poi.*label/) ||
-          layer.id.match(/place.*label/) ||
-          layer.id.match(/.*label.*place/) ||
-          layer.id.match(/.*label.*city/) ||
-          layer.id.match(/.*label.*town/) ||
-          (layer.id.includes("label") &&
-            !layer.id.includes("road") &&
-            !layer.id.includes("water") &&
-            !layer.id.includes("poi_"))) &&
-        // Exclude postal codes, boundaries, and administrative layers
+        // Only target major city/place layers - match the style enhancement logic
+        (layer.id.match(/^place.*city/) ||
+          layer.id.match(/^place.*town/) ||
+          layer.id.match(/^city/) ||
+          layer.id.match(/^town/) ||
+          layer.id === "place_city" ||
+          layer.id === "place_town" ||
+          layer.id === "place_capital" ||
+          layer.id === "city_label" ||
+          layer.id === "town_label" ||
+          (layer.id.includes("place") && 
+           (layer.id.includes("city") || layer.id.includes("town")) &&
+           !layer.id.includes("minor"))) &&
+        // Strict exclusions to prevent duplicates and wrong layers
         !layer.id.includes("postal") &&
         !layer.id.includes("plz") &&
         !layer.id.includes("zip") &&
@@ -295,6 +300,13 @@ export function setMapLanguage(
         !layer.id.includes("state") &&
         !layer.id.includes("region") &&
         !layer.id.includes("country") &&
+        !layer.id.includes("continent") &&
+        !layer.id.includes("road") &&
+        !layer.id.includes("water") &&
+        !layer.id.includes("poi") &&
+        !layer.id.includes("village") &&
+        !layer.id.includes("hamlet") &&
+        !layer.id.includes("suburb") &&
         // Exclude our own custom layers
         !layer.id.includes("selected") &&
         !layer.id.includes("hover")
@@ -349,15 +361,28 @@ export function setMapLanguage(
 }
 
 /**
- * Forces visibility of all text layers after map load as a fallback
+ * Ensures major German cities are always visible and prioritized above state labels
  * @param map The MapLibre map instance
  */
-export function forceAllTextLayersVisible(map: MapLibreMap): void {
+export function ensureMajorCitiesVisible(map: MapLibreMap): void {
   if (!map || typeof map.getStyle !== "function") return;
 
   try {
     const style = map.getStyle();
     if (!style || !style.layers) return;
+
+    // Target only the most likely layers to contain major cities
+    const cityLayerPatterns = [
+      /^place.*city/,
+      /^place.*town/,
+      /^city/,
+      /^town/,
+      "place_city",
+      "place_town", 
+      "place_capital",
+      "city_label",
+      "town_label"
+    ];
 
     style.layers.forEach((layer: LayerSpecification) => {
       if (
@@ -366,30 +391,31 @@ export function forceAllTextLayersVisible(map: MapLibreMap): void {
         typeof layer.layout === "object" &&
         "text-field" in layer.layout &&
         layer.id &&
-        // Target any text layer that might contain place names
-        (layer.id.includes("place") ||
-          layer.id.includes("city") ||
-          layer.id.includes("town") ||
-          layer.id.includes("label")) &&
-        // Exclude our custom layers and unwanted types
-        !layer.id.includes("road") &&
-        !layer.id.includes("poi_") &&
-        !layer.id.includes("selected") &&
-        !layer.id.includes("hover")
+        cityLayerPatterns.some(pattern => 
+          typeof pattern === 'string' 
+            ? layer.id === pattern 
+            : pattern.test(layer.id)
+        )
       ) {
         try {
-          // Force visibility
+          // Ensure major city layers are visible with highest priority
           map.setLayoutProperty(layer.id, "visibility", "visible");
-          // Remove any minzoom constraints
           map.setLayoutProperty(layer.id, "text-optional", false);
+          map.setLayoutProperty(layer.id, "symbol-sort-key", 100);
+          // Ensure cities don't get blocked by state labels
+          map.setLayoutProperty(layer.id, "text-ignore-placement", false);
+          map.setLayoutProperty(layer.id, "text-allow-overlap", false);
+          // Give cities more space and priority
+          map.setLayoutProperty(layer.id, "symbol-spacing", 500);
+          map.setLayoutProperty(layer.id, "text-padding", 10);
 
           if (process.env.NODE_ENV === "development") {
-            console.log(`Forced visibility for layer: ${layer.id}`);
+            console.log(`Ensured major city visibility for layer: ${layer.id}`);
           }
         } catch (error) {
           if (process.env.NODE_ENV === "development") {
             console.warn(
-              `Failed to force visibility for layer ${layer.id}:`,
+              `Failed to ensure visibility for major city layer ${layer.id}:`,
               error
             );
           }
@@ -397,7 +423,7 @@ export function forceAllTextLayersVisible(map: MapLibreMap): void {
       }
     });
   } catch (error) {
-    console.error("Error forcing text layer visibility:", error);
+    console.error("Error ensuring major cities visibility:", error);
   }
 }
 

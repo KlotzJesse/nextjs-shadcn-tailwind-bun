@@ -1,6 +1,6 @@
 import {
-  forceAllTextLayersVisible,
   setMapLanguage,
+  ensureMajorCitiesVisible,
   type SupportedLanguage,
 } from "@/lib/utils/map-style-utils";
 import type { Map as MapLibreMap } from "maplibre-gl";
@@ -31,8 +31,8 @@ export function useMapLanguage(
     const timer = setTimeout(() => {
       if (mapRef.current && hasSetLanguage.current !== mapRef.current) {
         setMapLanguage(mapRef.current, language);
-        // Also force visibility of all text layers as fallback
-        forceAllTextLayersVisible(mapRef.current);
+        // Ensure major cities are visible as a targeted fallback
+        ensureMajorCitiesVisible(mapRef.current);
         hasSetLanguage.current = mapRef.current;
 
         if (process.env.NODE_ENV === "development") {
@@ -41,7 +41,21 @@ export function useMapLanguage(
       }
     }, 100);
 
-    return () => clearTimeout(timer);
+    // Additional timer to re-prioritize cities after all layers have settled
+    const reprioritizeTimer = setTimeout(() => {
+      if (mapRef.current && hasSetLanguage.current === mapRef.current) {
+        ensureMajorCitiesVisible(mapRef.current);
+        
+        if (process.env.NODE_ENV === "development") {
+          console.log("Re-prioritized major cities after layer settlement");
+        }
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(reprioritizeTimer);
+    };
   }, [mapRef, isMapLoaded, language]);
 
   // Reset the tracking when map instance changes (component unmount/remount)

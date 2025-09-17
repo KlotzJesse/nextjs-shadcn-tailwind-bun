@@ -319,20 +319,22 @@ export function useMapLayers({
             ],
             "text-anchor": "center",
             "text-allow-overlap": false,
-            "text-ignore-placement": false,
-            "text-optional": false,
-            "symbol-sort-key": 10,
+            "text-ignore-placement": true, // Don't let states block cities
+            "text-optional": true, // Allow states to be hidden if cities need space
+            "symbol-sort-key": 5, // Lower priority than cities (100)
             "text-variable-anchor-offset": [
               "top",
-              [0, 1],
+              [0, 2],
               "bottom",
-              [0, -1],
+              [0, -2],
               "left",
-              [1, 0],
+              [2, 0],
               "right",
-              [-1, 0],
+              [-2, 0],
             ],
             "text-justify": "auto",
+            "symbol-spacing": 300, // More spacing to prevent collision
+            "text-padding": 8, // More padding around state labels
           },
           paint: {
             "text-color": "#000",
