@@ -1,4 +1,5 @@
 import {
+  forceAllTextLayersVisible,
   setMapLanguage,
   type SupportedLanguage,
 } from "@/lib/utils/map-style-utils";
@@ -30,6 +31,8 @@ export function useMapLanguage(
     const timer = setTimeout(() => {
       if (mapRef.current && hasSetLanguage.current !== mapRef.current) {
         setMapLanguage(mapRef.current, language);
+        // Also force visibility of all text layers as fallback
+        forceAllTextLayersVisible(mapRef.current);
         hasSetLanguage.current = mapRef.current;
 
         if (process.env.NODE_ENV === "development") {

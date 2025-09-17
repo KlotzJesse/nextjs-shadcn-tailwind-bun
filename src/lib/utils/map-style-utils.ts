@@ -41,23 +41,32 @@ export function enhanceCityNamesInStyle(
   // Find and modify all city/place label layers
   enhancedStyle.layers = enhancedStyle.layers.map(
     (layer: LayerSpecification) => {
-      // Look for city/place label layers - be more specific to avoid postal codes and states
+      // Look for city/place label layers - expanded detection for major cities
       const isCityLayer =
         layer.type === "symbol" &&
         layer.id &&
         layer.layout &&
         typeof layer.layout === "object" &&
         "text-field" in layer.layout &&
-        // Primary city/place identifiers
+        // Primary city/place identifiers (expanded)
         (layer.id.includes("city") ||
           layer.id.includes("place") ||
           layer.id.includes("town") ||
           layer.id.includes("village") ||
           layer.id.includes("locality") ||
           layer.id.includes("settlement") ||
-          // CartoDB specific patterns for places
+          // CartoDB and other map provider patterns
           layer.id.match(/poi.*label/) ||
-          layer.id.match(/place.*label/)) &&
+          layer.id.match(/place.*label/) ||
+          layer.id.match(/.*label.*place/) ||
+          layer.id.match(/.*label.*city/) ||
+          layer.id.match(/.*label.*town/) ||
+          // Common label layer patterns that might contain cities
+          (layer.id.includes("label") &&
+            !layer.id.includes("road") &&
+            !layer.id.includes("water") &&
+            !layer.id.includes("poi_") &&
+            layer.layout["text-field"])) &&
         // Exclude postal codes, boundaries, and administrative layers
         !layer.id.includes("postal") &&
         !layer.id.includes("plz") &&
@@ -67,6 +76,7 @@ export function enhanceCityNamesInStyle(
         !layer.id.includes("state") &&
         !layer.id.includes("region") &&
         !layer.id.includes("country") &&
+        !layer.id.includes("continent") &&
         // Exclude our own custom layers
         !layer.id.includes("selected") &&
         !layer.id.includes("hover");
@@ -88,10 +98,17 @@ export function enhanceCityNamesInStyle(
           modifiedLayer.paint = {};
         }
 
-        // Remove or reduce minzoom to show labels at all zoom levels
+        // Remove all zoom constraints to show labels at all zoom levels
         if ("minzoom" in modifiedLayer) {
           delete modifiedLayer.minzoom;
         }
+        if ("maxzoom" in modifiedLayer) {
+          delete modifiedLayer.maxzoom;
+        }
+
+        // Set very early visibility for cities
+        modifiedLayer.minzoom = 0;
+        modifiedLayer.maxzoom = 22;
 
         // Enhance text visibility settings
         const layout = modifiedLayer.layout as Record<string, unknown>;
@@ -114,30 +131,35 @@ export function enhanceCityNamesInStyle(
         // Always use the German expression - don't try to include original complex expressions
         layout["text-field"] = germanTextFieldExpression;
 
-        // Make text more visible
+        // Make text more visible and prioritized
         layout["text-allow-overlap"] = false; // Keep false to prevent cluttering
         layout["text-ignore-placement"] = false; // Keep placement logic
         layout["text-optional"] = false; // Make text required
+        layout["symbol-avoid-edges"] = false; // Allow labels near edges
+        layout["text-keep-upright"] = true; // Keep text readable
+        layout["text-max-angle"] = 45; // Allow some rotation for placement
 
-        // Set high-priority text sizing for city names - larger and more visible
+        // Set high-priority text sizing for city names - start larger and earlier
         layout["text-size"] = [
           "interpolate",
           ["linear"],
           ["zoom"],
           0,
-          12, // Large text even at very low zoom for major cities
-          3,
-          14, // Larger at low zoom
-          5,
-          15, // Even larger
+          14, // Large text from zoom 0 for major cities
+          2,
+          15, // Larger at very low zoom
+          4,
+          16, // Even larger
+          6,
+          17, // Good size at low-medium zoom
           8,
-          16, // Good size at medium zoom
+          18, // Large at medium zoom
           12,
-          18, // Large at high zoom
+          20, // Very large at high zoom
           16,
-          20, // Very large
+          22, // Very large
           20,
-          22, // Maximum size at highest zoom
+          24, // Maximum size at highest zoom
         ];
 
         // Add variable anchor offsets for better label placement
@@ -172,13 +194,27 @@ export function enhanceCityNamesInStyle(
   );
 
   if (process.env.NODE_ENV === "development") {
+    // Log all symbol layers for debugging
+    const allSymbolLayers = enhancedStyle.layers.filter(
+      (layer: LayerSpecification) => layer.type === "symbol"
+    );
+    console.log(
+      "All symbol layers found:",
+      allSymbolLayers.map((l) => l.id)
+    );
+
     const enhancedLayers = enhancedStyle.layers.filter(
       (layer: LayerSpecification) =>
         (layer.type === "symbol" && layer.id?.includes("city")) ||
-        layer.id?.includes("place")
+        layer.id?.includes("place") ||
+        layer.id?.includes("label")
     );
     console.log(
       `Enhanced ${enhancedLayers.length} city/place label layers for better visibility`
+    );
+    console.log(
+      "Enhanced layer IDs:",
+      enhancedLayers.map((l) => l.id)
     );
   }
 
@@ -234,7 +270,7 @@ export function setMapLanguage(
         typeof layer.layout === "object" &&
         "text-field" in layer.layout &&
         layer.id &&
-        // Only target actual city/place layers
+        // Only target actual city/place layers (expanded detection)
         (layer.id.includes("city") ||
           layer.id.includes("place") ||
           layer.id.includes("town") ||
@@ -242,7 +278,14 @@ export function setMapLanguage(
           layer.id.includes("locality") ||
           layer.id.includes("settlement") ||
           layer.id.match(/poi.*label/) ||
-          layer.id.match(/place.*label/)) &&
+          layer.id.match(/place.*label/) ||
+          layer.id.match(/.*label.*place/) ||
+          layer.id.match(/.*label.*city/) ||
+          layer.id.match(/.*label.*town/) ||
+          (layer.id.includes("label") &&
+            !layer.id.includes("road") &&
+            !layer.id.includes("water") &&
+            !layer.id.includes("poi_"))) &&
         // Exclude postal codes, boundaries, and administrative layers
         !layer.id.includes("postal") &&
         !layer.id.includes("plz") &&
@@ -302,6 +345,59 @@ export function setMapLanguage(
     }
   } catch (error) {
     console.error("Error setting map language:", error);
+  }
+}
+
+/**
+ * Forces visibility of all text layers after map load as a fallback
+ * @param map The MapLibre map instance
+ */
+export function forceAllTextLayersVisible(map: MapLibreMap): void {
+  if (!map || typeof map.getStyle !== "function") return;
+
+  try {
+    const style = map.getStyle();
+    if (!style || !style.layers) return;
+
+    style.layers.forEach((layer: LayerSpecification) => {
+      if (
+        layer.type === "symbol" &&
+        layer.layout &&
+        typeof layer.layout === "object" &&
+        "text-field" in layer.layout &&
+        layer.id &&
+        // Target any text layer that might contain place names
+        (layer.id.includes("place") ||
+          layer.id.includes("city") ||
+          layer.id.includes("town") ||
+          layer.id.includes("label")) &&
+        // Exclude our custom layers and unwanted types
+        !layer.id.includes("road") &&
+        !layer.id.includes("poi_") &&
+        !layer.id.includes("selected") &&
+        !layer.id.includes("hover")
+      ) {
+        try {
+          // Force visibility
+          map.setLayoutProperty(layer.id, "visibility", "visible");
+          // Remove any minzoom constraints
+          map.setLayoutProperty(layer.id, "text-optional", false);
+
+          if (process.env.NODE_ENV === "development") {
+            console.log(`Forced visibility for layer: ${layer.id}`);
+          }
+        } catch (error) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
+              `Failed to force visibility for layer ${layer.id}:`,
+              error
+            );
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error forcing text layer visibility:", error);
   }
 }
 
