@@ -326,17 +326,17 @@ export function useMapLayers({
             "symbol-sort-key": 5, // Lower priority than cities (100)
             "text-variable-anchor-offset": [
               "top",
-              [0, 2],
+              [0, 0.5],
               "bottom",
-              [0, -2],
+              [0, -0.5],
               "left",
-              [2, 0],
+              [0.5, 0],
               "right",
-              [-2, 0],
+              [-0.5, 0],
             ],
             "text-justify": "auto",
-            "symbol-spacing": 300, // More spacing to prevent collision
-            "text-padding": 8, // More padding around state labels
+            "symbol-spacing": 50, // Minimal spacing
+            "text-padding": 1, // Minimal padding around state labels
           },
           paint: {
             "text-color": "#000",
@@ -383,11 +383,11 @@ export function useMapLayers({
               13, // Max text size
             ],
             "text-anchor": "center",
-            "text-allow-overlap": false,
+            "text-allow-overlap": true, // Allow minimal overlap for more labels
             "text-ignore-placement": false,
             "text-optional": true,
-            "symbol-spacing": 300,
-            "text-padding": 6,
+            "symbol-spacing": 50, // Minimal spacing
+            "text-padding": 1, // Minimal padding
             "symbol-sort-key": 1, // Lower priority than cities and states
           },
           paint: {

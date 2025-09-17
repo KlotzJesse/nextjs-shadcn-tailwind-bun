@@ -5,7 +5,10 @@ import type {
 } from "maplibre-gl";
 
 /**
- * Utility functions for customizing map styles to enhance city name visibility
+ * Utility functions for cus        // Make text more visible and prioritized - cities should never be hidden
+        layout["text-allow-overlap"] = true; // Allow minimal overlap to show more cities
+        layout["text-ignore-placement"] = false; // Keep placement logic  
+        layout["text-optional"] = false; // Make text required - cities must showzing map styles to enhance city name visibility
  * and set language preferences for map labels
  */
 
@@ -168,23 +171,23 @@ export function enhanceCityNamesInStyle(
           26, // Maximum size at highest zoom
         ];
 
-        // Add variable anchor offsets for better label placement
+        // Add variable anchor offsets with minimal spacing
         layout["text-variable-anchor-offset"] = [
           "top",
-          [0, 1],
+          [0, 0.5],
           "bottom",
-          [0, -1],
+          [0, -0.5],
           "left",
-          [1, 0],
+          [0.5, 0],
           "right",
-          [-1, 0],
+          [-0.5, 0],
         ];
 
-        // Set very high priority for major cities and better spacing
+        // Set very high priority for major cities with minimal spacing
         layout["symbol-sort-key"] = 100; // Much higher priority
         layout["text-justify"] = "auto";
-        layout["symbol-spacing"] = 500; // More space between symbols to prevent overlap
-        layout["text-padding"] = 10; // More padding around text
+        layout["symbol-spacing"] = 50; // Minimal space between symbols
+        layout["text-padding"] = 1; // Minimal padding around text
 
         // Enhance text contrast and readability for high priority city names
         paint["text-halo-width"] = 3;
@@ -404,10 +407,10 @@ export function ensureMajorCitiesVisible(map: MapLibreMap): void {
           map.setLayoutProperty(layer.id, "symbol-sort-key", 100);
           // Ensure cities don't get blocked by state labels
           map.setLayoutProperty(layer.id, "text-ignore-placement", false);
-          map.setLayoutProperty(layer.id, "text-allow-overlap", false);
-          // Give cities more space and priority
-          map.setLayoutProperty(layer.id, "symbol-spacing", 500);
-          map.setLayoutProperty(layer.id, "text-padding", 10);
+          map.setLayoutProperty(layer.id, "text-allow-overlap", true);
+          // Give cities minimal spacing for maximum density
+          map.setLayoutProperty(layer.id, "symbol-spacing", 50);
+          map.setLayoutProperty(layer.id, "text-padding", 1);
 
           if (process.env.NODE_ENV === "development") {
             console.log(`Ensured major city visibility for layer: ${layer.id}`);
