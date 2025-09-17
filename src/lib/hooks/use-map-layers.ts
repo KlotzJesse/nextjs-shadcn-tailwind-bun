@@ -307,15 +307,17 @@ export function useMapLayers({
               ["linear"],
               ["zoom"],
               0,
-              12, // Large text even at low zoom
+              10, // Smaller text at very low zoom to not compete with cities
               4,
-              14, // Larger at medium zoom
+              12, // Medium size at low-medium zoom
+              6,
+              14, // Appropriate size at the problem zoom (~6)
               8,
-              16, // Even larger
+              15, // Larger at medium zoom
               12,
-              18, // Maximum size
+              16, // Good size at high zoom
               18,
-              20, // Max at high zoom
+              18, // Max at very high zoom
             ],
             "text-anchor": "center",
             "text-allow-overlap": false,
