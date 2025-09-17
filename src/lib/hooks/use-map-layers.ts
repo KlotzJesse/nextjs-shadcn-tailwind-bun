@@ -365,24 +365,24 @@ export function useMapLayers({
               ["zoom"],
               0,
               0, // Hidden at very low zoom
-              4,
-              7, // Start showing at zoom 4 with readable text
-              6,
-              9, // Good size at medium-low zoom
-              8,
+              3,
+              6, // Start showing earlier at zoom 3
+              5,
+              8, // Good size at low zoom
+              7,
               10, // Normal text at medium zoom
-              12,
-              12, // Larger text at high zoom
-              18,
+              10,
+              12, // Larger text at higher zoom
+              15,
               14, // Max text size
             ],
             "text-anchor": "center",
             "text-allow-overlap": false, // Prevent overlap to avoid covering city names
-            "text-ignore-placement": false,
-            "text-optional": true,
+            "text-ignore-placement": true, // Ignore other labels to show independently
+            "text-optional": false, // Make postal codes required to show
             "symbol-spacing": [
               "case",
-              // Better spacing for 5-digit postal codes
+              // Tighter spacing for better visibility
               [
                 ">",
                 [
@@ -400,12 +400,12 @@ export function useMapLayers({
                 ],
                 4,
               ],
-              150, // More spacing for 5-digit codes
-              100, // Less spacing for shorter codes
+              80, // Reduced spacing for 5-digit codes
+              60, // Reduced spacing for shorter codes
             ],
             "text-padding": [
               "case",
-              // Better padding for 5-digit postal codes
+              // Minimal padding for better visibility
               [
                 ">",
                 [
@@ -423,10 +423,10 @@ export function useMapLayers({
                 ],
                 4,
               ],
-              4, // More padding for 5-digit codes
-              2, // Less padding for shorter codes
+              2, // Minimal padding for 5-digit codes
+              1, // Minimal padding for shorter codes
             ],
-            "symbol-sort-key": 1, // Lower priority than cities
+            "symbol-sort-key": 50, // Higher priority than before, but still below cities
           },
           paint: {
             "text-color": "#333", // Darker for better visibility
@@ -438,14 +438,14 @@ export function useMapLayers({
               ["zoom"],
               0,
               0, // Hidden at very low zoom
-              4,
-              0.5, // Start showing at zoom 4 with good visibility
-              6,
-              0.7, // More visible at medium-low zoom
-              8,
+              3,
+              0.6, // Start showing earlier at zoom 3 with good visibility
+              5,
+              0.8, // More visible at medium-low zoom
+              7,
               0.9, // High visibility at medium zoom
-              12,
-              1.0, // Full opacity at high zoom
+              10,
+              1.0, // Full opacity at medium-high zoom
             ],
           },
         },
