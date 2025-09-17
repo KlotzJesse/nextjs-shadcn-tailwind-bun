@@ -1,6 +1,6 @@
 import {
-  setMapLanguage,
   ensureMajorCitiesVisible,
+  setMapLanguage,
   type SupportedLanguage,
 } from "@/lib/utils/map-style-utils";
 import type { Map as MapLibreMap } from "maplibre-gl";
@@ -45,7 +45,7 @@ export function useMapLanguage(
     const reprioritizeTimer = setTimeout(() => {
       if (mapRef.current && hasSetLanguage.current === mapRef.current) {
         ensureMajorCitiesVisible(mapRef.current);
-        
+
         if (process.env.NODE_ENV === "development") {
           console.log("Re-prioritized major cities after layer settlement");
         }

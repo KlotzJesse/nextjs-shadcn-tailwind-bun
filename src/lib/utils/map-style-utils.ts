@@ -60,9 +60,9 @@ export function enhanceCityNamesInStyle(
           layer.id === "city_label" ||
           layer.id === "town_label" ||
           // Only catch major place layers, not all labels
-          (layer.id.includes("place") && 
-           (layer.id.includes("city") || layer.id.includes("town")) &&
-           !layer.id.includes("minor"))) &&
+          (layer.id.includes("place") &&
+            (layer.id.includes("city") || layer.id.includes("town")) &&
+            !layer.id.includes("minor"))) &&
         // Strict exclusions to prevent duplicates and wrong layers
         !layer.id.includes("postal") &&
         !layer.id.includes("plz") &&
@@ -135,7 +135,7 @@ export function enhanceCityNamesInStyle(
 
         // Make text more visible and prioritized - cities should never be hidden
         layout["text-allow-overlap"] = false; // Keep false to prevent cluttering
-        layout["text-ignore-placement"] = false; // Keep placement logic  
+        layout["text-ignore-placement"] = false; // Keep placement logic
         layout["text-optional"] = false; // Make text required - cities must show
         layout["symbol-avoid-edges"] = false; // Allow labels near edges
         layout["text-keep-upright"] = true; // Keep text readable
@@ -288,9 +288,9 @@ export function setMapLanguage(
           layer.id === "place_capital" ||
           layer.id === "city_label" ||
           layer.id === "town_label" ||
-          (layer.id.includes("place") && 
-           (layer.id.includes("city") || layer.id.includes("town")) &&
-           !layer.id.includes("minor"))) &&
+          (layer.id.includes("place") &&
+            (layer.id.includes("city") || layer.id.includes("town")) &&
+            !layer.id.includes("minor"))) &&
         // Strict exclusions to prevent duplicates and wrong layers
         !layer.id.includes("postal") &&
         !layer.id.includes("plz") &&
@@ -378,10 +378,10 @@ export function ensureMajorCitiesVisible(map: MapLibreMap): void {
       /^city/,
       /^town/,
       "place_city",
-      "place_town", 
+      "place_town",
       "place_capital",
       "city_label",
-      "town_label"
+      "town_label",
     ];
 
     style.layers.forEach((layer: LayerSpecification) => {
@@ -391,9 +391,9 @@ export function ensureMajorCitiesVisible(map: MapLibreMap): void {
         typeof layer.layout === "object" &&
         "text-field" in layer.layout &&
         layer.id &&
-        cityLayerPatterns.some(pattern => 
-          typeof pattern === 'string' 
-            ? layer.id === pattern 
+        cityLayerPatterns.some((pattern) =>
+          typeof pattern === "string"
+            ? layer.id === pattern
             : pattern.test(layer.id)
         )
       ) {
