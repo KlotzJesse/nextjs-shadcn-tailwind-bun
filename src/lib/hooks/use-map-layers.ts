@@ -289,7 +289,9 @@ export function useMapLayers({
         ids.selectedLayerId
       );
     }
-    // 6. State label (above all lines/fills) - High Priority
+    // 6. State label (above all lines/fills) - TEMPORARILY DISABLED
+    // COMMENTED OUT: States are hidden to prevent overlap with cities
+    /*
     if (statesData && !map.getLayer(ids.stateLabelLayerId)) {
       if (process.env.NODE_ENV === "development") {
         console.log(`Creating state label layer: ${ids.stateLabelLayerId}`);
@@ -307,36 +309,25 @@ export function useMapLayers({
               ["linear"],
               ["zoom"],
               0,
-              10, // Smaller text at very low zoom to not compete with cities
+              10,
               4,
-              12, // Medium size at low-medium zoom
-              6,
-              14, // Appropriate size at the problem zoom (~6)
-              8,
-              15, // Larger at medium zoom
               12,
-              16, // Good size at high zoom
+              6,
+              14,
+              8,
+              15,
+              12,
+              16,
               18,
-              18, // Max at very high zoom
+              18,
             ],
             "text-anchor": "center",
             "text-allow-overlap": false,
-            "text-ignore-placement": true, // Don't let states block cities
-            "text-optional": true, // Allow states to be hidden if cities need space
-            "symbol-sort-key": 5, // Lower priority than cities (100)
-            "text-variable-anchor-offset": [
-              "top",
-              [0, 0.5],
-              "bottom",
-              [0, -0.5],
-              "left",
-              [0.5, 0],
-              "right",
-              [-0.5, 0],
-            ],
-            "text-justify": "auto",
-            "symbol-spacing": 50, // Minimal spacing
-            "text-padding": 1, // Minimal padding around state labels
+            "text-ignore-placement": true,
+            "text-optional": true,
+            "symbol-sort-key": 5,
+            "symbol-spacing": 50,
+            "text-padding": 1,
           },
           paint: {
             "text-color": "#000",
@@ -348,6 +339,7 @@ export function useMapLayers({
         ids.hoverLayerId
       );
     }
+    */
     // 7. Postal code label (above all lines/fills but below state label)
     if (!map.getLayer(ids.labelLayerId)) {
       if (process.env.NODE_ENV === "development") {
@@ -383,12 +375,56 @@ export function useMapLayers({
               13, // Max text size
             ],
             "text-anchor": "center",
-            "text-allow-overlap": true, // Allow minimal overlap for more labels
+            "text-allow-overlap": false, // Prevent overlap to avoid covering city names
             "text-ignore-placement": false,
             "text-optional": true,
-            "symbol-spacing": 50, // Minimal spacing
-            "text-padding": 1, // Minimal padding
-            "symbol-sort-key": 1, // Lower priority than cities and states
+            "symbol-spacing": [
+              "case",
+              // Better spacing for 5-digit postal codes
+              [
+                ">",
+                [
+                  "length",
+                  [
+                    "to-string",
+                    [
+                      "coalesce",
+                      ["get", "PLZ"],
+                      ["get", "plz"],
+                      ["get", "code"],
+                      "",
+                    ],
+                  ],
+                ],
+                4,
+              ],
+              150, // More spacing for 5-digit codes
+              100, // Less spacing for shorter codes
+            ],
+            "text-padding": [
+              "case",
+              // Better padding for 5-digit postal codes
+              [
+                ">",
+                [
+                  "length",
+                  [
+                    "to-string",
+                    [
+                      "coalesce",
+                      ["get", "PLZ"],
+                      ["get", "plz"],
+                      ["get", "code"],
+                      "",
+                    ],
+                  ],
+                ],
+                4,
+              ],
+              4, // More padding for 5-digit codes
+              2, // Less padding for shorter codes
+            ],
+            "symbol-sort-key": 1, // Lower priority than cities
           },
           paint: {
             "text-color": "#555",
@@ -409,7 +445,7 @@ export function useMapLayers({
             ],
           },
         },
-        statesData ? ids.stateLabelLayerId : ids.hoverLayerId
+        ids.hoverLayerId // States are commented out, so use hover layer
       );
     }
 
@@ -483,7 +519,7 @@ export function useMapLayers({
       // First, remove all layers (order matters: remove layers before sources)
       const layerIds = [
         ids.labelLayerId,
-        ids.stateLabelLayerId,
+        // ids.stateLabelLayerId, // Commented out since states are disabled
         ids.hoverLayerId,
         ids.selectedLayerId,
         `${layerId}-border`,
@@ -510,8 +546,8 @@ export function useMapLayers({
         ids.selectedSourceId,
         ids.hoverSourceId,
         ids.labelSourceId,
-        ids.stateSourceId,
-        ids.stateLabelSourceId,
+        // ids.stateSourceId, // Commented out since states are disabled
+        // ids.stateLabelSourceId, // Commented out since states are disabled
       ];
 
       sourceIds.forEach((id) => {

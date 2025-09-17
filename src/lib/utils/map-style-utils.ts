@@ -6,9 +6,9 @@ import type {
 
 /**
  * Utility functions for cus        // Make text more visible and prioritized - cities should never be hidden
-        layout["text-allow-overlap"] = true; // Allow minimal overlap to show more cities
+        layout["text-allow-overlap"] = false; // Prevent overlap to avoid covering other labels
         layout["text-ignore-placement"] = false; // Keep placement logic
-        layout["text-optional"] = false; // Make text required - cities must showzing map styles to enhance city name visibility
+        layout["text-optional"] = false; // Make text required - cities must show
  * and set language preferences for map labels
  */
 
@@ -171,23 +171,14 @@ export function enhanceCityNamesInStyle(
           26, // Maximum size at highest zoom
         ];
 
-        // Add variable anchor offsets with minimal spacing
-        layout["text-variable-anchor-offset"] = [
-          "top",
-          [0, 0.5],
-          "bottom",
-          [0, -0.5],
-          "left",
-          [0.5, 0],
-          "right",
-          [-0.5, 0],
-        ];
+        // Remove anchor offsets to prevent duplicate labels
+        // layout["text-variable-anchor-offset"] = [...]; // Disabled to prevent duplicates
 
-        // Set very high priority for major cities with minimal spacing
+        // Set very high priority for major cities with proper spacing
         layout["symbol-sort-key"] = 100; // Much higher priority
         layout["text-justify"] = "auto";
-        layout["symbol-spacing"] = 50; // Minimal space between symbols
-        layout["text-padding"] = 1; // Minimal padding around text
+        layout["symbol-spacing"] = 200; // Proper spacing to prevent overlap
+        layout["text-padding"] = 5; // Adequate padding around text
 
         // Enhance text contrast and readability for high priority city names
         paint["text-halo-width"] = 3;
@@ -405,12 +396,12 @@ export function ensureMajorCitiesVisible(map: MapLibreMap): void {
           map.setLayoutProperty(layer.id, "visibility", "visible");
           map.setLayoutProperty(layer.id, "text-optional", false);
           map.setLayoutProperty(layer.id, "symbol-sort-key", 100);
-          // Ensure cities don't get blocked by state labels
+          // Ensure cities don't get blocked and don't overlap
           map.setLayoutProperty(layer.id, "text-ignore-placement", false);
-          map.setLayoutProperty(layer.id, "text-allow-overlap", true);
-          // Give cities minimal spacing for maximum density
-          map.setLayoutProperty(layer.id, "symbol-spacing", 50);
-          map.setLayoutProperty(layer.id, "text-padding", 1);
+          map.setLayoutProperty(layer.id, "text-allow-overlap", false);
+          // Give cities proper spacing to prevent overlap
+          map.setLayoutProperty(layer.id, "symbol-spacing", 200);
+          map.setLayoutProperty(layer.id, "text-padding", 5);
 
           if (process.env.NODE_ENV === "development") {
             console.log(`Ensured major city visibility for layer: ${layer.id}`);
