@@ -89,7 +89,11 @@ export function useMapLayers({
     })();
 
     const labelPoints = (() => {
-      return getLabelPoints(data);
+      const pts = getLabelPoints(data);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[useMapLayers] Postal code labelPoints:", pts);
+      }
+      return pts;
     })();
 
     const statesLabelPoints = statesData
@@ -364,25 +368,24 @@ export function useMapLayers({
               ["linear"],
               ["zoom"],
               0,
-              0, // Hidden at very low zoom
+              0,
               3,
-              6, // Start showing earlier at zoom 3
+              6,
               5,
-              8, // Good size at low zoom
+              8,
               7,
-              10, // Normal text at medium zoom
               10,
-              12, // Larger text at higher zoom
+              10,
+              12,
               15,
-              14, // Max text size
+              14,
             ],
             "text-anchor": "center",
-            "text-allow-overlap": false, // Prevent overlap to avoid covering city names
-            "text-ignore-placement": true, // Ignore other labels to show independently
-            "text-optional": false, // Make postal codes required to show
+            "text-allow-overlap": true, // Force overlap for visibility
+            "text-ignore-placement": true,
+            "text-optional": false,
             "symbol-spacing": [
               "case",
-              // Tighter spacing for better visibility
               [
                 ">",
                 [
@@ -400,12 +403,11 @@ export function useMapLayers({
                 ],
                 4,
               ],
-              80, // Reduced spacing for 5-digit codes
-              60, // Reduced spacing for shorter codes
+              80,
+              60,
             ],
             "text-padding": [
               "case",
-              // Minimal padding for better visibility
               [
                 ">",
                 [
@@ -423,33 +425,33 @@ export function useMapLayers({
                 ],
                 4,
               ],
-              2, // Minimal padding for 5-digit codes
-              1, // Minimal padding for shorter codes
+              2,
+              1,
             ],
-            "symbol-sort-key": 50, // Higher priority than before, but still below cities
+            "symbol-sort-key": 100, // Highest priority for testing
           },
           paint: {
-            "text-color": "#333", // Darker for better visibility
+            "text-color": "#333",
             "text-halo-color": "#fff",
-            "text-halo-width": 2, // Stronger halo for better readability
+            "text-halo-width": 2,
             "text-opacity": [
               "interpolate",
               ["linear"],
               ["zoom"],
               0,
-              0, // Hidden at very low zoom
+              0,
               3,
-              0.6, // Start showing earlier at zoom 3 with good visibility
+              0.6,
               5,
-              0.8, // More visible at medium-low zoom
+              0.8,
               7,
-              0.9, // High visibility at medium zoom
+              0.9,
               10,
-              1.0, // Full opacity at medium-high zoom
+              1.0,
             ],
           },
         },
-        ids.hoverLayerId // States are commented out, so use hover layer
+        ids.hoverLayerId
       );
     }
 
