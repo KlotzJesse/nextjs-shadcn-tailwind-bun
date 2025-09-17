@@ -365,14 +365,16 @@ export function useMapLayers({
               ["zoom"],
               0,
               0, // Hidden at very low zoom
+              4,
+              7, // Start showing at zoom 4 with readable text
               6,
-              8, // Small text at low zoom
+              9, // Good size at medium-low zoom
               8,
-              9, // Normal text at medium zoom
+              10, // Normal text at medium zoom
               12,
-              11, // Larger text at high zoom
+              12, // Larger text at high zoom
               18,
-              13, // Max text size
+              14, // Max text size
             ],
             "text-anchor": "center",
             "text-allow-overlap": false, // Prevent overlap to avoid covering city names
@@ -427,19 +429,21 @@ export function useMapLayers({
             "symbol-sort-key": 1, // Lower priority than cities
           },
           paint: {
-            "text-color": "#555",
+            "text-color": "#333", // Darker for better visibility
             "text-halo-color": "#fff",
-            "text-halo-width": 1.5,
+            "text-halo-width": 2, // Stronger halo for better readability
             "text-opacity": [
               "interpolate",
               ["linear"],
               ["zoom"],
               0,
               0, // Hidden at very low zoom
+              4,
+              0.5, // Start showing at zoom 4 with good visibility
               6,
-              0.4, // Start showing at medium-low zoom
+              0.7, // More visible at medium-low zoom
               8,
-              0.7, // More visible at medium zoom
+              0.9, // High visibility at medium zoom
               12,
               1.0, // Full opacity at high zoom
             ],
