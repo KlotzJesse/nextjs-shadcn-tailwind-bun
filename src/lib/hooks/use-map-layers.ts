@@ -175,12 +175,125 @@ export function useMapLayers({
         source: ids.sourceId,
         paint: {
           "fill-color": "#627D98",
-          "fill-opacity": 0.35,
-          "fill-outline-color": "#102A43",
+          "fill-opacity": 0.1,
         },
       });
     }
-    // 2. State boundaries line (above fill)
+    // 2. Postal code border (above fill)
+    if (!map.getLayer(`${layerId}-border`)) {
+      map.addLayer({
+        id: `${layerId}-border`,
+        type: "line",
+        source: ids.sourceId,
+        paint: {
+          "line-color": "#2563EB",
+          "line-width": 1,
+          "line-opacity": 0.05,
+          "line-dasharray": [6, 3],
+        },
+        layout: {
+          "line-cap": "round",
+          "line-join": "round",
+          visibility: "visible",
+        },
+      } as LayerSpecification);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[useMapLayers] Added border layer:", `${layerId}-border`);
+        console.log(
+          "[useMapLayers] Border layer paint properties:",
+          map.getPaintProperty(`${layerId}-border`, "line-dasharray")
+        );
+      }
+    }
+    // 3. Selected postal code fill (above postal code border)
+    if (!map.getLayer(ids.selectedLayerId)) {
+      safeAddLayer(
+        {
+          id: ids.selectedLayerId,
+          type: "fill",
+          source: ids.selectedSourceId,
+          paint: {
+            "fill-color": "#2563EB",
+            "fill-opacity": 0.5,
+            "fill-outline-color": "#1D4ED8",
+          },
+        },
+        `${layerId}-border`
+      );
+    }
+    // 4. Hover line (above selected postal codes)
+    if (!map.getLayer(ids.hoverLayerId)) {
+      safeAddLayer(
+        {
+          id: ids.hoverLayerId,
+          type: "line",
+          source: ids.hoverSourceId,
+          paint: {
+            "line-color": "#2563EB",
+            "line-width": 3,
+          },
+          layout: { visibility: "none" },
+        },
+        ids.selectedLayerId
+      );
+    }
+    // 5a. State boundaries fill (subtle background color for each state)
+    if (
+      statesData &&
+      map.getSource(ids.stateSourceId) &&
+      !map.getLayer("state-boundaries-fill")
+    ) {
+      safeAddLayer(
+        {
+          id: "state-boundaries-fill",
+          type: "fill",
+          source: ids.stateSourceId,
+          paint: {
+            "fill-color": [
+              "match",
+              ["get", "name"],
+              "Baden-Württemberg",
+              "#e57373",
+              "Bayern",
+              "#64b5f6",
+              "Berlin",
+              "#81c784",
+              "Brandenburg",
+              "#ffd54f",
+              "Bremen",
+              "#ba68c8",
+              "Hamburg",
+              "#4dd0e1",
+              "Hessen",
+              "#ffb74d",
+              "Mecklenburg-Vorpommern",
+              "#a1887f",
+              "Niedersachsen",
+              "#90a4ae",
+              "Nordrhein-Westfalen",
+              "#f06292",
+              "Rheinland-Pfalz",
+              "#9575cd",
+              "Saarland",
+              "#4caf50",
+              "Sachsen",
+              "#fbc02d",
+              "Sachsen-Anhalt",
+              "#388e3c",
+              "Schleswig-Holstein",
+              "#0288d1",
+              "Thüringen",
+              "#d84315",
+              "#222", // default
+            ],
+            "fill-opacity": 0.1,
+          },
+        },
+        ids.hoverLayerId
+      );
+    }
+    // 5b. State boundaries line (above all postal code layers - highest priority)
     if (
       statesData &&
       map.getSource(ids.stateSourceId) &&
@@ -230,66 +343,17 @@ export function useMapLayers({
               "#222", // default
             ],
             "line-width": 2,
-            "line-opacity": 0.8,
-            "line-dasharray": [6, 3],
+            "line-opacity": 1,
           },
           layout: {
             "line-cap": "round",
             "line-join": "round",
           },
         },
-        `${layerId}-layer`
+        "state-boundaries-fill"
       );
     }
-    // 3. Postal code border (above state boundaries line)
-    if (!map.getLayer(`${layerId}-border`)) {
-      safeAddLayer(
-        {
-          id: `${layerId}-border`,
-          type: "line",
-          source: ids.sourceId,
-          paint: {
-            "line-color": "#2563EB",
-            "line-width": 0.7,
-            "line-opacity": 0.3,
-          },
-        },
-        statesData ? ids.stateLayerId : `${layerId}-layer`
-      );
-    }
-    // 4. Selected postal code fill (above all static fills/lines)
-    if (!map.getLayer(ids.selectedLayerId)) {
-      safeAddLayer(
-        {
-          id: ids.selectedLayerId,
-          type: "fill",
-          source: ids.selectedSourceId,
-          paint: {
-            "fill-color": "#2563EB",
-            "fill-opacity": 0.5,
-            "fill-outline-color": "#1D4ED8",
-          },
-        },
-        `${layerId}-border`
-      );
-    }
-    // 5. Hover line (above all static lines/fills)
-    if (!map.getLayer(ids.hoverLayerId)) {
-      safeAddLayer(
-        {
-          id: ids.hoverLayerId,
-          type: "line",
-          source: ids.hoverSourceId,
-          paint: {
-            "line-color": "#2563EB",
-            "line-width": 3,
-          },
-          layout: { visibility: "none" },
-        },
-        ids.selectedLayerId
-      );
-    }
-    // 6. State label (above all lines/fills)
+    // 6. State label (above state boundaries)
     if (statesData && !map.getLayer("state-boundaries-label")) {
       safeAddLayer(
         {
@@ -309,10 +373,10 @@ export function useMapLayers({
             "text-halo-width": 2.5,
           },
         },
-        ids.hoverLayerId
+        statesData ? ids.stateLayerId : ids.hoverLayerId
       );
     }
-    // 7. Postal code label (above all lines/fills but below state label)
+    // 7. Postal code label (above all layers)
     if (!map.getLayer(ids.labelLayerId)) {
       safeAddLayer(
         {
@@ -338,7 +402,11 @@ export function useMapLayers({
             "text-halo-width": 2,
           },
         },
-        statesData ? "state-boundaries-label" : ids.hoverLayerId
+        statesData
+          ? "state-boundaries-label"
+          : statesData
+          ? ids.stateLayerId
+          : ids.hoverLayerId
       );
     }
 
@@ -410,13 +478,15 @@ export function useMapLayers({
       if (!map) return;
 
       // First, remove all layers (order matters: remove layers before sources)
+      // Order: top to bottom (reverse of creation order)
       const layerIds = [
         ids.labelLayerId,
         "state-boundaries-label",
+        ids.stateLayerId,
+        "state-boundaries-fill",
         ids.hoverLayerId,
         ids.selectedLayerId,
         `${layerId}-border`,
-        ids.stateLayerId,
         `${layerId}-layer`,
       ];
 
