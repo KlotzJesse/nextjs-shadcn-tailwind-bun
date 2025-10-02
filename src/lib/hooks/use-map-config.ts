@@ -9,10 +9,13 @@ export function useMapConfig(
   center: [number, number],
   zoom: number
 ): MapConfig {
-  return useMemo(() => ({
-    center,
-    zoom,
-    style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-    minHeight: "400px",
-  }), [center, zoom]);
+  return useMemo(
+    () => ({
+      center,
+      zoom,
+      style: "/versatilescolorful.json",
+      minHeight: "400px",
+    }),
+    [center, zoom]
+  );
 }
