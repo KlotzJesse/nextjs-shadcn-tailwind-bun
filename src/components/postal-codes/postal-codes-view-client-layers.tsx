@@ -163,7 +163,11 @@ export function PostalCodesViewClientWithLayers({
       updateOptimisticLayers({ type: "add", layerId, postalCodes });
 
       try {
-        const result = await addPostalCodesToLayerAction(areaId, layerId, postalCodes);
+        const result = await addPostalCodesToLayerAction(
+          areaId,
+          layerId,
+          postalCodes
+        );
         if (!result.success) {
           throw new Error(result.error);
         }

@@ -112,7 +112,7 @@ export function LayerManagementPanel({
           isVisible: true,
           orderIndex: layers.length,
         });
-        
+
         if (result.success) {
           setNewLayerName("");
           await fetchLayers(); // Refresh layers
@@ -142,12 +142,12 @@ export function LayerManagementPanel({
   };
 
   const handleToggleVisibility = async (layerId: number) => {
-    const layer = layers.find(l => l.id === layerId);
+    const layer = layers.find((l) => l.id === layerId);
     if (!layer) return;
 
     startTransition(async () => {
-      const result = await updateLayerAction(areaId, layerId, { 
-        isVisible: layer.isVisible === "true" ? false : true 
+      const result = await updateLayerAction(areaId, layerId, {
+        isVisible: layer.isVisible === "true" ? false : true,
       });
       if (result.success) {
         await fetchLayers();
