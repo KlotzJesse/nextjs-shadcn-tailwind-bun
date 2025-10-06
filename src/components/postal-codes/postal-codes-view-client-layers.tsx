@@ -23,6 +23,8 @@ import { useAreaAutosave } from "@/lib/hooks/use-area-autosave";
 import {
   addPostalCodesToLayerAction,
   removePostalCodesFromLayerAction,
+  radiusSearchAction,
+  drivingRadiusSearchAction,
 } from "@/app/actions/area-actions";
 import { areas, areaLayers } from "@/lib/schema/schema";
 import type { InferSelectModel } from "drizzle-orm";
@@ -269,6 +271,22 @@ export function PostalCodesViewClientWithLayers({
     }
   };
 
+  // Wrapper function to match the expected interface for AddressAutocompleteEnhanced
+  const performDrivingRadiusSearchWrapper = async (
+    coordinates: [number, number],
+    radius: number,
+    granularity: string,
+    mode: "distance" | "time",
+    method: "osrm" | "approximation"
+  ) => {
+    await performDrivingRadiusSearch({
+      latitude: coordinates[1],
+      longitude: coordinates[0],
+      maxDuration: radius, // Using radius as maxDuration for time mode
+      granularity,
+    });
+  };
+
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
   const [postalCodeOpen, setPostalCodeOpen] = useState(false);
   const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(
@@ -358,7 +376,12 @@ export function PostalCodesViewClientWithLayers({
     radius: number,
     granularity: string
   ) => {
-    await performRadiusSearch(coords, radius, granularity);
+    await performRadiusSearch({
+      latitude: coords[1],
+      longitude: coords[0],
+      radius,
+      granularity,
+    });
   };
 
   // Handle bulk postal code import
@@ -374,7 +397,6 @@ export function PostalCodesViewClientWithLayers({
   };
 
   const handleLayerSelect = (layerId: number) => {
-    setActiveLayerId(layerId);
     setActiveLayer(layerId);
   };
 
@@ -398,7 +420,7 @@ export function PostalCodesViewClientWithLayers({
               onAddressSelect={handleAddressSelect}
               onBoundarySelect={(codes) => handleImport(codes)}
               onRadiusSelect={handleRadiusSelect}
-              performDrivingRadiusSearch={performDrivingRadiusSearch}
+              performDrivingRadiusSearch={performDrivingRadiusSearchWrapper}
               granularity={defaultGranularity}
               triggerClassName="truncate"
             />

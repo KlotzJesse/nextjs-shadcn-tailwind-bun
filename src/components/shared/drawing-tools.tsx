@@ -292,7 +292,13 @@ function DrawingToolsImpl({
     orderIndex: number;
   }) => {
     if (!areaId) return;
-    const result = await createLayerAction({ areaId, ...data });
+    const result = await createLayerAction(areaId, {
+      name: data.name,
+      color: data.color,
+      opacity: 100,
+      isVisible: true,
+      orderIndex: data.orderIndex,
+    });
     if (result.success) {
       onLayerUpdate?.();
       return result.data;
@@ -301,7 +307,8 @@ function DrawingToolsImpl({
   };
 
   const updateLayer = async (layerId: number, data: any) => {
-    const result = await updateLayerAction(layerId, data);
+    if (!areaId) return;
+    const result = await updateLayerAction(areaId, layerId, data);
     if (result.success) {
       onLayerUpdate?.();
     } else {
@@ -310,7 +317,8 @@ function DrawingToolsImpl({
   };
 
   const deleteLayer = async (layerId: number) => {
-    const result = await deleteLayerAction(layerId);
+    if (!areaId) return;
+    const result = await deleteLayerAction(areaId, layerId);
     if (result.success) {
       onLayerUpdate?.();
     } else {

@@ -19,8 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAreas } from "@/lib/hooks/use-areas";
-import { useState } from "react";
+import { createAreaAction } from "@/app/actions/area-actions";
+import { useState, useTransition } from "react";
 
 interface CreateAreaDialogProps {
   open: boolean;
@@ -33,25 +33,31 @@ export function CreateAreaDialog({
   onOpenChange,
   onAreaCreated,
 }: CreateAreaDialogProps) {
-  const { createArea, isLoading } = useAreas();
+  const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [granularity, setGranularity] = useState("5digit");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const area = await createArea({ name, description, granularity });
-      setName("");
-      setDescription("");
-      setGranularity("5digit");
-      onOpenChange(false);
-      if (onAreaCreated && area) {
-        onAreaCreated(area.id);
+    startTransition(async () => {
+      try {
+        const result = await createAreaAction({ name, description });
+        if (result.success && result.data) {
+          setName("");
+          setDescription("");
+          setGranularity("5digit");
+          onOpenChange(false);
+          if (onAreaCreated) {
+            onAreaCreated(result.data.id);
+          }
+        } else {
+          console.error("Failed to create area:", result.error);
+        }
+      } catch (error) {
+        console.error("Error creating area:", error);
       }
-    } catch (error) {
-      // Error already handled in useAreas hook
-    }
+    });
   };
 
   return (
@@ -106,12 +112,12 @@ export function CreateAreaDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={isPending}
             >
               Abbrechen
             </Button>
-            <Button type="submit" disabled={isLoading || !name}>
-              {isLoading ? "Erstelle..." : "Erstellen"}
+            <Button type="submit" disabled={isPending || !name}>
+              {isPending ? "Erstelle..." : "Erstellen"}
             </Button>
           </DialogFooter>
         </form>

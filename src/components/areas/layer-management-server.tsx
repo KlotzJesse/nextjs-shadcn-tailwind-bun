@@ -24,7 +24,7 @@ export async function LayerManagementServer({
   // Convert database types to component types
   const clientLayers = layers.map((layer) => ({
     ...layer,
-    isVisible: layer.isVisible === "true" || layer.isVisible === true,
+    isVisible: layer.isVisible === "true",
     postalCodes: layer.postalCodes || [],
   }));
 

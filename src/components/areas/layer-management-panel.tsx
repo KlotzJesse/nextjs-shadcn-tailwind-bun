@@ -11,10 +11,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  useAreaLayers,
-  type UpdateLayerData,
-} from "@/lib/hooks/use-area-layers";
-import { Layer } from "@/lib/hooks/use-areas";
+  createLayerAction,
+  updateLayerAction,
+  getLayersAction,
+  deleteLayerAction,
+} from "@/app/actions/area-actions";
 import {
   IconEye,
   IconEyeOff,
@@ -26,7 +27,7 @@ import {
   IconDeviceFloppy,
   IconGitMerge,
 } from "@tabler/icons-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
   Popover,
   PopoverContent,
@@ -45,6 +46,20 @@ interface LayerManagementPanelProps {
   onLayerSelect: (layerId: number) => void;
 }
 
+// Define Layer type since it's no longer imported
+interface Layer {
+  id: number;
+  areaId: number;
+  name: string;
+  color: string;
+  opacity: number;
+  isVisible: string;
+  orderIndex: number;
+  createdAt: string;
+  updatedAt: string;
+  postalCodes?: { postalCode: string }[];
+}
+
 const DEFAULT_COLORS = [
   "#3b82f6", // blue
   "#ef4444", // red
@@ -61,15 +76,8 @@ export function LayerManagementPanel({
   activeLayerId,
   onLayerSelect,
 }: LayerManagementPanelProps) {
-  const {
-    layers,
-    fetchLayers,
-    createLayer,
-    updateLayer,
-    toggleLayerVisibility,
-    updateLayerColor,
-  } = useAreaLayers(areaId);
-
+  const [isPending, startTransition] = useTransition();
+  const [layers, setLayers] = useState<Layer[]>([]);
   const [newLayerName, setNewLayerName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
@@ -77,35 +85,74 @@ export function LayerManagementPanel({
   const [showCreateVersion, setShowCreateVersion] = useState(false);
   const [showLayerMerge, setShowLayerMerge] = useState(false);
 
+  const fetchLayers = async () => {
+    const result = await getLayersAction(areaId);
+    if (result.success && result.data) {
+      setLayers(result.data);
+    }
+  };
+
   useEffect(() => {
     if (areaId) {
       fetchLayers();
     }
-  }, [areaId, fetchLayers]);
+  }, [areaId]);
 
   const handleCreateLayer = async () => {
     if (!newLayerName.trim()) return;
 
     setIsCreating(true);
-    try {
-      const nextColor = DEFAULT_COLORS[layers.length % DEFAULT_COLORS.length];
-      await createLayer({
-        name: newLayerName,
-        color: nextColor,
-        orderIndex: layers.length,
-      });
-      setNewLayerName("");
-    } finally {
-      setIsCreating(false);
-    }
+    startTransition(async () => {
+      try {
+        const nextColor = DEFAULT_COLORS[layers.length % DEFAULT_COLORS.length];
+        const result = await createLayerAction(areaId, {
+          name: newLayerName,
+          color: nextColor,
+          opacity: 100,
+          isVisible: true,
+          orderIndex: layers.length,
+        });
+        
+        if (result.success) {
+          setNewLayerName("");
+          await fetchLayers(); // Refresh layers
+        }
+      } finally {
+        setIsCreating(false);
+      }
+    });
   };
 
   const handleColorChange = async (layerId: number, color: string) => {
-    await updateLayerColor(layerId, color);
+    startTransition(async () => {
+      const result = await updateLayerAction(areaId, layerId, { color });
+      if (result.success) {
+        await fetchLayers();
+      }
+    });
   };
 
   const handleOpacityChange = async (layerId: number, opacity: number) => {
-    await updateLayer(layerId, { opacity });
+    startTransition(async () => {
+      const result = await updateLayerAction(areaId, layerId, { opacity });
+      if (result.success) {
+        await fetchLayers();
+      }
+    });
+  };
+
+  const handleToggleVisibility = async (layerId: number) => {
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer) return;
+
+    startTransition(async () => {
+      const result = await updateLayerAction(areaId, layerId, { 
+        isVisible: layer.isVisible === "true" ? false : true 
+      });
+      if (result.success) {
+        await fetchLayers();
+      }
+    });
   };
 
   return (
@@ -211,7 +258,7 @@ export function LayerManagementPanel({
                   className="h-5 w-5 flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleLayerVisibility(layer.id);
+                    handleToggleVisibility(layer.id);
                   }}
                 >
                   {layer.isVisible === "true" ? (

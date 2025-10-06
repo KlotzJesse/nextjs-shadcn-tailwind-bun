@@ -127,6 +127,22 @@ export default function PostalCodesViewClient({
       toast.error("Fehler bei der Fahrzeitsuche");
     }
   };
+
+  // Wrapper function to match the expected interface for AddressAutocompleteEnhanced
+  const performDrivingRadiusSearchWrapper = async (
+    coordinates: [number, number],
+    radius: number,
+    granularity: string,
+    mode: "distance" | "time",
+    method: "osrm" | "approximation"
+  ) => {
+    await performDrivingRadiusSearch({
+      latitude: coordinates[1],
+      longitude: coordinates[0],
+      maxDuration: radius, // Using radius as maxDuration for time mode
+      granularity,
+    });
+  };
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
   const [postalCodeOpen, setPostalCodeOpen] = useState(false);
   const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(
@@ -193,7 +209,12 @@ export default function PostalCodesViewClient({
     radius: number,
     granularity: string
   ) => {
-    await performRadiusSearch(coords, radius, granularity);
+    await performRadiusSearch({
+      latitude: coords[1],
+      longitude: coords[0],
+      radius,
+      granularity,
+    });
   };
 
   // Handle bulk postal code import
@@ -219,7 +240,7 @@ export default function PostalCodesViewClient({
               onAddressSelect={handleAddressSelect}
               onBoundarySelect={handleImport}
               onRadiusSelect={handleRadiusSelect}
-              performDrivingRadiusSearch={performDrivingRadiusSearch}
+              performDrivingRadiusSearch={performDrivingRadiusSearchWrapper}
               granularity={defaultGranularity}
               triggerClassName="truncate"
             />
