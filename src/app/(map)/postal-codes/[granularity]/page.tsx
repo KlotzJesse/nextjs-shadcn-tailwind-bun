@@ -21,6 +21,7 @@ type Granularity = (typeof VALID_GRANULARITIES)[number];
 
 interface PostalCodesPageProps {
   params: Promise<{ granularity: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export async function generateStaticParams() {
@@ -55,15 +56,23 @@ export async function generateMetadata({
 
 export default async function PostalCodesPage({
   params,
+  searchParams,
 }: PostalCodesPageProps) {
   await connection();
   const { granularity } = await params;
+  const search = await searchParams;
+
+  // Check if we have an area context
+  const hasAreaContext = Boolean(search.areaId);
 
   return (
     <div className="h-full px-4 lg:px-6">
       <PostalCodesErrorBoundary>
         <Suspense fallback={<PostalCodesViewSkeleton />}>
-          <ServerPostalCodesView defaultGranularity={granularity} />
+          <ServerPostalCodesView
+            defaultGranularity={granularity}
+            hasAreaContext={hasAreaContext}
+          />
         </Suspense>
       </PostalCodesErrorBoundary>
     </div>

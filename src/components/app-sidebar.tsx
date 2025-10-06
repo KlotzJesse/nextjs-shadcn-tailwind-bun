@@ -8,6 +8,7 @@ import {
 import * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
+import { NavAreas } from "@/components/areas/nav-areas";
 import {
   Sidebar,
   SidebarContent,
@@ -30,26 +31,18 @@ const data = {
       icon: IconFolder,
     },
   ],
-  /*documents: [
-    {
-      name: "Gebiets-Daten",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Berichte",
-      url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Export-Werkzeuge",
-      url: "#",
-      icon: IconFileWord,
-    },
-  ],*/
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  currentAreaId?: number | null;
+  onAreaSelect?: (areaId: number) => void;
+}
+
+export function AppSidebar({
+  currentAreaId,
+  onAreaSelect,
+  ...props
+}: AppSidebarProps) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -71,7 +64,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        {/* <NavDocuments items={data.documents} />*/}
+        <NavAreas currentAreaId={currentAreaId} onAreaSelect={onAreaSelect} />
       </SidebarContent>
     </Sidebar>
   );

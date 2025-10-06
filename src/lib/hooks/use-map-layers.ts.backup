@@ -11,7 +11,6 @@ import type {
   Map as MapLibreMap,
 } from "maplibre-gl";
 import { useEffect, useLayoutEffect, useMemo } from "react";
-import type { Layer } from "@/lib/hooks/use-areas";
 
 interface UseMapLayersProps {
   map: MapLibreMap | null;
@@ -31,8 +30,6 @@ interface UseMapLayersProps {
   getLabelPoints: (
     data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>
   ) => FeatureCollection<Geometry, GeoJsonProperties>;
-  layers?: Layer[];
-  activeLayerId?: number | null;
 }
 
 /**
@@ -49,8 +46,6 @@ export function useMapLayers({
   hoveredRegionId,
   getSelectedFeatureCollection,
   getLabelPoints,
-  layers,
-  activeLayerId,
 }: UseMapLayersProps) {
   // Memoize layersLoaded calculation to prevent unnecessary rerenders
   const layersLoaded = useMemo(() => {
@@ -532,182 +527,6 @@ export function useMapLayers({
       });
     };
   }, [map, layerId, ids]);
-
-  // Effect for rendering area layers with custom colors
-  useEffect(() => {
-    if (!map || !isMapLoaded || !layers || layers.length === 0) {
-      return;
-    }
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[useMapLayers] Rendering area layers:", layers.length);
-    }
-
-    // Create a feature collection for each layer with its postal codes
-    layers.forEach((layer) => {
-      const layerSourceId = `area-layer-${layer.id}-source`;
-      const layerFillId = `area-layer-${layer.id}-fill`;
-      const layerBorderId = `area-layer-${layer.id}-border`;
-
-      // Get postal codes for this layer
-      const postalCodes = layer.postalCodes?.map((pc) => pc.postalCode) || [];
-
-      // Filter features from the main data that match this layer's postal codes
-      const layerFeatures = data.features.filter((feature) => {
-        const code = feature.properties?.plz || feature.properties?.postalCode;
-        return code && postalCodes.includes(code.toString());
-      });
-
-      const layerFeatureCollection: FeatureCollection<
-        Polygon | MultiPolygon,
-        GeoJsonProperties
-      > = {
-        type: "FeatureCollection",
-        features: layerFeatures,
-      };
-
-      // Add or update source
-      if (!map.getSource(layerSourceId)) {
-        map.addSource(layerSourceId, {
-          type: "geojson",
-          data: layerFeatureCollection,
-        });
-      } else {
-        const src = map.getSource(layerSourceId) as GeoJSONSource | undefined;
-        if (src && typeof src.setData === "function") {
-          src.setData(layerFeatureCollection);
-        }
-      }
-
-      // Parse hex color to RGB for opacity
-      const hexToRgb = (hex: string) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result
-          ? {
-              r: parseInt(result[1], 16),
-              g: parseInt(result[2], 16),
-              b: parseInt(result[3], 16),
-            }
-          : { r: 59, g: 130, b: 246 }; // Default blue
-      };
-
-      const rgb = hexToRgb(layer.color);
-      const opacity = layer.opacity / 100;
-      const isVisible = layer.isVisible === "true";
-      const isActive = activeLayerId === layer.id;
-
-      // Add fill layer
-      if (!map.getLayer(layerFillId)) {
-        map.addLayer(
-          {
-            id: layerFillId,
-            type: "fill",
-            source: layerSourceId,
-            paint: {
-              "fill-color": layer.color,
-              "fill-opacity": isVisible ? opacity * 0.6 : 0,
-            },
-            layout: {
-              visibility: isVisible ? "visible" : "none",
-            },
-          } as LayerSpecification,
-          ids.hoverLayerId // Place area layers below hover layer
-        );
-      } else {
-        // Update existing layer
-        map.setPaintProperty(layerFillId, "fill-color", layer.color);
-        map.setPaintProperty(
-          layerFillId,
-          "fill-opacity",
-          isVisible ? opacity * 0.6 : 0
-        );
-        map.setLayoutProperty(
-          layerFillId,
-          "visibility",
-          isVisible ? "visible" : "none"
-        );
-      }
-
-      // Add border layer with highlight for active layer
-      if (!map.getLayer(layerBorderId)) {
-        map.addLayer(
-          {
-            id: layerBorderId,
-            type: "line",
-            source: layerSourceId,
-            paint: {
-              "line-color": layer.color,
-              "line-width": isActive ? 2.5 : 1.5,
-              "line-opacity": isVisible ? (isActive ? 0.9 : 0.7) : 0,
-            },
-            layout: {
-              "line-cap": "round",
-              "line-join": "round",
-              visibility: isVisible ? "visible" : "none",
-            },
-          } as LayerSpecification,
-          ids.hoverLayerId // Place area layers below hover layer
-        );
-      } else {
-        // Update existing layer
-        map.setPaintProperty(layerBorderId, "line-color", layer.color);
-        map.setPaintProperty(layerBorderId, "line-width", isActive ? 2.5 : 1.5);
-        map.setPaintProperty(
-          layerBorderId,
-          "line-opacity",
-          isVisible ? (isActive ? 0.9 : 0.7) : 0
-        );
-        map.setLayoutProperty(
-          layerBorderId,
-          "visibility",
-          isVisible ? "visible" : "none"
-        );
-      }
-    });
-
-    // Cleanup: Remove layers/sources for layers that no longer exist
-    return () => {
-      if (!map) return;
-
-      // Get all current area layer IDs
-      const currentLayerIds = new Set(layers.map((l) => l.id));
-
-      // Find and remove orphaned area layers
-      const allLayers = map.getStyle().layers || [];
-      allLayers.forEach((layer) => {
-        if (layer.id.startsWith("area-layer-")) {
-          const match = layer.id.match(/area-layer-(\d+)-(fill|border)/);
-          if (match) {
-            const layerIdNum = parseInt(match[1], 10);
-            if (!currentLayerIds.has(layerIdNum)) {
-              try {
-                map.removeLayer(layer.id);
-              } catch (e) {
-                // Layer might already be removed
-              }
-            }
-          }
-        }
-      });
-
-      // Remove orphaned sources
-      Object.keys(map.getStyle().sources || {}).forEach((sourceId) => {
-        if (sourceId.startsWith("area-layer-")) {
-          const match = sourceId.match(/area-layer-(\d+)-source/);
-          if (match) {
-            const layerIdNum = parseInt(match[1], 10);
-            if (!currentLayerIds.has(layerIdNum)) {
-              try {
-                map.removeSource(sourceId);
-              } catch (e) {
-                // Source might already be removed
-              }
-            }
-          }
-        }
-      });
-    };
-  }, [map, isMapLoaded, layers, activeLayerId, data, ids.hoverLayerId]);
 
   return { layersLoaded };
 }

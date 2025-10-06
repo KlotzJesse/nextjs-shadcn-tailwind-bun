@@ -1,0 +1,1 @@
+DROP TABLE "spatial_ref_sys" CASCADE;

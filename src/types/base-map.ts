@@ -1,9 +1,10 @@
 import type {
-    FeatureCollection,
-    GeoJsonProperties,
-    MultiPolygon,
-    Polygon,
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
 } from "geojson";
+import type { Layer } from "@/lib/hooks/use-areas";
 
 export interface BaseMapProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -17,6 +18,8 @@ export interface BaseMapProps {
   > | null;
   granularity?: string;
   onGranularityChange?: (granularity: string) => void;
+  layers?: Layer[];
+  activeLayerId?: number | null;
 }
 
 export interface MapConfig {

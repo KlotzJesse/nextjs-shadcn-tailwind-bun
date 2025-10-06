@@ -4,6 +4,7 @@ const BaseMap = dynamic(() =>
 );
 
 import { useMapState } from "@/lib/url-state/map-state";
+import { Layer } from "@/lib/hooks/use-areas";
 import {
   FeatureCollection,
   GeoJsonProperties,
@@ -17,6 +18,8 @@ interface PostalCodesMapProps {
   onSearch?: (plz: string) => void;
   granularity?: string;
   onGranularityChange?: (granularity: string) => void;
+  layers?: Layer[];
+  activeLayerId?: number | null;
 }
 
 export function PostalCodesMap({
@@ -25,6 +28,8 @@ export function PostalCodesMap({
   onSearch,
   granularity,
   onGranularityChange,
+  layers = [],
+  activeLayerId = null,
 }: PostalCodesMapProps) {
   const { center, zoom } = useMapState();
 
@@ -38,6 +43,8 @@ export function PostalCodesMap({
       statesData={statesData}
       granularity={granularity}
       onGranularityChange={onGranularityChange}
+      layers={layers}
+      activeLayerId={activeLayerId}
     />
   );
 }

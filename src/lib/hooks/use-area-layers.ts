@@ -1,0 +1,166 @@
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
+import { Layer, PostalCodeEntry } from "./use-areas";
+
+export interface CreateLayerData {
+  areaId: number;
+  name: string;
+  color?: string;
+  opacity?: number;
+  isVisible?: string;
+  orderIndex?: number;
+  postalCodes?: string[];
+}
+
+export interface UpdateLayerData {
+  name?: string;
+  color?: string;
+  opacity?: number;
+  isVisible?: string;
+  orderIndex?: number;
+  postalCodes?: string[];
+}
+
+export function useAreaLayers(areaId: number) {
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLayers = useCallback(async () => {
+    if (!areaId) return;
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/areas/${areaId}/layers`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch layers");
+      }
+      const data = await response.json();
+      setLayers(data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage);
+      toast.error("Fehler beim Laden der Layer");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [areaId]);
+
+  const createLayer = useCallback(
+    async (data: Omit<CreateLayerData, "areaId">) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/areas/${areaId}/layers`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...data, areaId }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to create layer");
+        }
+        const result = await response.json();
+        await fetchLayers(); // Refresh list
+        toast.success("Layer erfolgreich erstellt");
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
+        setError(errorMessage);
+        toast.error("Fehler beim Erstellen des Layers");
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [areaId, fetchLayers]
+  );
+
+  const updateLayer = useCallback(
+    async (layerId: number, data: UpdateLayerData) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/areas/${areaId}/layers/${layerId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to update layer");
+        }
+        await fetchLayers(); // Refresh list
+        toast.success("Layer aktualisiert");
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
+        setError(errorMessage);
+        toast.error("Fehler beim Aktualisieren des Layers");
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [areaId, fetchLayers]
+  );
+
+  const addPostalCodesToLayer = useCallback(
+    async (layerId: number, postalCodes: string[]) => {
+      const layer = layers.find((l) => l.id === layerId);
+      if (!layer) return;
+
+      const existingCodes = layer.postalCodes?.map((pc) => pc.postalCode) || [];
+      const newCodes = [...new Set([...existingCodes, ...postalCodes])];
+
+      await updateLayer(layerId, { postalCodes: newCodes });
+    },
+    [layers, updateLayer]
+  );
+
+  const removePostalCodesFromLayer = useCallback(
+    async (layerId: number, postalCodes: string[]) => {
+      const layer = layers.find((l) => l.id === layerId);
+      if (!layer) return;
+
+      const existingCodes = layer.postalCodes?.map((pc) => pc.postalCode) || [];
+      const newCodes = existingCodes.filter(
+        (code) => !postalCodes.includes(code)
+      );
+
+      await updateLayer(layerId, { postalCodes: newCodes });
+    },
+    [layers, updateLayer]
+  );
+
+  const toggleLayerVisibility = useCallback(
+    async (layerId: number) => {
+      const layer = layers.find((l) => l.id === layerId);
+      if (!layer) return;
+
+      const newVisibility = layer.isVisible === "true" ? "false" : "true";
+      await updateLayer(layerId, { isVisible: newVisibility });
+    },
+    [layers, updateLayer]
+  );
+
+  const updateLayerColor = useCallback(
+    async (layerId: number, color: string) => {
+      await updateLayer(layerId, { color });
+    },
+    [updateLayer]
+  );
+
+  return {
+    layers,
+    isLoading,
+    error,
+    fetchLayers,
+    createLayer,
+    updateLayer,
+    addPostalCodesToLayer,
+    removePostalCodesFromLayer,
+    toggleLayerVisibility,
+    updateLayerColor,
+  };
+}

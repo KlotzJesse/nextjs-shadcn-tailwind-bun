@@ -404,10 +404,10 @@ function DrawingToolsImpl({
               }}
               className="flex-1 focus:outline-none focus:ring-2 focus:ring-primary"
               title="Alle Zeichnungen und Auswahlen löschen"
-              aria-label="Alles löschen"
+              aria-label="Zeichnung löschen"
             >
               <X className="h-4 w-4 mr-2" />
-              Alles löschen
+              Zeichnung löschen
             </Button>
           )}
           {selectedRegions.length > 0 && (

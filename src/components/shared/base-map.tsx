@@ -60,6 +60,8 @@ const BaseMapComponent = ({
   statesData,
   granularity,
   onGranularityChange,
+  layers,
+  activeLayerId,
 }: BaseMapProps) => {
   // Stable ref for map container
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -115,6 +117,8 @@ const BaseMapComponent = ({
     hoveredRegionId: hoveredRegionIdRef.current,
     getSelectedFeatureCollection: optimizations.getSelectedFeatureCollection,
     getLabelPoints: optimizations.getLabelPoints,
+    layers,
+    activeLayerId,
   });
 
   // Map interactions with memoized callbacks

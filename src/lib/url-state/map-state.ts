@@ -16,7 +16,7 @@ export function useMapView() {
   ] as const;
 }
 
-// Hook for managing all map state (Optimized v3 - stable arrays and callbacks)
+// Hook for managing all map state (Optimized v4 - with area/layer support)
 export function useMapState() {
   // --- Atomic map view state ---
   const [mapView, setMapView] = useMapView();
@@ -27,10 +27,23 @@ export function useMapState() {
   const [granularity, setGranularity] = useQueryState("granularity");
   const [radius, setRadius] = useQueryState("radius");
 
+  // New: Area and layer management
+  const [areaId, setAreaId] = useQueryState("areaId");
+  const [activeLayerId, setActiveLayerId] = useQueryState("activeLayerId");
+
   // Memoize selected regions to prevent unnecessary rerenders when the array content is the same
   const selectedRegionsArray = useMemo(() => {
     return selectedRegions ? JSON.parse(selectedRegions) : [];
   }, [selectedRegions]);
+
+  // Parse area and layer IDs
+  const parsedAreaId = useMemo(() => {
+    return areaId ? parseInt(areaId, 10) : null;
+  }, [areaId]);
+
+  const parsedActiveLayerId = useMemo(() => {
+    return activeLayerId ? parseInt(activeLayerId, 10) : null;
+  }, [activeLayerId]);
 
   // Helper functions for managing selected regions - memoized to prevent unnecessary rerenders
   // Note: setSelectedRegions from useQueryState should be stable, so we only depend on selectedRegions
@@ -72,6 +85,15 @@ export function useMapState() {
     }
   );
 
+  // Area/Layer helpers
+  const setArea = useStableCallback((id: number | null) => {
+    setAreaId(id !== null ? id.toString() : null);
+  });
+
+  const setActiveLayer = useStableCallback((id: number | null) => {
+    setActiveLayerId(id !== null ? id.toString() : null);
+  });
+
   return {
     // State
     selectedRegions: selectedRegionsArray,
@@ -80,6 +102,8 @@ export function useMapState() {
     center: mapView.center,
     zoom: mapView.zoom,
     radius: radius ? parseInt(radius, 10) : 10,
+    areaId: parsedAreaId,
+    activeLayerId: parsedActiveLayerId,
     // Setters
     setSelectedRegions: setSelectedRegionsArray,
     setSelectionMode,
@@ -88,6 +112,8 @@ export function useMapState() {
     setRadius: useStableCallback((radiusValue: number) =>
       setRadius(radiusValue.toString())
     ),
+    setArea,
+    setActiveLayer,
     // Helper functions
     addSelectedRegion,
     addSelectedRegions,

@@ -12,22 +12,35 @@ const PostalCodesViewClient = nextDynamic(
   }
 );
 
+const PostalCodesViewClientWithLayers = nextDynamic(
+  () => import("@/components/postal-codes/postal-codes-view-client-layers"),
+  {
+    loading: () => <PostalCodesViewSkeleton />,
+  }
+);
+
 interface ServerPostalCodesViewProps {
   defaultGranularity: string;
+  hasAreaContext?: boolean;
 }
 
 export default async function ServerPostalCodesView({
   defaultGranularity,
+  hasAreaContext = false,
 }: ServerPostalCodesViewProps) {
   const [postalCodesData, statesData] = await Promise.all([
     getPostalCodesDataForGranularity(defaultGranularity),
     getStatesData(),
   ]);
 
+  const ViewComponent = hasAreaContext
+    ? PostalCodesViewClientWithLayers
+    : PostalCodesViewClient;
+
   return (
     <PostalCodesErrorBoundary>
       <Suspense fallback={<PostalCodesViewSkeleton />}>
-        <PostalCodesViewClient
+        <ViewComponent
           initialData={postalCodesData}
           statesData={statesData}
           defaultGranularity={defaultGranularity}
