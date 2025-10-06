@@ -87,20 +87,25 @@ export default function PostalCodesViewClient({
       initialData
     );
   const router = useRouter();
-  const { addSelectedRegions } = useMapState();
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
   const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
   const { performRadiusSearch } = useRadiusSearch({
     onRadiusComplete: (postalCodes) => {
-      // Add all postal codes from radius search to selection at once
-      addSelectedRegions(postalCodes);
+      // Radius search result - user should set up an area/layer first
+      toast.info(
+        `${postalCodes.length} PLZ gefunden. Bitte erstellen Sie einen Bereich und Layer.`,
+        { duration: 4000 }
+      );
     },
   });
 
   const { performDrivingRadiusSearch } = useDrivingRadiusSearch({
     onRadiusComplete: (postalCodes) => {
-      // Add all postal codes from driving radius search to selection at once
-      addSelectedRegions(postalCodes);
+      // Driving radius search result - user should set up an area/layer first
+      toast.info(
+        `${postalCodes.length} PLZ gefunden. Bitte erstellen Sie einen Bereich und Layer.`,
+        { duration: 4000 }
+      );
     },
   });
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
@@ -174,7 +179,10 @@ export default function PostalCodesViewClient({
 
   // Handle bulk postal code import
   const handleImport = (postalCodes: string[]) => {
-    addSelectedRegions(postalCodes);
+    toast.info(
+      `${postalCodes.length} PLZ importiert. Bitte erstellen Sie einen Bereich und Layer.`,
+      { duration: 4000 }
+    );
   };
 
   // Get all postal codes for autocomplete
@@ -190,7 +198,7 @@ export default function PostalCodesViewClient({
           <AddressAutocompleteErrorBoundary>
             <AddressAutocompleteEnhanced
               onAddressSelect={handleAddressSelect}
-              onBoundarySelect={addSelectedRegions}
+              onBoundarySelect={handleImport}
               onRadiusSelect={handleRadiusSelect}
               performDrivingRadiusSearch={performDrivingRadiusSearch}
               granularity={defaultGranularity}

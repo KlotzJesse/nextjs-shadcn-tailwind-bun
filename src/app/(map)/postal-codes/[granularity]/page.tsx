@@ -62,8 +62,11 @@ export default async function PostalCodesPage({
   const { granularity } = await params;
   const search = await searchParams;
 
-  // Check if we have an area context
-  const hasAreaContext = Boolean(search.areaId);
+  // Extract area and layer IDs from search params
+  const areaId = search.areaId ? parseInt(search.areaId as string, 10) : null;
+  const activeLayerId = search.activeLayerId
+    ? parseInt(search.activeLayerId as string, 10)
+    : null;
 
   return (
     <div className="h-full px-4 lg:px-6">
@@ -71,7 +74,8 @@ export default async function PostalCodesPage({
         <Suspense fallback={<PostalCodesViewSkeleton />}>
           <ServerPostalCodesView
             defaultGranularity={granularity}
-            hasAreaContext={hasAreaContext}
+            areaId={areaId}
+            activeLayerId={activeLayerId}
           />
         </Suspense>
       </PostalCodesErrorBoundary>

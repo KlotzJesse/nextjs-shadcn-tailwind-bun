@@ -14,7 +14,6 @@ import { useStableCallback } from "./use-stable-callback";
 
 interface UseMapOptimizationsProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
-  selectedRegions: string[];
   statesData?: FeatureCollection<
     Polygon | MultiPolygon,
     GeoJsonProperties
@@ -25,27 +24,22 @@ interface UseMapOptimizationsProps {
  * Hook for optimized memoization of heavy computations
  * Prevents unnecessary re-renders and recalculations
  * Optimized for React 19 with stable references
+ * Note: Selected regions are now managed per-layer, not globally
  */
 export function useMapOptimizations({
   data,
-  selectedRegions,
   statesData,
 }: UseMapOptimizationsProps) {
-  // Memoize selected feature collection computation
+  // Empty feature collection for compatibility
   const selectedFeatureCollection = useMemo(() => {
-    const fc = featureCollectionFromIds(data, selectedRegions);
     return {
-      ...fc,
-      features: fc.features.filter(
-        (
-          f
-        ): f is import("geojson").Feature<
-          Polygon | MultiPolygon,
-          GeoJsonProperties
-        > => f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon"
-      ),
+      type: "FeatureCollection" as const,
+      features: [] as import("geojson").Feature<
+        Polygon | MultiPolygon,
+        GeoJsonProperties
+      >[],
     };
-  }, [data, selectedRegions]);
+  }, []);
 
   // Memoize label points computation (expensive operation)
   const labelPoints = useMemo(() => {
@@ -71,11 +65,8 @@ export function useMapOptimizations({
     [data.features.length]
   );
 
-  // Memoize selected count
-  const selectedCount = useMemo(
-    () => selectedRegions.length,
-    [selectedRegions.length]
-  );
+  // Selected count is now managed per-layer
+  const selectedCount = 0;
 
   // Memoize data extent for bounds calculations
   const dataExtent = useMemo(() => {
@@ -110,11 +101,12 @@ export function useMapOptimizations({
   }, [data]);
 
   // Stable callback functions for layer usage
+  // Note: Returns empty collection since selections are now per-layer
   const getSelectedFeatureCollection = useStableCallback(() => {
-    return featureCollectionFromIds(data, selectedRegions) as FeatureCollection<
-      Polygon | MultiPolygon,
-      GeoJsonProperties
-    >;
+    return {
+      type: "FeatureCollection" as const,
+      features: [],
+    } as FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   });
 
   const getLabelPoints = useStableCallback(

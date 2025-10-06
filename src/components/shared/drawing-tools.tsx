@@ -92,6 +92,11 @@ interface DrawingToolsProps {
   areaId?: number;
   activeLayerId?: number | null;
   onLayerSelect?: (layerId: number) => void;
+  addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>;
+  removePostalCodesFromLayer?: (
+    layerId: number,
+    codes: string[]
+  ) => Promise<void>;
 }
 
 const DEFAULT_COLORS = [
@@ -164,8 +169,8 @@ async function fillRegions(
     Polygon | MultiPolygon,
     GeoJsonProperties
   >,
-  selectedRegions: string[],
-  setSelectedRegions: (codes: string[]) => void,
+  activeLayer: any,
+  addPostalCodesToLayer: (layerId: number, codes: string[]) => Promise<void>,
   setIsFilling: (b: boolean) => void,
   granularity?: string
 ) {
@@ -174,17 +179,25 @@ async function fillRegions(
     return;
   }
 
+  if (!activeLayer) {
+    toast.error("Bitte wählen Sie einen aktiven Layer aus");
+    return;
+  }
+
   const fillPromise = async () => {
     setIsFilling(true);
 
     try {
+      const layerCodes =
+        activeLayer.postalCodes?.map((pc: any) => pc.postalCode) || [];
+
       console.log(
         "Filling regions with mode:",
         mode,
         "granularity:",
         granularity,
-        "selectedRegions:",
-        selectedRegions
+        "layer codes:",
+        layerCodes
       );
 
       const response = await fetch("/api/geoprocess", {
@@ -193,7 +206,7 @@ async function fillRegions(
         body: JSON.stringify({
           mode,
           granularity,
-          selectedCodes: selectedRegions,
+          selectedCodes: layerCodes,
         }),
       });
 
@@ -202,10 +215,9 @@ async function fillRegions(
       }
 
       const { resultCodes } = await response.json();
-      const newSelection = Array.from(
-        new Set([...selectedRegions, ...(resultCodes || [])])
-      );
-      setSelectedRegions(newSelection);
+      if (resultCodes && resultCodes.length > 0) {
+        await addPostalCodesToLayer(activeLayer.id, resultCodes);
+      }
 
       const count = (resultCodes || []).length;
       const modeText =
@@ -243,8 +255,6 @@ function DrawingToolsImpl({
   activeLayerId,
   onLayerSelect,
 }: DrawingToolsProps) {
-  const { selectedRegions, setSelectedRegions } = useMapState();
-
   // Collapsible section states
   const [toolsOpen, setToolsOpen] = useState(true);
   const [layersOpen, setLayersOpen] = useState(areaId ? true : false);
@@ -257,16 +267,116 @@ function DrawingToolsImpl({
     fetchLayers,
     createLayer,
     updateLayer,
+    deleteLayer,
     toggleLayerVisibility,
     updateLayerColor,
+    addPostalCodesToLayer,
+    removePostalCodesFromLayer,
   } = useAreaLayers(areaId || 0);
 
   const [newLayerName, setNewLayerName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [editingLayerId, setEditingLayerId] = useState<number | null>(null);
+  const [editingLayerName, setEditingLayerName] = useState("");
   const [showConflicts, setShowConflicts] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showCreateVersion, setShowCreateVersion] = useState(false);
   const [showLayerMerge, setShowLayerMerge] = useState(false);
+
+  // Create handlers for adding/removing pending postal codes to/from active layer
+  const handleAddPendingToLayer = async () => {
+    console.log("[handleAddPendingToLayer] Called with:", {
+      areaId,
+      activeLayerId,
+      pendingCount: pendingPostalCodes.length,
+      addFunction: !!addPostalCodesToLayer,
+    });
+
+    if (
+      !areaId ||
+      !activeLayerId ||
+      !addPostalCodesToLayer ||
+      pendingPostalCodes.length === 0
+    ) {
+      if (!areaId || !activeLayerId) {
+        toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+          duration: 3000,
+        });
+      } else if (pendingPostalCodes.length === 0) {
+        toast.info("Keine Regionen zum Hinzufügen gefunden", {
+          duration: 2000,
+        });
+      } else if (!addPostalCodesToLayer) {
+        toast.error("Layer-Funktion nicht verfügbar", { duration: 2000 });
+      }
+      return;
+    }
+
+    try {
+      console.log(
+        "[handleAddPendingToLayer] Adding codes:",
+        pendingPostalCodes
+      );
+      await addPostalCodesToLayer(activeLayerId, pendingPostalCodes);
+      toast.success(
+        `${pendingPostalCodes.length} Region${
+          pendingPostalCodes.length === 1 ? "" : "en"
+        } zu Layer hinzugefügt`,
+        { duration: 2000 }
+      );
+      // Call the original onAddPending to clear the pending codes
+      onAddPending?.();
+    } catch (error) {
+      console.error("Error adding pending codes to layer:", error);
+      toast.error("Fehler beim Hinzufügen der Regionen", { duration: 2000 });
+    }
+  };
+
+  const handleRemovePendingFromLayer = async () => {
+    console.log("[handleRemovePendingFromLayer] Called with:", {
+      areaId,
+      activeLayerId,
+      pendingCount: pendingPostalCodes.length,
+      removeFunction: !!removePostalCodesFromLayer,
+    });
+
+    if (
+      !areaId ||
+      !activeLayerId ||
+      !removePostalCodesFromLayer ||
+      pendingPostalCodes.length === 0
+    ) {
+      if (!areaId || !activeLayerId) {
+        toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+          duration: 3000,
+        });
+      } else if (pendingPostalCodes.length === 0) {
+        toast.info("Keine Regionen zum Entfernen gefunden", { duration: 2000 });
+      } else if (!removePostalCodesFromLayer) {
+        toast.error("Layer-Funktion nicht verfügbar", { duration: 2000 });
+      }
+      return;
+    }
+
+    try {
+      console.log(
+        "[handleRemovePendingFromLayer] Removing codes:",
+        pendingPostalCodes
+      );
+      await removePostalCodesFromLayer(activeLayerId, pendingPostalCodes);
+      toast.success(
+        `${pendingPostalCodes.length} Region${
+          pendingPostalCodes.length === 1 ? "" : "en"
+        } aus Layer entfernt`,
+        { duration: 2000 }
+      );
+      // Call the original onRemovePending to clear the pending codes
+      onRemovePending?.();
+    } catch (error) {
+      console.error("Error removing pending codes from layer:", error);
+      toast.error("Fehler beim Entfernen der Regionen", { duration: 2000 });
+    }
+  };
 
   useEffect(() => {
     if (areaId) {
@@ -274,18 +384,57 @@ function DrawingToolsImpl({
     }
   }, [areaId, fetchLayers]);
 
-  const handleModeClick = (mode: TerraDrawMode) => {
-    if (currentMode === mode) {
+  // Map drawing mode IDs to TerraDrawModes
+  const drawingModeToTerraDrawMode = (modeId: string): TerraDrawMode | null => {
+    switch (modeId) {
+      case "cursor":
+        return "select";
+      case "freehand":
+        return "freehand";
+      case "circle":
+        return "circle";
+      case "rectangle":
+        return "rectangle";
+      case "polygon":
+        return "polygon";
+      default:
+        return null;
+    }
+  };
+
+  // Map TerraDrawMode back to drawing mode ID for UI state
+  const terraDrawModeToDrawingMode = (
+    mode: TerraDrawMode | null
+  ): string | null => {
+    switch (mode) {
+      case "select":
+        return "cursor";
+      case "freehand":
+        return "freehand";
+      case "circle":
+        return "circle";
+      case "rectangle":
+        return "rectangle";
+      case "polygon":
+        return "polygon";
+      default:
+        return null;
+    }
+  };
+
+  const handleModeClick = (modeId: string) => {
+    const terraDrawMode = drawingModeToTerraDrawMode(modeId);
+    if (currentMode === terraDrawMode) {
       // Deactivate current mode
       onModeChange(null);
-      const modeInfo = drawingModes.find((m) => m.id === mode);
+      const modeInfo = drawingModes.find((m) => m.id === modeId);
       toast.success(`🖱️ ${modeInfo?.name || "Werkzeug"} deaktiviert`, {
         duration: 2000,
       });
     } else {
       // Activate new mode
-      onModeChange(mode);
-      const modeInfo = drawingModes.find((m) => m.id === mode);
+      onModeChange(terraDrawMode);
+      const modeInfo = drawingModes.find((m) => m.id === modeId);
       toast.success(`🎯 ${modeInfo?.name || "Werkzeug"} aktiviert`, {
         description: modeInfo?.description,
         duration: 3000,
@@ -295,18 +444,12 @@ function DrawingToolsImpl({
 
   const allModes = drawingModes;
 
-  // Helper: get all postal codes as array, prepending D-
+  // Helper: get all postal codes from active layer, prepending D-
   const getPostalCodes = () => {
-    if (!postalCodesData || !postalCodesData.features) return [];
-    // If any selected, only export those
-    const codes = postalCodesData.features
-      .map((f) => f.properties?.code || f.properties?.PLZ || f.properties?.plz)
-      .filter(Boolean);
-    if (selectedRegions && selectedRegions.length > 0) {
-      return codes
-        .filter((code: string) => selectedRegions.includes(code))
-        .map((code: string) => `D-${code}`);
-    }
+    if (!activeLayerId) return [];
+    const activeLayer = layers.find((l) => l.id === activeLayerId);
+    if (!activeLayer) return [];
+    const codes = activeLayer.postalCodes?.map((pc) => pc.postalCode) || [];
     return codes.map((code: string) => `D-${code}`);
   };
 
@@ -331,12 +474,17 @@ function DrawingToolsImpl({
     setIsCreating(true);
     try {
       const nextColor = DEFAULT_COLORS[layers.length % DEFAULT_COLORS.length];
-      await createLayer({
+      const result = await createLayer({
         name: newLayerName,
         color: nextColor,
         orderIndex: layers.length,
       });
       setNewLayerName("");
+
+      // Set the newly created layer as active
+      if (result?.id && onLayerSelect) {
+        onLayerSelect(result.id);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -348,6 +496,34 @@ function DrawingToolsImpl({
 
   const handleOpacityChange = async (layerId: number, opacity: number) => {
     await updateLayer(layerId, { opacity });
+  };
+
+  const handleDeleteLayer = async (layerId: number) => {
+    if (!deleteLayer) return;
+    if (!confirm("Möchten Sie diesen Layer wirklich löschen?")) return;
+
+    try {
+      await deleteLayer(layerId);
+      toast.success("Layer gelöscht");
+    } catch (error) {
+      // Error already handled by hook
+    }
+  };
+
+  const handleRenameLayer = async (layerId: number, newName: string) => {
+    if (!newName.trim()) {
+      toast.error("Layer-Name darf nicht leer sein");
+      return;
+    }
+
+    try {
+      await updateLayer(layerId, { name: newName.trim() });
+      setEditingLayerId(null);
+      setEditingLayerName("");
+      toast.success("Layer umbenannt");
+    } catch (error) {
+      // Error already handled by hook
+    }
   };
 
   return (
@@ -470,28 +646,84 @@ function DrawingToolsImpl({
                               opacity: layer.opacity / 100,
                             }}
                           />
-                          <span className="font-medium text-xs truncate">
-                            {layer.name}
-                          </span>
+                          {editingLayerId === layer.id ? (
+                            <Input
+                              value={editingLayerName}
+                              onChange={(e) =>
+                                setEditingLayerName(e.target.value)
+                              }
+                              className="h-5 text-xs flex-1"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                e.stopPropagation();
+                                if (e.key === "Enter") {
+                                  handleRenameLayer(layer.id, editingLayerName);
+                                } else if (e.key === "Escape") {
+                                  setEditingLayerId(null);
+                                  setEditingLayerName("");
+                                }
+                              }}
+                              onBlur={() => {
+                                if (editingLayerName.trim()) {
+                                  handleRenameLayer(layer.id, editingLayerName);
+                                } else {
+                                  setEditingLayerId(null);
+                                  setEditingLayerName("");
+                                }
+                              }}
+                            />
+                          ) : (
+                            <span
+                              className="font-medium text-xs truncate cursor-text"
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                setEditingLayerId(layer.id);
+                                setEditingLayerName(layer.name);
+                              }}
+                              title="Doppelklick zum Umbenennen"
+                            >
+                              {layer.name}
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground flex-shrink-0">
                             ({layer.postalCodes?.length || 0})
                           </span>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-4 w-4 flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleLayerVisibility(layer.id);
-                          }}
-                        >
-                          {layer.isVisible === "true" ? (
-                            <IconEye className="h-2.5 w-2.5" />
-                          ) : (
-                            <IconEyeOff className="h-2.5 w-2.5" />
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleLayerVisibility(layer.id);
+                            }}
+                            title={
+                              layer.isVisible === "true"
+                                ? "Ausblenden"
+                                : "Einblenden"
+                            }
+                          >
+                            {layer.isVisible === "true" ? (
+                              <IconEye className="h-2.5 w-2.5" />
+                            ) : (
+                              <IconEyeOff className="h-2.5 w-2.5" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 flex-shrink-0 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteLayer(layer.id);
+                            }}
+                            title="Layer löschen"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Color and opacity controls */}
@@ -596,7 +828,8 @@ function DrawingToolsImpl({
             <div className="grid grid-cols-3 gap-1">
               {allModes.map((mode) => {
                 const Icon = mode.icon;
-                const isActive = currentMode === mode.id;
+                const isActive =
+                  terraDrawModeToDrawingMode(currentMode) === mode.id;
                 return (
                   <Button
                     key={mode.id}
@@ -631,9 +864,7 @@ function DrawingToolsImpl({
               size="sm"
               className="w-full justify-between h-7 px-2 text-xs font-semibold"
             >
-              <span>
-                Regionen ({pendingPostalCodes.length + selectedRegions.length})
-              </span>
+              <span>Regionen ({pendingPostalCodes.length})</span>
               {regionsOpen ? (
                 <ChevronUp className="h-3 w-3" />
               ) : (
@@ -670,18 +901,24 @@ function DrawingToolsImpl({
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={onAddPending}
+                    onClick={handleAddPendingToLayer}
                     className="h-6 text-xs"
-                    title="Gefundene zur Auswahl hinzufügen"
+                    title="Gefundene zum aktiven Layer hinzufügen"
+                    disabled={
+                      !areaId || !activeLayerId || !addPostalCodesToLayer
+                    }
                   >
                     Hinzufügen
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={onRemovePending}
+                    onClick={handleRemovePendingFromLayer}
                     className="h-6 text-xs"
-                    title="Gefundene aus Auswahl entfernen"
+                    title="Gefundene aus aktivem Layer entfernen"
+                    disabled={
+                      !areaId || !activeLayerId || !removePostalCodesFromLayer
+                    }
                   >
                     Entfernen
                   </Button>
@@ -689,39 +926,11 @@ function DrawingToolsImpl({
                 <Separator />
               </div>
             )}
-
-            {/* Ausgewählte Regionen */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center px-1">
-                <span className="text-xs font-medium">Ausgewählt</span>
-                <span className="text-xs text-muted-foreground">
-                  {selectedRegions.length}
-                </span>
-              </div>
-              {selectedRegions.length > 0 && (
-                <div className="max-h-20 overflow-y-auto space-y-0.5">
-                  {selectedRegions.slice(0, 5).map((region: string) => (
-                    <div
-                      key={region}
-                      className="text-xs p-1 bg-muted rounded truncate"
-                    >
-                      {region}
-                    </div>
-                  ))}
-                  {selectedRegions.length > 5 && (
-                    <div className="text-xs text-muted-foreground text-center py-0.5">
-                      +{selectedRegions.length - 5}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </CollapsibleContent>
         </Collapsible>
 
         {/* Actions Section */}
-        {((currentMode && currentMode !== "cursor") ||
-          selectedRegions.length > 0) && (
+        {currentMode && currentMode !== "select" && (
           <>
             <Separator />
             <Collapsible
@@ -744,7 +953,7 @@ function DrawingToolsImpl({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-1 pt-2">
-                {currentMode && currentMode !== "cursor" && (
+                {currentMode && currentMode !== "select" && (
                   <Button
                     variant="destructive"
                     size="sm"
@@ -761,49 +970,39 @@ function DrawingToolsImpl({
                     Zeichnung löschen
                   </Button>
                 )}
-                {selectedRegions.length > 0 && (
+                {activeLayerId && areaId && (
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
+                    disabled={
+                      isFilling || !layers.find((l) => l.id === activeLayerId)
+                    }
                     onClick={() => {
-                      const count = selectedRegions.length;
-                      setSelectedRegions([]);
-                      toast.success(`📍 ${count} abgewählt`, {
-                        duration: 2000,
-                      });
+                      const activeLayer = layers.find(
+                        (l) => l.id === activeLayerId
+                      );
+                      if (postalCodesData && activeLayer) {
+                        fillRegions(
+                          "holes",
+                          postalCodesData,
+                          activeLayer,
+                          addPostalCodesToLayer,
+                          setIsFilling,
+                          granularity
+                        );
+                      }
                     }}
                     className="w-full h-7 text-xs"
-                    title="Auswahl aufheben"
+                    title="Nur Löcher füllen"
                   >
-                    <EyeOff className="h-3 w-3 mr-1.5" />
-                    Deselektieren
+                    {isFilling ? (
+                      <Loader2Icon className="h-3 w-3 mr-1.5 animate-spin" />
+                    ) : (
+                      <Diamond className="h-3 w-3 mr-1.5" />
+                    )}
+                    Löcher füllen
                   </Button>
                 )}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={isFilling || selectedRegions.length < 3}
-                  onClick={() =>
-                    postalCodesData &&
-                    fillRegions(
-                      "holes",
-                      postalCodesData,
-                      selectedRegions,
-                      setSelectedRegions,
-                      setIsFilling,
-                      granularity
-                    )
-                  }
-                  className="w-full h-7 text-xs"
-                  title="Nur Löcher füllen"
-                >
-                  {isFilling ? (
-                    <Loader2Icon className="h-3 w-3 mr-1.5 animate-spin" />
-                  ) : (
-                    <Diamond className="h-3 w-3 mr-1.5" />
-                  )}
-                  Löcher füllen
-                </Button>
               </CollapsibleContent>
             </Collapsible>
           </>

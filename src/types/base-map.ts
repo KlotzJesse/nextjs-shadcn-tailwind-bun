@@ -21,6 +21,11 @@ export interface BaseMapProps {
   layers?: Layer[];
   activeLayerId?: number | null;
   areaId?: number | null;
+  addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>;
+  removePostalCodesFromLayer?: (
+    layerId: number,
+    codes: string[]
+  ) => Promise<void>;
 }
 
 export interface MapConfig {

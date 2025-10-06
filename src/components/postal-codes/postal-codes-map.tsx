@@ -21,6 +21,11 @@ interface PostalCodesMapProps {
   layers?: Layer[];
   activeLayerId?: number | null;
   areaId?: number | null;
+  addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>;
+  removePostalCodesFromLayer?: (
+    layerId: number,
+    codes: string[]
+  ) => Promise<void>;
 }
 
 export function PostalCodesMap({
@@ -32,6 +37,8 @@ export function PostalCodesMap({
   layers = [],
   activeLayerId = null,
   areaId = null,
+  addPostalCodesToLayer,
+  removePostalCodesFromLayer,
 }: PostalCodesMapProps) {
   const { center, zoom } = useMapState();
 
@@ -48,6 +55,8 @@ export function PostalCodesMap({
       layers={layers}
       activeLayerId={activeLayerId}
       areaId={areaId}
+      addPostalCodesToLayer={addPostalCodesToLayer}
+      removePostalCodesFromLayer={removePostalCodesFromLayer}
     />
   );
 }

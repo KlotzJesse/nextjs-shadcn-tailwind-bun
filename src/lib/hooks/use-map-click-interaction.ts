@@ -6,17 +6,23 @@ import { toast } from "sonner";
 /**
  * Hook for managing click interactions and feature selection
  * Optimized for performance with stable callbacks
+ * Now adds postal codes directly to the active layer
  */
 export function useMapClickInteraction(
   map: MapLibreMap | null,
   layersLoaded: boolean,
   isCursorMode: boolean,
-  selectedRegions: string[],
-  addSelectedRegion: (regionId: string) => void,
-  removeSelectedRegion: (regionId: string) => void
+  areaId?: number | null,
+  activeLayerId?: number | null,
+  layers?: any[],
+  addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>,
+  removePostalCodesFromLayer?: (
+    layerId: number,
+    codes: string[]
+  ) => Promise<void>
 ) {
-  // Click handler for feature selection
-  const handleClick = useStableCallback((...args: unknown[]) => {
+  // Click handler for feature selection - adds to active layer
+  const handleClick = useStableCallback(async (...args: unknown[]) => {
     if (!map || !layersLoaded || !isCursorMode) return;
 
     const e = args[0] as { features?: unknown[] };
@@ -26,15 +32,83 @@ export function useMapClickInteraction(
     if (isFeatureWithCode(feature)) {
       const regionCode = feature.properties?.code;
       if (regionCode) {
-        if (selectedRegions.includes(regionCode)) {
-          removeSelectedRegion(regionCode);
-          toast.success(`PLZ ${regionCode} abgewählt`, {
-            duration: 1500,
+        // Check if we have an active layer
+        if (!areaId || !activeLayerId || areaId <= 0) {
+          toast.info(
+            `PLZ ${regionCode} - Bitte wählen Sie einen Bereich und aktiven Layer aus`,
+            { duration: 3000 }
+          );
+          return;
+        }
+
+        // Check if we have the required functions
+        if (!addPostalCodesToLayer || !removePostalCodesFromLayer) {
+          toast.warning("Layer-Operationen nicht verfügbar", {
+            duration: 2000,
           });
-        } else {
-          addSelectedRegion(regionCode);
-          toast.success(`PLZ ${regionCode} ausgewählt`, {
-            duration: 1500,
+          return;
+        }
+
+        console.log(
+          "[Click] AreaId:",
+          areaId,
+          "ActiveLayerId:",
+          activeLayerId,
+          "Available layers:",
+          layers?.length || 0
+        );
+
+        // Find the active layer to check if postal code already exists
+        const activeLayer = layers?.find((l) => l.id === activeLayerId);
+        if (!activeLayer) {
+          console.warn(
+            "[Click] Active layer not found. Available layers:",
+            layers?.map((l) => ({ id: l.id, name: l.name })) || []
+          );
+          toast.warning(
+            `Aktiver Layer (ID: ${activeLayerId}) nicht gefunden. Verfügbare Layer: ${
+              layers?.length || 0
+            }`,
+            { duration: 3000 }
+          );
+          return;
+        }
+
+        const existingCodes =
+          activeLayer.postalCodes?.map((pc: any) => pc.postalCode) || [];
+        const codeExists = existingCodes.includes(regionCode);
+
+        console.log(
+          "[Click] Layer:",
+          activeLayer.name,
+          "Code:",
+          regionCode,
+          "Exists:",
+          codeExists,
+          "Current codes:",
+          existingCodes
+        );
+
+        try {
+          if (codeExists) {
+            // Remove if it exists
+            console.log("[Click] Removing code from layer");
+            await removePostalCodesFromLayer(activeLayerId, [regionCode]);
+            toast.success(`PLZ ${regionCode} aus Layer entfernt`, {
+              duration: 2000,
+            });
+          } else {
+            // Add if it doesn't exist
+            console.log("[Click] Adding code to layer");
+            await addPostalCodesToLayer(activeLayerId, [regionCode]);
+            toast.success(`PLZ ${regionCode} zu Layer hinzugefügt`, {
+              duration: 2000,
+            });
+          }
+        } catch (error) {
+          console.error("Error toggling postal code:", error);
+          toast.error(`Fehler beim Bearbeiten von PLZ ${regionCode}`, {
+            duration: 2000,
           });
         }
       }

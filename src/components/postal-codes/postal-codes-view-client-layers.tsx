@@ -19,18 +19,28 @@ import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
 import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
 import { useMapState } from "@/lib/url-state/map-state";
-import { useAreaLayers } from "@/lib/hooks/use-area-layers";
 import { useAreaAutosave } from "@/lib/hooks/use-area-autosave";
+import {
+  addPostalCodesToLayerAction,
+  removePostalCodesFromLayerAction,
+} from "@/app/actions/area-actions";
+import { areas, areaLayers } from "@/lib/schema/schema";
+import type { InferSelectModel } from "drizzle-orm";
 import {
   FeatureCollection,
   GeoJsonProperties,
   MultiPolygon,
   Polygon,
 } from "geojson";
+
+type Area = InferSelectModel<typeof areas>;
+type Layer = InferSelectModel<typeof areaLayers> & {
+  postalCodes?: { postalCode: string }[];
+};
 import { ChevronsUpDownIcon, FileUpIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition, useOptimistic } from "react";
 import { toast } from "sonner";
 
 import {
@@ -72,17 +82,27 @@ const PostalCodeImportDialog = dynamic(
   }
 );
 
-interface PostalCodesViewClientProps {
+interface PostalCodesViewClientWithLayersProps {
   initialData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   defaultGranularity: string;
+  areaId: number;
+  activeLayerId: number | null;
+  initialAreas: Area[];
+  initialArea: Area | null;
+  initialLayers: Layer[];
 }
 
-export default function PostalCodesViewClientWithLayers({
+export function PostalCodesViewClientWithLayers({
   initialData,
   statesData,
   defaultGranularity,
-}: PostalCodesViewClientProps) {
+  areaId,
+  activeLayerId: initialActiveLayerId,
+  initialAreas,
+  initialArea,
+  initialLayers,
+}: PostalCodesViewClientWithLayersProps) {
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [data] =
     useState<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>>(
@@ -90,38 +110,133 @@ export default function PostalCodesViewClientWithLayers({
     );
   const router = useRouter();
   const mapState = useMapState();
-  const {
-    areaId,
-    activeLayerId,
-    setActiveLayer,
-    addSelectedRegions,
-    clearSelectedRegions,
-  } = mapState;
+  const { setActiveLayer } = mapState;
 
-  const { layers, fetchLayers, addPostalCodesToLayer } = useAreaLayers(
-    areaId || 0
+  // Optimistic state for layers
+  const [optimisticLayers, updateOptimisticLayers] = useOptimistic(
+    initialLayers,
+    (
+      currentLayers: Layer[],
+      update: { type: "add" | "remove"; layerId: number; postalCodes: string[] }
+    ) => {
+      return currentLayers.map((layer) => {
+        if (layer.id === update.layerId) {
+          const currentCodes =
+            layer.postalCodes?.map((pc) => pc.postalCode) || [];
+          let newCodes: string[];
+
+          if (update.type === "add") {
+            newCodes = [...new Set([...currentCodes, ...update.postalCodes])];
+          } else {
+            newCodes = currentCodes.filter(
+              (code) => !update.postalCodes.includes(code)
+            );
+          }
+
+          return {
+            ...layer,
+            postalCodes: newCodes.map((code) => ({ postalCode: code })),
+          };
+        }
+        return layer;
+      });
+    }
   );
+
+  const [isPending, startTransition] = useTransition();
+  const [activeLayerId, setActiveLayerId] = useState<number | null>(
+    initialActiveLayerId
+  );
+
+  // Server action wrappers with optimistic updates
+  const addPostalCodesToLayer = async (
+    layerId: number,
+    postalCodes: string[]
+  ) => {
+    updateOptimisticLayers({ type: "add", layerId, postalCodes });
+
+    startTransition(async () => {
+      try {
+        const result = await addPostalCodesToLayerAction(layerId, postalCodes);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Fehler beim Hinzufügen der PLZ"
+        );
+      }
+    });
+  };
+
+  const removePostalCodesFromLayer = async (
+    layerId: number,
+    postalCodes: string[]
+  ) => {
+    updateOptimisticLayers({ type: "remove", layerId, postalCodes });
+
+    startTransition(async () => {
+      try {
+        const result = await removePostalCodesFromLayerAction(
+          layerId,
+          postalCodes
+        );
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Fehler beim Entfernen der PLZ"
+        );
+      }
+    });
+  };
+
+  // Debug layer functions
+  useEffect(() => {
+    console.log(
+      "[postal-codes-view-client-layers] Layer functions available:",
+      {
+        areaId,
+        activeLayerId,
+        addFunction: !!addPostalCodesToLayer,
+        removeFunction: !!removePostalCodesFromLayer,
+        layersCount: optimisticLayers.length,
+      }
+    );
+  }, [areaId, activeLayerId, optimisticLayers.length]);
+
   const { scheduleAutosave } = useAreaAutosave(areaId || 0, activeLayerId);
 
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
   const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
 
   const { performRadiusSearch } = useRadiusSearch({
-    onRadiusComplete: (postalCodes) => {
+    onRadiusComplete: async (postalCodes) => {
       if (activeLayerId && areaId) {
-        addPostalCodesToLayer(activeLayerId, postalCodes);
+        await addPostalCodesToLayer(activeLayerId, postalCodes);
+        toast.success(`${postalCodes.length} PLZ zu Layer hinzugefügt`);
       } else {
-        addSelectedRegions(postalCodes);
+        toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+          duration: 3000,
+        });
       }
     },
   });
 
   const { performDrivingRadiusSearch } = useDrivingRadiusSearch({
-    onRadiusComplete: (postalCodes) => {
+    onRadiusComplete: async (postalCodes) => {
       if (activeLayerId && areaId) {
-        addPostalCodesToLayer(activeLayerId, postalCodes);
+        await addPostalCodesToLayer(activeLayerId, postalCodes);
+        toast.success(`${postalCodes.length} PLZ zu Layer hinzugefügt`);
       } else {
-        addSelectedRegions(postalCodes);
+        toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+          duration: 3000,
+        });
       }
     },
   });
@@ -133,16 +248,30 @@ export default function PostalCodesViewClientWithLayers({
   );
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
-  // Load layers when area changes
+  // Set first layer as active if none selected
   useEffect(() => {
-    if (areaId) {
-      fetchLayers();
-      // Set first layer as active if none selected
-      if (!activeLayerId && layers.length > 0) {
-        setActiveLayer(layers[0].id);
-      }
+    if (!activeLayerId && optimisticLayers.length > 0) {
+      const firstLayerId = optimisticLayers[0].id;
+      setActiveLayerId(firstLayerId);
+      setActiveLayer(firstLayerId);
     }
-  }, [areaId, fetchLayers]);
+  }, [activeLayerId, optimisticLayers.length, setActiveLayer]);
+
+  // Debug logging for layers
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[PostalCodesViewClientWithLayers] Layers updated:", {
+        count: optimisticLayers.length,
+        areaId,
+        activeLayerId,
+        layers: optimisticLayers.map((l) => ({
+          id: l.id,
+          name: l.name,
+          postalCodesCount: l.postalCodes?.length || 0,
+        })),
+      });
+    }
+  }, [optimisticLayers, areaId, activeLayerId]);
 
   const handleGranularityChange = (newGranularity: string) => {
     if (newGranularity !== defaultGranularity) {
@@ -211,11 +340,14 @@ export default function PostalCodesViewClientWithLayers({
       await addPostalCodesToLayer(activeLayerId, postalCodes);
       toast.success(`${postalCodes.length} PLZ zu Layer hinzugefügt`);
     } else {
-      addSelectedRegions(postalCodes);
+      toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+        duration: 3000,
+      });
     }
   };
 
   const handleLayerSelect = (layerId: number) => {
+    setActiveLayerId(layerId);
     setActiveLayer(layerId);
   };
 
@@ -225,29 +357,12 @@ export default function PostalCodesViewClientWithLayers({
     .filter((code): code is string => Boolean(code));
 
   // Get current layer's postal codes for map display
-  const activeLayer = layers.find((l) => l.id === activeLayerId);
+  const activeLayer = optimisticLayers.find((l) => l.id === activeLayerId);
   const layerPostalCodes =
     activeLayer?.postalCodes?.map((pc) => pc.postalCode) || [];
 
   return (
     <div className="h-full relative">
-      {/* Area required message */}
-      {!areaId && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          <Card className="w-96">
-            <CardHeader>
-              <CardTitle>Kein Gebiet ausgewählt</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Bitte wählen Sie ein Gebiet aus der Sidebar oder erstellen Sie
-                ein neues Gebiet.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       {/* Address and Postal Code Tools - horizontal, top right */}
       <div className="absolute top-4 right-4 z-30 flex flex-row gap-3 w-auto">
         <div className="w-80">
@@ -346,9 +461,11 @@ export default function PostalCodesViewClientWithLayers({
             onSearch={searchPostalCodes}
             granularity={defaultGranularity}
             onGranularityChange={handleGranularityChange}
-            layers={layers}
+            layers={optimisticLayers}
             activeLayerId={activeLayerId}
             areaId={areaId}
+            addPostalCodesToLayer={addPostalCodesToLayer}
+            removePostalCodesFromLayer={removePostalCodesFromLayer}
           />
         </MapErrorBoundary>
       </div>

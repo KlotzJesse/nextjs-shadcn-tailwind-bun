@@ -22,7 +22,6 @@ interface UseMapLayersProps {
     Polygon | MultiPolygon,
     GeoJsonProperties
   > | null;
-  selectedRegions: string[];
   hoveredRegionId: string | null;
   getSelectedFeatureCollection: () => FeatureCollection<
     Polygon | MultiPolygon,
@@ -45,7 +44,6 @@ export function useMapLayers({
   layerId,
   data,
   statesData,
-  selectedRegions,
   hoveredRegionId,
   getSelectedFeatureCollection,
   getLabelPoints,
@@ -212,16 +210,22 @@ export function useMapLayers({
       }
     }
     // 3. Selected postal code fill (above postal code border)
+    // This shows a preview of what will be added to the active layer
     if (!map.getLayer(ids.selectedLayerId)) {
+      // Get active layer color or default to blue
+      const activeLayer = layers?.find((l) => l.id === activeLayerId);
+      const fillColor = activeLayer?.color || "#2563EB";
+      const fillOpacity = 0.3; // Lower opacity to show this is a preview/temporary
+
       safeAddLayer(
         {
           id: ids.selectedLayerId,
           type: "fill",
           source: ids.selectedSourceId,
           paint: {
-            "fill-color": "#2563EB",
-            "fill-opacity": 0.5,
-            "fill-outline-color": "#1D4ED8",
+            "fill-color": fillColor,
+            "fill-opacity": fillOpacity,
+            "fill-outline-color": fillColor,
           },
         },
         `${layerId}-border`
@@ -431,7 +435,8 @@ export function useMapLayers({
     getLabelPoints,
   ]);
 
-  // Update selected features source when selection changes
+  // Update selected features source when layers change
+  // Note: Selections are now managed per-layer in the database
   useEffect(() => {
     if (!map || !layersLoaded) return;
     const src = map.getSource(ids.selectedSourceId) as
@@ -440,13 +445,7 @@ export function useMapLayers({
     if (src && typeof src.setData === "function") {
       src.setData(getSelectedFeatureCollection());
     }
-  }, [
-    selectedRegions,
-    getSelectedFeatureCollection,
-    map,
-    layersLoaded,
-    ids.selectedSourceId,
-  ]);
+  }, [getSelectedFeatureCollection, map, layersLoaded, ids.selectedSourceId]);
 
   // Use useLayoutEffect for hover source updates to prevent visual flicker
   // This ensures hover state changes are applied synchronously
@@ -541,6 +540,15 @@ export function useMapLayers({
 
     if (process.env.NODE_ENV === "development") {
       console.log("[useMapLayers] Rendering area layers:", layers.length);
+      layers.forEach((layer) => {
+        console.log(`[useMapLayers] Layer ${layer.id} (${layer.name}):`, {
+          postalCodesCount: layer.postalCodes?.length || 0,
+          color: layer.color,
+          opacity: layer.opacity,
+          isVisible: layer.isVisible,
+          isActive: activeLayerId === layer.id,
+        });
+      });
     }
 
     // Create a feature collection for each layer with its postal codes
@@ -554,9 +562,28 @@ export function useMapLayers({
 
       // Filter features from the main data that match this layer's postal codes
       const layerFeatures = data.features.filter((feature) => {
-        const code = feature.properties?.plz || feature.properties?.postalCode;
+        const code =
+          feature.properties?.code ||
+          feature.properties?.plz ||
+          feature.properties?.postalCode;
         return code && postalCodes.includes(code.toString());
       });
+
+      if (process.env.NODE_ENV === "development" && postalCodes.length > 0) {
+        console.log(
+          `[useMapLayers] Layer ${layer.id} matched ${layerFeatures.length}/${postalCodes.length} features`
+        );
+        if (layerFeatures.length === 0 && postalCodes.length > 0) {
+          console.warn(
+            `[useMapLayers] No features found for layer ${layer.id}. First postal code:`,
+            postalCodes[0]
+          );
+          console.warn(
+            `[useMapLayers] First data feature code:`,
+            data.features[0]?.properties?.code
+          );
+        }
+      }
 
       const layerFeatureCollection: FeatureCollection<
         Polygon | MultiPolygon,
@@ -708,6 +735,25 @@ export function useMapLayers({
       });
     };
   }, [map, isMapLoaded, layers, activeLayerId, data, ids.hoverLayerId]);
+
+  // Update selected regions color when active layer changes
+  useEffect(() => {
+    if (!map || !layersLoaded) return;
+
+    const activeLayer = layers?.find((l) => l.id === activeLayerId);
+    const fillColor = activeLayer?.color || "#2563EB";
+    const fillOpacity = 0.3; // Lower opacity for preview
+
+    if (map.getLayer(ids.selectedLayerId)) {
+      map.setPaintProperty(ids.selectedLayerId, "fill-color", fillColor);
+      map.setPaintProperty(ids.selectedLayerId, "fill-opacity", fillOpacity);
+      map.setPaintProperty(
+        ids.selectedLayerId,
+        "fill-outline-color",
+        fillColor
+      );
+    }
+  }, [map, layersLoaded, layers, activeLayerId, ids.selectedLayerId]);
 
   return { layersLoaded };
 }

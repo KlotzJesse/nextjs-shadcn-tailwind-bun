@@ -19,10 +19,14 @@ interface UseMapInteractionsProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   isMapLoaded: boolean;
   layersLoaded: boolean;
-  selectedRegions: string[];
-  addSelectedRegion: (regionId: string) => void;
-  removeSelectedRegion: (regionId: string) => void;
-  setSelectedRegions: (regions: string[]) => void;
+  areaId?: number | null;
+  activeLayerId?: number | null;
+  layers?: any[];
+  addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>;
+  removePostalCodesFromLayer?: (
+    layerId: number,
+    codes: string[]
+  ) => Promise<void>;
 }
 
 /**
@@ -36,10 +40,11 @@ export function useMapInteractions({
   data,
   isMapLoaded,
   layersLoaded,
-  selectedRegions,
-  addSelectedRegion,
-  removeSelectedRegion,
-  setSelectedRegions,
+  areaId,
+  activeLayerId,
+  layers,
+  addPostalCodesToLayer,
+  removePostalCodesFromLayer,
 }: UseMapInteractionsProps) {
   // Drawing tools state management
   const {
@@ -64,7 +69,7 @@ export function useMapInteractions({
     }
   }, [currentDrawingMode, isCursorMode, isDrawingActive]); // Only log when drawing mode actually changes
 
-  // TerraDraw selection logic
+  // TerraDraw selection logic - now managed per layer
   const {
     terraDrawRef,
     handleTerraDrawSelection,
@@ -75,8 +80,6 @@ export function useMapInteractions({
   } = useMapTerraDrawSelection({
     mapRef,
     data,
-    selectedRegions,
-    setSelectedRegions,
   });
 
   // TerraDraw integration - initialize as soon as map is ready, don't wait for layers
@@ -105,14 +108,16 @@ export function useMapInteractions({
     isCursorMode
   );
 
-  // Click interaction management
+  // Click interaction management - now adds to active layer
   const { handleClick } = useMapClickInteraction(
     mapRef.current,
     layersLoaded,
     isCursorMode,
-    selectedRegions,
-    addSelectedRegion,
-    removeSelectedRegion
+    areaId,
+    activeLayerId,
+    layers,
+    addPostalCodesToLayer,
+    removePostalCodesFromLayer
   );
 
   // Event listeners management

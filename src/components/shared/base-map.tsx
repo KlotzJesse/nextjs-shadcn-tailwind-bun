@@ -63,6 +63,8 @@ const BaseMapComponent = ({
   layers,
   activeLayerId,
   areaId,
+  addPostalCodesToLayer,
+  removePostalCodesFromLayer,
 }: BaseMapProps) => {
   // Stable ref for map container
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -84,18 +86,11 @@ const BaseMapComponent = ({
 
   // URL state management with stable destructuring
   const mapState = useMapState();
-  const {
-    selectedRegions,
-    addSelectedRegion,
-    removeSelectedRegion,
-    setSelectedRegions,
-    setMapCenterZoom,
-  } = mapState;
+  const { setMapCenterZoom } = mapState;
 
   // Performance optimizations with memoized computations
   const optimizations = useMapOptimizations({
     data,
-    selectedRegions,
     statesData,
   });
 
@@ -114,7 +109,6 @@ const BaseMapComponent = ({
     layerId,
     data,
     statesData,
-    selectedRegions, // selectedRegions is now a stable array from useMapState
     hoveredRegionId: hoveredRegionIdRef.current,
     getSelectedFeatureCollection: optimizations.getSelectedFeatureCollection,
     getLabelPoints: optimizations.getLabelPoints,
@@ -129,19 +123,11 @@ const BaseMapComponent = ({
     data,
     isMapLoaded,
     layersLoaded,
-    selectedRegions,
-    addSelectedRegion,
-    removeSelectedRegion,
-    setSelectedRegions,
-  });
-
-  // Selected features source updates
-  useMapSelectedFeaturesSource({
-    map: map.current,
-    layerId,
-    data,
-    selectedRegions,
-    layersLoaded,
+    areaId,
+    activeLayerId,
+    layers,
+    addPostalCodesToLayer,
+    removePostalCodesFromLayer,
   });
 
   // Map center/zoom synchronization
@@ -224,6 +210,8 @@ const BaseMapComponent = ({
                 onLayerSelect={(layerId: number) => {
                   mapState.setActiveLayer(layerId);
                 }}
+                addPostalCodesToLayer={addPostalCodesToLayer}
+                removePostalCodesFromLayer={removePostalCodesFromLayer}
               />
             </Suspense>
           </DrawingToolsErrorBoundary>

@@ -18,20 +18,17 @@ import { useStableCallback } from "./use-stable-callback";
 interface UseMapTerraDrawSelectionProps {
   mapRef: RefObject<MapLibreMap | null>;
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
-  selectedRegions: string[];
-  setSelectedRegions: (regions: string[]) => void;
 }
 
 /**
  * Hook for managing TerraDraw selection logic
  * Handles polygon and circle selections with geographic coordinate conversion
  * Optimized for React 19 with memoized callbacks and stable references
+ * Note: Selections are now managed through pending postal codes only, actual persistence through layers
  */
 export function useMapTerraDrawSelection({
   mapRef,
   data,
-  selectedRegions,
-  setSelectedRegions,
 }: UseMapTerraDrawSelectionProps) {
   // Ref to store TerraDraw API
   const terraDrawRef = useRef<{
@@ -39,16 +36,8 @@ export function useMapTerraDrawSelection({
     clearAll: () => void;
   } | null>(null);
 
-  // Ref to track current selected regions to avoid dependency issues
-  const selectedRegionsRef = useRef<string[]>(selectedRegions);
-
   // State for pending postal codes from drawing
   const [pendingPostalCodes, setPendingPostalCodes] = useState<string[]>([]);
-
-  // Update ref when selectedRegions changes
-  useEffect(() => {
-    selectedRegionsRef.current = selectedRegions;
-  }, [selectedRegions]);
 
   // Feature selection hooks
   const findFeaturesInPolygon = useFindFeaturesInPolygon(data);
@@ -257,51 +246,21 @@ export function useMapTerraDrawSelection({
     setPendingPostalCodes([]);
   });
 
-  // Add pending postal codes to selection
+  // Add pending postal codes to selection - now does nothing since handled by drawing tools
   const addPendingToSelection = useStableCallback(() => {
-    if (pendingPostalCodes.length > 0) {
-      const currentSelectedRegions = selectedRegionsRef.current || [];
-      const mergedRegions = [
-        ...new Set([...currentSelectedRegions, ...pendingPostalCodes]),
-      ];
-      setSelectedRegions(mergedRegions);
-
-      const newCount = pendingPostalCodes.length;
-      const totalCount = mergedRegions.length;
-      toast.success(
-        `✅ ${newCount} Region${newCount === 1 ? "" : "en"} hinzugefügt`,
-        {
-          description: `Insgesamt ${totalCount} Region${
-            totalCount === 1 ? "" : "en"
-          } ausgewählt`,
-          duration: 2000,
-        }
-      );
-
-      setPendingPostalCodes([]);
-      if (terraDrawRef.current?.clearAll) {
-        terraDrawRef.current.clearAll();
-      }
-    }
+    console.log(
+      "[addPendingToSelection] This should not be called - use layer operations instead"
+    );
+    // This function is deprecated - the drawing tools should handle layer operations directly
   });
 
-  // Remove pending postal codes from selection
+  // Remove pending postal codes from selection - clears pending
   const removePendingFromSelection = useStableCallback(() => {
     if (pendingPostalCodes.length > 0) {
-      const currentSelectedRegions = selectedRegionsRef.current || [];
-      const filteredRegions = currentSelectedRegions.filter(
-        (region) => !pendingPostalCodes.includes(region)
-      );
-      setSelectedRegions(filteredRegions);
-
       const removedCount = pendingPostalCodes.length;
-      const totalCount = filteredRegions.length;
       toast.success(
-        `🗑️ ${removedCount} Region${removedCount === 1 ? "" : "en"} entfernt`,
+        `🗑️ ${removedCount} Region${removedCount === 1 ? "" : "en"} gelöscht`,
         {
-          description: `${totalCount} Region${
-            totalCount === 1 ? "" : "en"
-          } ausgewählt`,
           duration: 2000,
         }
       );

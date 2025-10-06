@@ -21,20 +21,13 @@ export function useMapState() {
   // --- Atomic map view state ---
   const [mapView, setMapView] = useMapView();
   // ---
-  const [selectedRegions, setSelectedRegions] =
-    useQueryState("selectedRegions");
   const [selectionMode, setSelectionMode] = useQueryState("selectionMode");
   const [granularity, setGranularity] = useQueryState("granularity");
   const [radius, setRadius] = useQueryState("radius");
 
-  // New: Area and layer management
+  // Area and layer management
   const [areaId, setAreaId] = useQueryState("areaId");
   const [activeLayerId, setActiveLayerId] = useQueryState("activeLayerId");
-
-  // Memoize selected regions to prevent unnecessary rerenders when the array content is the same
-  const selectedRegionsArray = useMemo(() => {
-    return selectedRegions ? JSON.parse(selectedRegions) : [];
-  }, [selectedRegions]);
 
   // Parse area and layer IDs
   const parsedAreaId = useMemo(() => {
@@ -44,39 +37,6 @@ export function useMapState() {
   const parsedActiveLayerId = useMemo(() => {
     return activeLayerId ? parseInt(activeLayerId, 10) : null;
   }, [activeLayerId]);
-
-  // Helper functions for managing selected regions - memoized to prevent unnecessary rerenders
-  // Note: setSelectedRegions from useQueryState should be stable, so we only depend on selectedRegions
-  const addSelectedRegion = useStableCallback((region: string) => {
-    const current = selectedRegions ? JSON.parse(selectedRegions) : [];
-    if (!current.includes(region)) {
-      setSelectedRegions(JSON.stringify([...current, region]));
-    }
-  });
-
-  const removeSelectedRegion = useStableCallback((region: string) => {
-    const current = selectedRegions ? JSON.parse(selectedRegions) : [];
-    setSelectedRegions(
-      JSON.stringify(current.filter((r: string) => r !== region))
-    );
-  });
-
-  const clearSelectedRegions = useStableCallback(() => {
-    setSelectedRegions(null);
-  });
-
-  const setSelectedRegionsArray = useStableCallback((regions: string[]) => {
-    setSelectedRegions(JSON.stringify(regions));
-  });
-
-  const addSelectedRegions = useStableCallback((newRegions: string[]) => {
-    const current = selectedRegions ? JSON.parse(selectedRegions) : [];
-    const merged = [
-      ...current,
-      ...newRegions.filter((region) => !current.includes(region)),
-    ];
-    setSelectedRegions(JSON.stringify(merged));
-  });
 
   // --- Atomic map view helpers ---
   const setMapCenterZoom = useStableCallback(
@@ -96,7 +56,6 @@ export function useMapState() {
 
   return {
     // State
-    selectedRegions: selectedRegionsArray,
     selectionMode: selectionMode || "cursor",
     granularity: granularity || "1digit",
     center: mapView.center,
@@ -105,7 +64,6 @@ export function useMapState() {
     areaId: parsedAreaId,
     activeLayerId: parsedActiveLayerId,
     // Setters
-    setSelectedRegions: setSelectedRegionsArray,
     setSelectionMode,
     setGranularity,
     setMapCenterZoom, // atomic
@@ -114,24 +72,10 @@ export function useMapState() {
     ),
     setArea,
     setActiveLayer,
-    // Helper functions
-    addSelectedRegion,
-    addSelectedRegions,
-    removeSelectedRegion,
-    clearSelectedRegions,
   };
 }
 
 // Individual hooks for specific state (deprecated for center/zoom)
-export function useSelectedRegions() {
-  const [selectedRegions, setSelectedRegions] =
-    useQueryState("selectedRegions");
-  return [
-    selectedRegions ? JSON.parse(selectedRegions) : [],
-    (regions: string[]) => setSelectedRegions(JSON.stringify(regions)),
-  ] as const;
-}
-
 export function useSelectionMode() {
   return useQueryState("selectionMode");
 }
