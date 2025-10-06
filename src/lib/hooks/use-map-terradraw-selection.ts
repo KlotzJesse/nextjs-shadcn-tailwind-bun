@@ -11,7 +11,7 @@ import type {
   Polygon,
 } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { useStableCallback } from "./use-stable-callback";
 
@@ -41,6 +41,9 @@ export function useMapTerraDrawSelection({
 
   // Ref to track current selected regions to avoid dependency issues
   const selectedRegionsRef = useRef<string[]>(selectedRegions);
+  
+  // State for pending postal codes from drawing
+  const [pendingPostalCodes, setPendingPostalCodes] = useState<string[]>([]);
 
   // Update ref when selectedRegions changes
   useEffect(() => {
@@ -231,23 +234,17 @@ export function useMapTerraDrawSelection({
         }
       });
 
-      // Remove duplicates and add all selected features to state
+      // Remove duplicates and store as pending selection
       const uniqueSelectedFeatures = [...new Set(allSelectedFeatures)];
       if (uniqueSelectedFeatures.length > 0) {
-        // Use ref to get current state and avoid dependency issues
-        const currentSelectedRegions = selectedRegionsRef.current || [];
-        const mergedRegions = [
-          ...new Set([...currentSelectedRegions, ...uniqueSelectedFeatures]),
-        ];
-        setSelectedRegions(mergedRegions);
+        setPendingPostalCodes(uniqueSelectedFeatures);
         
-        // Provide toast feedback for drawing selection
-        const newCount = uniqueSelectedFeatures.length;
-        const totalCount = mergedRegions.length;
-        toast.success(
-          `🎯 ${newCount} Region${newCount === 1 ? "" : "en"} durch Zeichnung ausgewählt`,
+        // Provide toast feedback for drawing completion
+        const count = uniqueSelectedFeatures.length;
+        toast.info(
+          `🎯 ${count} Region${count === 1 ? "" : "en"} gefunden`,
           {
-            description: `Insgesamt ${totalCount} Region${totalCount === 1 ? "" : "en"} ausgewählt`,
+            description: `Klicken Sie auf "Hinzufügen" oder "Entfernen"`,
             duration: 3000,
           }
         );
@@ -260,11 +257,67 @@ export function useMapTerraDrawSelection({
     if (terraDrawRef.current?.clearAll) {
       terraDrawRef.current.clearAll();
     }
+    setPendingPostalCodes([]);
+  });
+
+  // Add pending postal codes to selection
+  const addPendingToSelection = useStableCallback(() => {
+    if (pendingPostalCodes.length > 0) {
+      const currentSelectedRegions = selectedRegionsRef.current || [];
+      const mergedRegions = [
+        ...new Set([...currentSelectedRegions, ...pendingPostalCodes]),
+      ];
+      setSelectedRegions(mergedRegions);
+      
+      const newCount = pendingPostalCodes.length;
+      const totalCount = mergedRegions.length;
+      toast.success(
+        `✅ ${newCount} Region${newCount === 1 ? "" : "en"} hinzugefügt`,
+        {
+          description: `Insgesamt ${totalCount} Region${totalCount === 1 ? "" : "en"} ausgewählt`,
+          duration: 2000,
+        }
+      );
+      
+      setPendingPostalCodes([]);
+      if (terraDrawRef.current?.clearAll) {
+        terraDrawRef.current.clearAll();
+      }
+    }
+  });
+
+  // Remove pending postal codes from selection
+  const removePendingFromSelection = useStableCallback(() => {
+    if (pendingPostalCodes.length > 0) {
+      const currentSelectedRegions = selectedRegionsRef.current || [];
+      const filteredRegions = currentSelectedRegions.filter(
+        (region) => !pendingPostalCodes.includes(region)
+      );
+      setSelectedRegions(filteredRegions);
+      
+      const removedCount = pendingPostalCodes.length;
+      const totalCount = filteredRegions.length;
+      toast.success(
+        `🗑️ ${removedCount} Region${removedCount === 1 ? "" : "en"} entfernt`,
+        {
+          description: `${totalCount} Region${totalCount === 1 ? "" : "en"} ausgewählt`,
+          duration: 2000,
+        }
+      );
+      
+      setPendingPostalCodes([]);
+      if (terraDrawRef.current?.clearAll) {
+        terraDrawRef.current.clearAll();
+      }
+    }
   });
 
   return {
     terraDrawRef,
     handleTerraDrawSelection,
     clearAll,
+    pendingPostalCodes,
+    addPendingToSelection,
+    removePendingFromSelection,
   } as const;
 }

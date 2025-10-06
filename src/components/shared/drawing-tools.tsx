@@ -56,6 +56,9 @@ interface DrawingToolsProps {
     Polygon | MultiPolygon,
     GeoJsonProperties
   >;
+  pendingPostalCodes?: string[];
+  onAddPending?: () => void;
+  onRemovePending?: () => void;
 }
 
 const drawingModes = [
@@ -189,6 +192,9 @@ function DrawingToolsImpl({
   granularity,
   onGranularityChange,
   postalCodesData,
+  pendingPostalCodes = [],
+  onAddPending,
+  onRemovePending,
 }: DrawingToolsProps) {
   const { selectedRegions, setSelectedRegions } = useMapState();
 
@@ -299,6 +305,59 @@ function DrawingToolsImpl({
         </div>
 
         <Separator />
+
+        {/* Gefundene Regionen durch Zeichnung */}
+        {pendingPostalCodes.length > 0 && (
+          <>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Gefundene Regionen</span>
+                <span className="text-xs text-muted-foreground">
+                  {pendingPostalCodes.length} gefunden
+                </span>
+              </div>
+              <div className="max-h-24 overflow-y-auto space-y-1">
+                {pendingPostalCodes.slice(0, 5).map((region: string) => (
+                  <div
+                    key={region}
+                    className="text-xs p-2 bg-muted rounded flex justify-between items-center"
+                  >
+                    <span className="truncate">{region}</span>
+                  </div>
+                ))}
+                {pendingPostalCodes.length > 5 && (
+                  <div className="text-xs text-muted-foreground text-center">
+                    +{pendingPostalCodes.length - 5} weitere
+                  </div>
+                )}
+              </div>
+              {/* Add/Remove Buttons */}
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={onAddPending}
+                  className="focus:outline-none focus:ring-2 focus:ring-primary"
+                  title="Gefundene Regionen zur Auswahl hinzufügen"
+                  aria-label="Hinzufügen"
+                >
+                  Hinzufügen
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={onRemovePending}
+                  className="focus:outline-none focus:ring-2 focus:ring-primary"
+                  title="Gefundene Regionen aus der Auswahl entfernen"
+                  aria-label="Entfernen"
+                >
+                  Entfernen
+                </Button>
+              </div>
+            </div>
+            <Separator />
+          </>
+        )}
 
         {/* Ausgewählte Regionen */}
         <div className="space-y-2">

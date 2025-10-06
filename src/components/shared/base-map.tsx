@@ -211,6 +211,9 @@ const BaseMapComponent = ({
                 granularity={granularity}
                 onGranularityChange={onGranularityChange}
                 postalCodesData={data}
+                pendingPostalCodes={interactions.pendingPostalCodes}
+                onAddPending={interactions.addPendingToSelection}
+                onRemovePending={interactions.removePendingFromSelection}
               />
             </Suspense>
           </DrawingToolsErrorBoundary>

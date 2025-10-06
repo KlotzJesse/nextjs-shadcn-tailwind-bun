@@ -60,7 +60,14 @@ export function useMapInteractions({
   }, [currentDrawingMode, isCursorMode, isDrawingActive]); // Only log when drawing mode actually changes
 
   // TerraDraw selection logic
-  const { terraDrawRef, handleTerraDrawSelection, clearAll } = useMapTerraDrawSelection({
+  const { 
+    terraDrawRef, 
+    handleTerraDrawSelection, 
+    clearAll,
+    pendingPostalCodes,
+    addPendingToSelection,
+    removePendingFromSelection,
+  } = useMapTerraDrawSelection({
     mapRef,
     data,
     selectedRegions,
@@ -129,5 +136,10 @@ export function useMapInteractions({
 
     // TerraDraw API reference
     terraDrawRef,
+    
+    // Pending postal codes from drawing
+    pendingPostalCodes,
+    addPendingToSelection,
+    removePendingFromSelection,
   } as const;
 }
