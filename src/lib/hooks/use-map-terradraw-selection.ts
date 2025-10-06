@@ -41,7 +41,7 @@ export function useMapTerraDrawSelection({
 
   // Ref to track current selected regions to avoid dependency issues
   const selectedRegionsRef = useRef<string[]>(selectedRegions);
-  
+
   // State for pending postal codes from drawing
   const [pendingPostalCodes, setPendingPostalCodes] = useState<string[]>([]);
 
@@ -238,16 +238,13 @@ export function useMapTerraDrawSelection({
       const uniqueSelectedFeatures = [...new Set(allSelectedFeatures)];
       if (uniqueSelectedFeatures.length > 0) {
         setPendingPostalCodes(uniqueSelectedFeatures);
-        
+
         // Provide toast feedback for drawing completion
         const count = uniqueSelectedFeatures.length;
-        toast.info(
-          `🎯 ${count} Region${count === 1 ? "" : "en"} gefunden`,
-          {
-            description: `Klicken Sie auf "Hinzufügen" oder "Entfernen"`,
-            duration: 3000,
-          }
-        );
+        toast.info(`🎯 ${count} Region${count === 1 ? "" : "en"} gefunden`, {
+          description: `Klicken Sie auf "Hinzufügen" oder "Entfernen"`,
+          duration: 3000,
+        });
       }
     }
   );
@@ -268,17 +265,19 @@ export function useMapTerraDrawSelection({
         ...new Set([...currentSelectedRegions, ...pendingPostalCodes]),
       ];
       setSelectedRegions(mergedRegions);
-      
+
       const newCount = pendingPostalCodes.length;
       const totalCount = mergedRegions.length;
       toast.success(
         `✅ ${newCount} Region${newCount === 1 ? "" : "en"} hinzugefügt`,
         {
-          description: `Insgesamt ${totalCount} Region${totalCount === 1 ? "" : "en"} ausgewählt`,
+          description: `Insgesamt ${totalCount} Region${
+            totalCount === 1 ? "" : "en"
+          } ausgewählt`,
           duration: 2000,
         }
       );
-      
+
       setPendingPostalCodes([]);
       if (terraDrawRef.current?.clearAll) {
         terraDrawRef.current.clearAll();
@@ -294,17 +293,19 @@ export function useMapTerraDrawSelection({
         (region) => !pendingPostalCodes.includes(region)
       );
       setSelectedRegions(filteredRegions);
-      
+
       const removedCount = pendingPostalCodes.length;
       const totalCount = filteredRegions.length;
       toast.success(
         `🗑️ ${removedCount} Region${removedCount === 1 ? "" : "en"} entfernt`,
         {
-          description: `${totalCount} Region${totalCount === 1 ? "" : "en"} ausgewählt`,
+          description: `${totalCount} Region${
+            totalCount === 1 ? "" : "en"
+          } ausgewählt`,
           duration: 2000,
         }
       );
-      
+
       setPendingPostalCodes([]);
       if (terraDrawRef.current?.clearAll) {
         terraDrawRef.current.clearAll();

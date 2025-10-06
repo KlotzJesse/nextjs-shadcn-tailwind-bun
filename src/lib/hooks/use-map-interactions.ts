@@ -4,7 +4,12 @@ import { useMapEventListeners } from "@/lib/hooks/use-map-event-listeners";
 import { useMapHoverInteraction } from "@/lib/hooks/use-map-hover-interaction";
 import { useMapTerraDrawSelection } from "@/lib/hooks/use-map-terradraw-selection";
 import { useTerraDraw } from "@/lib/hooks/use-terradraw";
-import type { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import type {
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { RefObject, useEffect } from "react";
 
@@ -60,9 +65,9 @@ export function useMapInteractions({
   }, [currentDrawingMode, isCursorMode, isDrawingActive]); // Only log when drawing mode actually changes
 
   // TerraDraw selection logic
-  const { 
-    terraDrawRef, 
-    handleTerraDrawSelection, 
+  const {
+    terraDrawRef,
+    handleTerraDrawSelection,
     clearAll,
     pendingPostalCodes,
     addPendingToSelection,
@@ -93,7 +98,12 @@ export function useMapInteractions({
     handleMouseEnter,
     handleMouseMove,
     handleMouseLeave,
-  } = useMapHoverInteraction(mapRef.current, layerId, layersLoaded, isCursorMode);
+  } = useMapHoverInteraction(
+    mapRef.current,
+    layerId,
+    layersLoaded,
+    isCursorMode
+  );
 
   // Click interaction management
   const { handleClick } = useMapClickInteraction(
@@ -136,7 +146,7 @@ export function useMapInteractions({
 
     // TerraDraw API reference
     terraDrawRef,
-    
+
     // Pending postal codes from drawing
     pendingPostalCodes,
     addPendingToSelection,
