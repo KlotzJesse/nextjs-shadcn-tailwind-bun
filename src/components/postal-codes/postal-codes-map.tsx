@@ -20,6 +20,7 @@ interface PostalCodesMapProps {
   onGranularityChange?: (granularity: string) => void;
   layers?: Layer[];
   activeLayerId?: number | null;
+  areaId?: number | null;
 }
 
 export function PostalCodesMap({
@@ -30,6 +31,7 @@ export function PostalCodesMap({
   onGranularityChange,
   layers = [],
   activeLayerId = null,
+  areaId = null,
 }: PostalCodesMapProps) {
   const { center, zoom } = useMapState();
 
@@ -45,6 +47,7 @@ export function PostalCodesMap({
       onGranularityChange={onGranularityChange}
       layers={layers}
       activeLayerId={activeLayerId}
+      areaId={areaId}
     />
   );
 }

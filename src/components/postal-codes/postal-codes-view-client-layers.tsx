@@ -41,7 +41,6 @@ import {
   AddressAutocompleteSkeleton,
   MapSkeleton,
 } from "@/components/ui/loading-skeletons";
-import { LayerManagementPanel } from "@/components/areas/layer-management-panel";
 
 const AddressAutocompleteEnhanced = dynamic(
   () =>
@@ -249,17 +248,6 @@ export default function PostalCodesViewClientWithLayers({
         </div>
       )}
 
-      {/* Layer Management Panel - Left side */}
-      {areaId && (
-        <div className="absolute top-4 left-4 z-30">
-          <LayerManagementPanel
-            areaId={areaId}
-            activeLayerId={activeLayerId}
-            onLayerSelect={handleLayerSelect}
-          />
-        </div>
-      )}
-
       {/* Address and Postal Code Tools - horizontal, top right */}
       <div className="absolute top-4 right-4 z-30 flex flex-row gap-3 w-auto">
         <div className="w-80">
@@ -360,6 +348,7 @@ export default function PostalCodesViewClientWithLayers({
             onGranularityChange={handleGranularityChange}
             layers={layers}
             activeLayerId={activeLayerId}
+            areaId={areaId}
           />
         </MapErrorBoundary>
       </div>

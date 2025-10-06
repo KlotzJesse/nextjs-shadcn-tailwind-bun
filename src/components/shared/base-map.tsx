@@ -62,6 +62,7 @@ const BaseMapComponent = ({
   onGranularityChange,
   layers,
   activeLayerId,
+  areaId,
 }: BaseMapProps) => {
   // Stable ref for map container
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -218,6 +219,11 @@ const BaseMapComponent = ({
                 pendingPostalCodes={interactions.pendingPostalCodes}
                 onAddPending={interactions.addPendingToSelection}
                 onRemovePending={interactions.removePendingFromSelection}
+                areaId={areaId ?? undefined}
+                activeLayerId={activeLayerId}
+                onLayerSelect={(layerId: number) => {
+                  mapState.setActiveLayer(layerId);
+                }}
               />
             </Suspense>
           </DrawingToolsErrorBoundary>

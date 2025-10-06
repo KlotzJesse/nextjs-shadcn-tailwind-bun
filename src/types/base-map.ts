@@ -20,6 +20,7 @@ export interface BaseMapProps {
   onGranularityChange?: (granularity: string) => void;
   layers?: Layer[];
   activeLayerId?: number | null;
+  areaId?: number | null;
 }
 
 export interface MapConfig {
