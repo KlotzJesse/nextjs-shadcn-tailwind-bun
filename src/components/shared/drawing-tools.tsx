@@ -58,7 +58,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useAreaLayers } from "@/lib/hooks/use-area-layers";
+import { type Area, type Layer } from "@/lib/hooks/use-areas";
+import {
+  createLayerAction,
+  updateLayerAction,
+  deleteLayerAction,
+  addPostalCodesToLayerAction,
+  removePostalCodesFromLayerAction,
+} from "@/app/actions/area-actions";
 import {
   IconEye,
   IconEyeOff,
@@ -74,7 +81,7 @@ import { VersionHistoryDialog } from "@/components/areas/version-history-dialog"
 import { CreateVersionDialog } from "@/components/areas/create-version-dialog";
 import { LayerMergeDialog } from "@/components/areas/layer-merge-dialog";
 
-interface DrawingToolsProps {
+export interface DrawingToolsProps {
   currentMode: TerraDrawMode | null;
   onModeChange: (mode: TerraDrawMode | null) => void;
   onClearAll: () => void;
@@ -92,6 +99,9 @@ interface DrawingToolsProps {
   areaId?: number;
   activeLayerId?: number | null;
   onLayerSelect?: (layerId: number) => void;
+  // Layer data and operations passed from server
+  layers?: Layer[];
+  onLayerUpdate?: () => void; // Callback to refresh layer data
   addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>;
   removePostalCodesFromLayer?: (
     layerId: number,
@@ -200,21 +210,21 @@ async function fillRegions(
         layerCodes
       );
 
-      const response = await fetch("/api/geoprocess", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          granularity,
-          selectedCodes: layerCodes,
-        }),
+      // Use server action instead of client-side fetch
+      const { geoprocessAction } = await import("@/app/actions/area-actions");
+      const result = await geoprocessAction({
+        mode,
+        granularity,
+        selectedCodes: layerCodes,
       });
 
-      if (!response.ok) {
-        throw new Error("Server-Geoverarbeitung fehlgeschlagen");
+      if (!result.success) {
+        throw new Error(
+          result.error || "Server-Geoverarbeitung fehlgeschlagen"
+        );
       }
 
-      const { resultCodes } = await response.json();
+      const resultCodes = result.data?.resultCodes || [];
       if (resultCodes && resultCodes.length > 0) {
         await addPostalCodesToLayer(activeLayer.id, resultCodes);
       }
@@ -254,6 +264,10 @@ function DrawingToolsImpl({
   areaId,
   activeLayerId,
   onLayerSelect,
+  layers = [],
+  onLayerUpdate,
+  addPostalCodesToLayer,
+  removePostalCodesFromLayer,
 }: DrawingToolsProps) {
   // Collapsible section states
   const [toolsOpen, setToolsOpen] = useState(true);
@@ -262,18 +276,6 @@ function DrawingToolsImpl({
   const [actionsOpen, setActionsOpen] = useState(false);
 
   // Layer management state
-  const {
-    layers,
-    fetchLayers,
-    createLayer,
-    updateLayer,
-    deleteLayer,
-    toggleLayerVisibility,
-    updateLayerColor,
-    addPostalCodesToLayer,
-    removePostalCodesFromLayer,
-  } = useAreaLayers(areaId || 0);
-
   const [newLayerName, setNewLayerName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [editingLayerId, setEditingLayerId] = useState<number | null>(null);
@@ -282,6 +284,50 @@ function DrawingToolsImpl({
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showCreateVersion, setShowCreateVersion] = useState(false);
   const [showLayerMerge, setShowLayerMerge] = useState(false);
+
+  // Server action implementations
+  const createLayer = async (data: {
+    name: string;
+    color: string;
+    orderIndex: number;
+  }) => {
+    if (!areaId) return;
+    const result = await createLayerAction({ areaId, ...data });
+    if (result.success) {
+      onLayerUpdate?.();
+      return result.data;
+    }
+    throw new Error(result.error);
+  };
+
+  const updateLayer = async (layerId: number, data: any) => {
+    const result = await updateLayerAction(layerId, data);
+    if (result.success) {
+      onLayerUpdate?.();
+    } else {
+      throw new Error(result.error);
+    }
+  };
+
+  const deleteLayer = async (layerId: number) => {
+    const result = await deleteLayerAction(layerId);
+    if (result.success) {
+      onLayerUpdate?.();
+    } else {
+      throw new Error(result.error);
+    }
+  };
+
+  const toggleLayerVisibility = async (layerId: number) => {
+    const layer = layers.find((l) => l.id === layerId);
+    if (!layer) return;
+    const newVisibility = layer.isVisible === "true" ? "false" : "true";
+    await updateLayer(layerId, { isVisible: newVisibility });
+  };
+
+  const updateLayerColor = async (layerId: number, color: string) => {
+    await updateLayer(layerId, { color });
+  };
 
   // Create handlers for adding/removing pending postal codes to/from active layer
   const handleAddPendingToLayer = async () => {
@@ -379,10 +425,16 @@ function DrawingToolsImpl({
   };
 
   useEffect(() => {
+    // Layer data now comes from props passed by server component
     if (areaId) {
-      fetchLayers();
+      console.log(
+        "Drawing tools area changed to:",
+        areaId,
+        "- layers provided via props:",
+        layers.length
+      );
     }
-  }, [areaId, fetchLayers]);
+  }, [areaId, layers.length]);
 
   // Map drawing mode IDs to TerraDrawModes
   const drawingModeToTerraDrawMode = (modeId: string): TerraDrawMode | null => {
@@ -1065,7 +1117,7 @@ function DrawingToolsImpl({
               areaId={areaId}
               layers={layers}
               onMergeComplete={() => {
-                fetchLayers();
+                onLayerUpdate?.();
               }}
             />
           </>

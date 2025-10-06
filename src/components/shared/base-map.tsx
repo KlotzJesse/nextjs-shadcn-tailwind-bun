@@ -212,6 +212,11 @@ const BaseMapComponent = ({
                 }}
                 addPostalCodesToLayer={addPostalCodesToLayer}
                 removePostalCodesFromLayer={removePostalCodesFromLayer}
+                layers={layers || []}
+                onLayerUpdate={async () => {
+                  // This will be handled by the parent component
+                  // through the layers prop updates
+                }}
               />
             </Suspense>
           </DrawingToolsErrorBoundary>

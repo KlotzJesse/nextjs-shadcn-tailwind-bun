@@ -144,20 +144,24 @@ export function PostalCodesViewClientWithLayers({
   );
 
   const [isPending, startTransition] = useTransition();
-  const [activeLayerId, setActiveLayerId] = useState<number | null>(
-    initialActiveLayerId
-  );
+  // Use URL state for active layer instead of local state
+  const activeLayerId = mapState.activeLayerId;
 
   // Server action wrappers with optimistic updates
   const addPostalCodesToLayer = async (
     layerId: number,
     postalCodes: string[]
   ) => {
-    updateOptimisticLayers({ type: "add", layerId, postalCodes });
+    if (!areaId) {
+      toast.error("Kein Bereich ausgewählt");
+      return;
+    }
 
     startTransition(async () => {
+      updateOptimisticLayers({ type: "add", layerId, postalCodes });
+
       try {
-        const result = await addPostalCodesToLayerAction(layerId, postalCodes);
+        const result = await addPostalCodesToLayerAction(areaId, layerId, postalCodes);
         if (!result.success) {
           throw new Error(result.error);
         }
@@ -175,11 +179,17 @@ export function PostalCodesViewClientWithLayers({
     layerId: number,
     postalCodes: string[]
   ) => {
-    updateOptimisticLayers({ type: "remove", layerId, postalCodes });
+    if (!areaId) {
+      toast.error("Kein Bereich ausgewählt");
+      return;
+    }
 
     startTransition(async () => {
+      updateOptimisticLayers({ type: "remove", layerId, postalCodes });
+
       try {
         const result = await removePostalCodesFromLayerAction(
+          areaId,
           layerId,
           postalCodes
         );
@@ -215,8 +225,15 @@ export function PostalCodesViewClientWithLayers({
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
   const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
 
-  const { performRadiusSearch } = useRadiusSearch({
-    onRadiusComplete: async (postalCodes) => {
+  const performRadiusSearch = async (searchData: {
+    latitude: number;
+    longitude: number;
+    radius: number;
+    granularity: string;
+  }) => {
+    const result = await radiusSearchAction(searchData);
+    if (result.success && result.data) {
+      const postalCodes = result.data.postalCodes;
       if (activeLayerId && areaId) {
         await addPostalCodesToLayer(activeLayerId, postalCodes);
         toast.success(`${postalCodes.length} PLZ zu Layer hinzugefügt`);
@@ -225,11 +242,20 @@ export function PostalCodesViewClientWithLayers({
           duration: 3000,
         });
       }
-    },
-  });
+    } else {
+      toast.error("Fehler bei der Radiussuche");
+    }
+  };
 
-  const { performDrivingRadiusSearch } = useDrivingRadiusSearch({
-    onRadiusComplete: async (postalCodes) => {
+  const performDrivingRadiusSearch = async (searchData: {
+    latitude: number;
+    longitude: number;
+    maxDuration: number;
+    granularity: string;
+  }) => {
+    const result = await drivingRadiusSearchAction(searchData);
+    if (result.success && result.data) {
+      const postalCodes = result.data.postalCodes;
       if (activeLayerId && areaId) {
         await addPostalCodesToLayer(activeLayerId, postalCodes);
         toast.success(`${postalCodes.length} PLZ zu Layer hinzugefügt`);
@@ -238,8 +264,10 @@ export function PostalCodesViewClientWithLayers({
           duration: 3000,
         });
       }
-    },
-  });
+    } else {
+      toast.error("Fehler bei der Fahrzeitsuche");
+    }
+  };
 
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
   const [postalCodeOpen, setPostalCodeOpen] = useState(false);
@@ -252,7 +280,6 @@ export function PostalCodesViewClientWithLayers({
   useEffect(() => {
     if (!activeLayerId && optimisticLayers.length > 0) {
       const firstLayerId = optimisticLayers[0].id;
-      setActiveLayerId(firstLayerId);
       setActiveLayer(firstLayerId);
     }
   }, [activeLayerId, optimisticLayers.length, setActiveLayer]);

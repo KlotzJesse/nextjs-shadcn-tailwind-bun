@@ -120,6 +120,7 @@ export function AddressAutocompleteEnhanced({
           const looksLikeAddress = /\d/.test(value.trim());
 
           // Enhanced search with German/English support and city/state handling
+          // TODO: Replace with server action when geocodeAction interface is updated
           const response = await fetch("/api/geocode", {
             method: "POST",
             headers: {
@@ -281,6 +282,8 @@ export function AddressAutocompleteEnhanced({
     if (isAdministrativeArea && onBoundarySelect) {
       const boundarySearchPromise = async () => {
         try {
+          // TODO: Replace with server action when available
+          // Currently keeping fetch until searchByBoundaryAction is implemented
           const response = await fetch("/api/postal-codes/search-by-boundary", {
             method: "POST",
             headers: {

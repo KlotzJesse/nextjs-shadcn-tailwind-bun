@@ -1,6 +1,8 @@
 import { FeatureErrorBoundary } from "@/components/ui/error-boundaries";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getAreasAction } from "@/app/actions/area-actions";
+import { connection } from "next/server";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
@@ -20,6 +22,17 @@ const SiteHeader = dynamic(
   }
 );
 
+async function AppSidebarWithData() {
+  // Ensure connection is established for prerendering
+  await connection();
+
+  // Fetch areas data on the server
+  const result = await getAreasAction();
+  const areas = result.success ? result.data || [] : [];
+
+  return <AppSidebar variant="inset" areas={areas} />;
+}
+
 export const experimental_ppr = true;
 
 export default async function MapLayout({
@@ -38,7 +51,7 @@ export default async function MapLayout({
         }
       >
         <Suspense fallback={<Skeleton className="w-72 h-full" />}>
-          <AppSidebar variant="inset" />
+          <AppSidebarWithData />
         </Suspense>
         <SidebarInset>
           <Suspense fallback={<Skeleton className="w-full h-12" />}>

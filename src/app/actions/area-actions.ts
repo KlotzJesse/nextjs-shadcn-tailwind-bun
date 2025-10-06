@@ -284,6 +284,23 @@ export async function addPostalCodesToLayerAction(
   postalCodes: string[]
 ): ServerActionResponse {
   try {
+    // Validate inputs
+    if (!areaId || !layerId || !postalCodes || postalCodes.length === 0) {
+      return { success: false, error: "Invalid parameters" };
+    }
+
+    // Verify layer belongs to area
+    const layer = await db.query.areaLayers.findFirst({
+      where: and(
+        eq(areaLayers.id, layerId),
+        eq(areaLayers.areaId, areaId)
+      ),
+    });
+
+    if (!layer) {
+      return { success: false, error: "Layer not found or does not belong to area" };
+    }
+
     // Get existing postal codes
     const existing = await db
       .select({ postalCode: areaLayerPostalCodes.postalCode })
@@ -318,6 +335,23 @@ export async function removePostalCodesFromLayerAction(
   postalCodes: string[]
 ): ServerActionResponse {
   try {
+    // Validate inputs
+    if (!areaId || !layerId || !postalCodes || postalCodes.length === 0) {
+      return { success: false, error: "Invalid parameters" };
+    }
+
+    // Verify layer belongs to area
+    const layer = await db.query.areaLayers.findFirst({
+      where: and(
+        eq(areaLayers.id, layerId),
+        eq(areaLayers.areaId, areaId)
+      ),
+    });
+
+    if (!layer) {
+      return { success: false, error: "Layer not found or does not belong to area" };
+    }
+
     await db
       .delete(areaLayerPostalCodes)
       .where(

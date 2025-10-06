@@ -10,8 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLayerConflicts } from "@/lib/hooks/use-layer-conflicts";
-import { useAreaLayers } from "@/lib/hooks/use-area-layers";
 import { Layer } from "@/lib/hooks/use-areas";
+import { updateLayerAction } from "@/app/actions/layer-actions";
 import { IconAlertTriangle, IconCheck } from "@tabler/icons-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +39,7 @@ export function ConflictResolutionDialog({
   layers,
 }: ConflictResolutionDialogProps) {
   const { conflicts, detectConflicts } = useLayerConflicts(layers);
-  const { updateLayer } = useAreaLayers(areaId);
+
   const [selectedConflicts, setSelectedConflicts] = useState<Set<string>>(
     new Set()
   );
@@ -68,7 +68,7 @@ export function ConflictResolutionDialog({
               (code) => code !== conflict.postalCode
             );
             if (currentCodes.length !== newCodes.length) {
-              await updateLayer(layer.id, { postalCodes: newCodes });
+              await updateLayerAction(areaId, layer.id, { postalCodes: newCodes });
             }
           }
         }
@@ -81,7 +81,7 @@ export function ConflictResolutionDialog({
             (code) => code !== conflict.postalCode
           );
           if (currentCodes.length !== newCodes.length) {
-            await updateLayer(layer.id, { postalCodes: newCodes });
+            await updateLayerAction(areaId, layer.id, { postalCodes: newCodes });
           }
         }
       }

@@ -1,5 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
+/**
+ * @deprecated This hook has been replaced with server actions for Next.js 15 compliance
+ * Use the server actions from @/app/actions/area-actions.ts instead:
+ * - getAreasAction()
+ * - getAreaByIdAction()
+ * - createAreaAction()
+ * - updateAreaAction()
+ * - deleteAreaAction()
+ *
+ * Data should be fetched in server components and passed down as props.
+ * Mutations should use server actions with useTransition for loading states.
+ */
+
+import { useState } from "react";
 
 export interface Area {
   id: number;
@@ -29,143 +41,69 @@ export interface Layer {
 }
 
 export interface PostalCodeEntry {
-  id: number;
-  layerId: number;
   postalCode: string;
-  createdAt: string;
 }
 
+export interface CreateAreaData {
+  name: string;
+  description?: string;
+  granularity?: string;
+}
+
+export interface UpdateAreaData {
+  name?: string;
+  description?: string;
+  granularity?: string;
+}
+
+/**
+ * @deprecated Use server actions instead of this hook
+ */
 export function useAreas() {
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [areas] = useState<Area[]>([]);
+  const [isLoading] = useState(false);
+  const [error] = useState<string | null>(null);
 
-  const fetchAreas = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/areas");
-      if (!response.ok) {
-        throw new Error("Failed to fetch areas");
-      }
-      const data = await response.json();
-      setAreas(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      setError(errorMessage);
-      toast.error("Fehler beim Laden der Gebiete");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchAreas = async () => {
+    console.warn(
+      "useAreas.fetchAreas is deprecated. Use getAreasAction() from server actions."
+    );
+  };
 
-  const createArea = useCallback(
-    async (data: {
-      name: string;
-      description?: string;
-      granularity?: string;
-    }) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch("/api/areas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          throw new Error("Failed to create area");
-        }
-        const result = await response.json();
-        await fetchAreas(); // Refresh list
-        toast.success("Gebiet erfolgreich erstellt");
-        return result.area;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        toast.error("Fehler beim Erstellen des Gebiets");
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchAreas]
-  );
+  const createArea = async () => {
+    console.warn(
+      "useAreas.createArea is deprecated. Use createAreaAction() from server actions."
+    );
+    throw new Error("Deprecated: Use createAreaAction() from server actions");
+  };
 
-  const updateArea = useCallback(
-    async (
-      id: number,
-      data: {
-        name?: string;
-        description?: string;
-        granularity?: string;
-        isArchived?: string;
-      }
-    ) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`/api/areas/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          throw new Error("Failed to update area");
-        }
-        await fetchAreas(); // Refresh list
-        toast.success("Gebiet aktualisiert");
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        toast.error("Fehler beim Aktualisieren des Gebiets");
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchAreas]
-  );
+  const updateArea = async () => {
+    console.warn(
+      "useAreas.updateArea is deprecated. Use updateAreaAction() from server actions."
+    );
+    throw new Error("Deprecated: Use updateAreaAction() from server actions");
+  };
 
-  const deleteArea = useCallback(
-    async (id: number) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`/api/areas/${id}`, {
-          method: "DELETE",
-        });
-        if (!response.ok) {
-          throw new Error("Failed to delete area");
-        }
-        await fetchAreas(); // Refresh list
-        toast.success("Gebiet archiviert");
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        toast.error("Fehler beim Archivieren des Gebiets");
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchAreas]
-  );
+  const deleteArea = async () => {
+    console.warn(
+      "useAreas.deleteArea is deprecated. Use deleteAreaAction() from server actions."
+    );
+    throw new Error("Deprecated: Use deleteAreaAction() from server actions");
+  };
 
-  const getArea = useCallback(async (id: number): Promise<AreaWithLayers> => {
-    const response = await fetch(`/api/areas/${id}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch area");
-    }
-    return response.json();
-  }, []);
+  const getAreaById = async () => {
+    console.warn(
+      "useAreas.getAreaById is deprecated. Use getAreaByIdAction() from server actions."
+    );
+    throw new Error("Deprecated: Use getAreaByIdAction() from server actions");
+  };
 
-  useEffect(() => {
-    fetchAreas();
-  }, [fetchAreas]);
+  const getArea = async () => {
+    console.warn(
+      "useAreas.getArea is deprecated. Use getAreaByIdAction() from server actions."
+    );
+    throw new Error("Deprecated: Use getAreaByIdAction() from server actions");
+  };
 
   return {
     areas,
@@ -175,6 +113,7 @@ export function useAreas() {
     createArea,
     updateArea,
     deleteArea,
+    getAreaById,
     getArea,
   };
 }

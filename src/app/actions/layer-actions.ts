@@ -11,11 +11,14 @@ export async function createLayerAction(
     name: string;
     color?: string;
     opacity?: number;
-    isVisible?: string;
+    isVisible?: boolean | string;
     orderIndex?: number;
   }
 ) {
   try {
+    const isVisibleStr =
+      data.isVisible === undefined ? "true" : String(data.isVisible);
+
     const [layer] = await db
       .insert(areaLayers)
       .values({
@@ -23,13 +26,13 @@ export async function createLayerAction(
         name: data.name,
         color: data.color || "#3b82f6",
         opacity: data.opacity ?? 80,
-        isVisible: data.isVisible || "true",
+        isVisible: isVisibleStr,
         orderIndex: data.orderIndex ?? 0,
       })
       .returning();
 
     revalidatePath(`/postal-codes`);
-    return { success: true, layer };
+    return { success: true, data: { id: layer.id } };
   } catch (error) {
     console.error("Error creating layer:", error);
     return { success: false, error: "Failed to create layer" };
@@ -43,7 +46,7 @@ export async function updateLayerAction(
     name?: string;
     color?: string;
     opacity?: number;
-    isVisible?: string;
+    isVisible?: boolean | string;
     orderIndex?: number;
     postalCodes?: string[];
   }
@@ -55,7 +58,8 @@ export async function updateLayerAction(
       if (data.name !== undefined) updates.name = data.name;
       if (data.color !== undefined) updates.color = data.color;
       if (data.opacity !== undefined) updates.opacity = data.opacity;
-      if (data.isVisible !== undefined) updates.isVisible = data.isVisible;
+      if (data.isVisible !== undefined)
+        updates.isVisible = String(data.isVisible);
       if (data.orderIndex !== undefined) updates.orderIndex = data.orderIndex;
 
       if (Object.keys(updates).length > 0) {

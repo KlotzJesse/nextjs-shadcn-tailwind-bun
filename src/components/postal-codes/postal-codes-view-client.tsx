@@ -14,10 +14,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useDrivingRadiusSearch } from "@/lib/hooks/use-driving-radius-search";
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
-import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
+import {
+  radiusSearchAction,
+  drivingRadiusSearchAction,
+} from "@/app/actions/area-actions";
 import { useMapState } from "@/lib/url-state/map-state";
 import {
   FeatureCollection,
@@ -89,25 +91,42 @@ export default function PostalCodesViewClient({
   const router = useRouter();
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
   const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
-  const { performRadiusSearch } = useRadiusSearch({
-    onRadiusComplete: (postalCodes) => {
-      // Radius search result - user should set up an area/layer first
-      toast.info(
-        `${postalCodes.length} PLZ gefunden. Bitte erstellen Sie einen Bereich und Layer.`,
-        { duration: 4000 }
-      );
-    },
-  });
 
-  const { performDrivingRadiusSearch } = useDrivingRadiusSearch({
-    onRadiusComplete: (postalCodes) => {
-      // Driving radius search result - user should set up an area/layer first
+  const performRadiusSearch = async (searchData: {
+    latitude: number;
+    longitude: number;
+    radius: number;
+    granularity: string;
+  }) => {
+    const result = await radiusSearchAction(searchData);
+    if (result.success && result.data) {
+      const postalCodes = result.data.postalCodes;
       toast.info(
         `${postalCodes.length} PLZ gefunden. Bitte erstellen Sie einen Bereich und Layer.`,
         { duration: 4000 }
       );
-    },
-  });
+    } else {
+      toast.error("Fehler bei der Radiussuche");
+    }
+  };
+
+  const performDrivingRadiusSearch = async (searchData: {
+    latitude: number;
+    longitude: number;
+    maxDuration: number;
+    granularity: string;
+  }) => {
+    const result = await drivingRadiusSearchAction(searchData);
+    if (result.success && result.data) {
+      const postalCodes = result.data.postalCodes;
+      toast.info(
+        `${postalCodes.length} PLZ gefunden. Bitte erstellen Sie einen Bereich und Layer.`,
+        { duration: 4000 }
+      );
+    } else {
+      toast.error("Fehler bei der Fahrzeitsuche");
+    }
+  };
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
   const [postalCodeOpen, setPostalCodeOpen] = useState(false);
   const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(

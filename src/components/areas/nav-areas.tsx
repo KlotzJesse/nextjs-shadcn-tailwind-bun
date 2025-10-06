@@ -8,19 +8,25 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useAreas, type Area } from "@/lib/hooks/use-areas";
+import { type Area } from "@/lib/hooks/use-areas";
 import { IconFolder, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 import { CreateAreaDialog } from "./create-area-dialog";
 import { useRouter } from "next/navigation";
 
 interface NavAreasProps {
+  areas: Area[];
+  isLoading?: boolean;
   currentAreaId?: number | null;
   onAreaSelect?: (areaId: number) => void;
 }
 
-export function NavAreas({ currentAreaId, onAreaSelect }: NavAreasProps) {
-  const { areas, isLoading } = useAreas();
+export function NavAreas({
+  areas,
+  isLoading = false,
+  currentAreaId,
+  onAreaSelect,
+}: NavAreasProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const router = useRouter();
 

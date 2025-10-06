@@ -96,9 +96,9 @@ export function LayerManagementClient({
       postalCodes: [],
     };
 
-    updateOptimisticLayers({ type: "create", payload: newLayer });
-
     startTransition(async () => {
+      updateOptimisticLayers({ type: "create", payload: newLayer });
+
       const result = await createLayerAction(areaId, {
         name: newLayer.name,
         color: newLayer.color,
@@ -117,9 +117,9 @@ export function LayerManagementClient({
     const layer = optimisticLayers.find((l) => l.id === layerId);
     if (!layer) return;
 
-    updateOptimisticLayers({ type: "toggle-visibility", payload: layerId });
-
     startTransition(async () => {
+      updateOptimisticLayers({ type: "toggle-visibility", payload: layerId });
+
       await updateLayerAction(areaId, layerId, {
         isVisible: !layer.isVisible,
       });
@@ -140,12 +140,12 @@ export function LayerManagementClient({
     const updatedLayer = optimisticLayers.find((l) => l.id === editingLayerId);
     if (!updatedLayer) return;
 
-    updateOptimisticLayers({
-      type: "update",
-      payload: { ...updatedLayer, name: editingName.trim() },
-    });
-
     startTransition(async () => {
+      updateOptimisticLayers({
+        type: "update",
+        payload: { ...updatedLayer, name: editingName.trim() },
+      });
+
       await updateLayerAction(areaId, editingLayerId, {
         name: editingName.trim(),
       });
@@ -162,9 +162,9 @@ export function LayerManagementClient({
   const handleConfirmDelete = () => {
     if (!deleteLayerId) return;
 
-    updateOptimisticLayers({ type: "delete", payload: deleteLayerId });
-
     startTransition(async () => {
+      updateOptimisticLayers({ type: "delete", payload: deleteLayerId });
+
       await deleteLayerAction(areaId, deleteLayerId);
       if (activeLayerId === deleteLayerId) {
         setActiveLayerId(null);
@@ -178,12 +178,12 @@ export function LayerManagementClient({
     const layer = optimisticLayers.find((l) => l.id === layerId);
     if (!layer) return;
 
-    updateOptimisticLayers({
-      type: "update",
-      payload: { ...layer, color },
-    });
-
     startTransition(async () => {
+      updateOptimisticLayers({
+        type: "update",
+        payload: { ...layer, color },
+      });
+
       await updateLayerAction(areaId, layerId, { color });
     });
   };
@@ -192,12 +192,12 @@ export function LayerManagementClient({
     const layer = optimisticLayers.find((l) => l.id === layerId);
     if (!layer) return;
 
-    updateOptimisticLayers({
-      type: "update",
-      payload: { ...layer, opacity },
-    });
-
     startTransition(async () => {
+      updateOptimisticLayers({
+        type: "update",
+        payload: { ...layer, opacity },
+      });
+
       await updateLayerAction(areaId, layerId, { opacity });
     });
   };

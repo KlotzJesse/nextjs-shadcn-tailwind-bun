@@ -21,10 +21,17 @@ export async function LayerManagementServer({
     orderBy: (layers, { asc }) => [asc(layers.orderIndex)],
   });
 
+  // Convert database types to component types
+  const clientLayers = layers.map((layer) => ({
+    ...layer,
+    isVisible: layer.isVisible === "true" || layer.isVisible === true,
+    postalCodes: layer.postalCodes || [],
+  }));
+
   return (
     <LayerManagementClient
       areaId={areaId}
-      initialLayers={layers}
+      initialLayers={clientLayers}
       activeLayerId={activeLayerId}
     />
   );

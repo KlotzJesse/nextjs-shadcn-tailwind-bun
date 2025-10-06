@@ -49,6 +49,8 @@ export function AddressAutocomplete({
     }
     setIsLoading(true);
     timeoutRef.current = setTimeout(() => {
+      // Note: This uses Nominatim API directly (third-party service)
+      // Consider moving to server action if rate limiting or security becomes an issue
       fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           value

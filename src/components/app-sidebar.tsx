@@ -9,6 +9,7 @@ import * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
 import { NavAreas } from "@/components/areas/nav-areas";
+import { type Area } from "@/lib/hooks/use-areas";
 import {
   Sidebar,
   SidebarContent,
@@ -34,11 +35,13 @@ const data = {
 };
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  areas?: Area[];
   currentAreaId?: number | null;
   onAreaSelect?: (areaId: number) => void;
 }
 
 export function AppSidebar({
+  areas = [],
   currentAreaId,
   onAreaSelect,
   ...props
@@ -64,7 +67,11 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavAreas currentAreaId={currentAreaId} onAreaSelect={onAreaSelect} />
+        <NavAreas
+          areas={areas}
+          currentAreaId={currentAreaId}
+          onAreaSelect={onAreaSelect}
+        />
       </SidebarContent>
     </Sidebar>
   );
