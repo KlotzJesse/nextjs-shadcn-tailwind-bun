@@ -159,16 +159,13 @@ export default function PostalCodesViewClient({
         "5digit": "5-stellig",
       };
 
-      toast.success(
-        `🔄 Wechsel zu ${
-          granularityLabels[newGranularity] || newGranularity
-        } PLZ-Ansicht...`,
+      toast.info(
+        `Granularität kann nur über einen Bereich geändert werden.`,
         {
-          duration: 2000,
+          description: "Bitte erstellen oder wählen Sie einen Bereich aus.",
+          duration: 4000,
         }
       );
-
-      router.push(`/postal-codes/${newGranularity}`);
     }
   };
 

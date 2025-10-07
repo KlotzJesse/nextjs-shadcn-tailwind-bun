@@ -360,51 +360,15 @@ export function PostalCodesViewClientWithLayers({
   const handleGranularityChange = async (newGranularity: string) => {
     if (newGranularity === defaultGranularity) return;
 
-    // Check if area has postal codes that would be affected
-    const hasPostalCodes = optimisticLayers.some(
-      (layer) => layer.postalCodes && layer.postalCodes.length > 0
-    );
-
-    if (hasPostalCodes && areaId) {
-      // Check if this change would cause data loss using utility function
-      if (
-        wouldGranularityChangeCauseDataLoss(
-          defaultGranularity,
-          newGranularity,
-          hasPostalCodes
-        )
-      ) {
-        try {
-          // Clear all postal codes from all layers before switching
-          for (const layer of optimisticLayers) {
-            if (layer.postalCodes && layer.postalCodes.length > 0) {
-              const codes = layer.postalCodes.map((pc) => pc.postalCode);
-              await removePostalCodesFromLayer(layer.id, codes);
-            }
-          }
-        } catch (error) {
-          toast.error("Fehler beim Löschen der Regionen");
-          return;
-        }
-      }
-    }
-
-    const newLabel = getGranularityLabel(newGranularity);
-
-    // Show appropriate success message
-    if (hasPostalCodes) {
-      toast.success(`Wechsel zu ${newLabel} PLZ-Ansicht abgeschlossen`, {
-        description: "Gebiete wurden entsprechend angepasst",
+    // Granularity changes are now handled through the GranularitySelector component
+    // which updates the area's granularity via server action and triggers a refresh
+    toast.info(
+      "Granularität wird über den Bereich aktualisiert",
+      {
+        description: "Die Änderung wird automatisch gespeichert",
         duration: 3000,
-      });
-    } else {
-      toast.success(`🔄 Wechsel zu ${newLabel} PLZ-Ansicht...`, {
-        duration: 2000,
-      });
-    }
-
-    const query = areaId ? `?areaId=${areaId}` : "";
-    router.push(`/postal-codes/${newGranularity}${query}`);
+      }
+    );
   };
 
   // Handle direct address selection (pin icon)

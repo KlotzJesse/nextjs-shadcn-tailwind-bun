@@ -58,6 +58,7 @@ export async function updateAreaAction(
   data: {
     name?: string;
     description?: string;
+    granularity?: string;
   }
 ): ServerActionResponse {
   try {

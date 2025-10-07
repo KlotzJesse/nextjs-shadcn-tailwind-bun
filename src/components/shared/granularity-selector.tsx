@@ -27,8 +27,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { type Layer } from "@/lib/hooks/use-areas";
 import { AlertTriangle, Info, Lock } from "lucide-react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { updateAreaAction } from "@/app/actions/area-actions";
+import { changeAreaGranularityAction } from "@/app/actions/granularity-actions";
 import {
   GRANULARITY_OPTIONS,
   getGranularityLabel,
@@ -56,6 +59,8 @@ export function GranularitySelector({
   const [pendingGranularity, setPendingGranularity] = useState<string | null>(
     null
   );
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   // Check if area has any postal codes
   const hasPostalCodes = layers.some(
@@ -71,17 +76,52 @@ export function GranularitySelector({
   const handleGranularitySelect = (newGranularity: string) => {
     if (newGranularity === currentGranularity) return;
 
-    // If viewing a version, show special warning
+    // If no area selected, just call the callback to refresh with new granularity
+    if (!areaId) {
+      const newLabel = getGranularityLabel(newGranularity);
+      toast.success(`Wechsel zu ${newLabel} PLZ-Ansicht`, {
+        description: "Die Seite wird aktualisiert...",
+        duration: 2000,
+      });
+      onGranularityChange(newGranularity);
+      router.refresh();
+      return;
+    }
+
+    // If viewing a version, inform but still allow the change (updates current area)
     if (isViewingVersion) {
-      toast.info("Granularitätswechsel erstellt neue Version", {
-        description: "Ihre aktuelle Versionsansicht bleibt unverändert",
-        duration: 4000,
+      toast.info("Granularität wird für den aktuellen Bereich aktualisiert", {
+        description: "Die Version wird nicht geändert",
+        duration: 3000,
       });
     }
 
     // If no postal codes, allow any change
     if (!hasPostalCodes) {
-      onGranularityChange(newGranularity);
+      startTransition(async () => {
+        try {
+          const result = await changeAreaGranularityAction(
+            areaId,
+            newGranularity,
+            currentGranularity
+          );
+
+          if (result.success) {
+            const newLabel = getGranularityLabel(newGranularity);
+            toast.success(`Wechsel zu ${newLabel} erfolgreich`, {
+              description: "Die Seite wird aktualisiert...",
+              duration: 3000,
+            });
+            router.refresh();
+            onGranularityChange(newGranularity);
+          } else {
+            toast.error(result.error || "Fehler beim Ändern der Granularität");
+          }
+        } catch (error) {
+          console.error("Error changing granularity:", error);
+          toast.error("Fehler beim Ändern der Granularität");
+        }
+      });
       return;
     }
 
@@ -98,36 +138,82 @@ export function GranularitySelector({
       return;
     }
 
-    // If compatible change, show info and proceed
+    // If compatible change (upgrade), show info and proceed with migration
     if (isGranularityChangeCompatible(currentGranularity, newGranularity)) {
-      const newLabel = getGranularityLabel(newGranularity);
+      startTransition(async () => {
+        try {
+          const result = await changeAreaGranularityAction(
+            areaId,
+            newGranularity,
+            currentGranularity
+          );
 
-      toast.success(`Wechsel zu ${newLabel} PLZ-Ansicht`, {
-        description: `Bestehende Regionen bleiben kompatibel (${totalPostalCodes} Regionen)`,
-        duration: 3000,
+          if (result.success && result.data) {
+            const newLabel = getGranularityLabel(newGranularity);
+            const { addedPostalCodes, migratedLayers } = result.data;
+            
+            toast.success(`Wechsel zu ${newLabel} PLZ-Ansicht`, {
+              description: `${migratedLayers} Layer migriert, ${addedPostalCodes} Regionen hinzugefügt`,
+              duration: 4000,
+            });
+            router.refresh();
+            onGranularityChange(newGranularity);
+          } else {
+            toast.error(result.error || "Fehler beim Ändern der Granularität");
+          }
+        } catch (error) {
+          console.error("Error changing granularity:", error);
+          toast.error("Fehler beim Ändern der Granularität");
+        }
       });
-
-      onGranularityChange(newGranularity);
       return;
     }
 
-    // Fallback - should not reach here
-    onGranularityChange(newGranularity);
+    // Fallback
+    toast.error("Unerwarteter Fehler beim Ändern der Granularität");
   };
 
-  const handleConfirmChange = () => {
-    if (pendingGranularity) {
-      const newLabel = getGranularityLabel(pendingGranularity);
-
-      toast.warning(`Wechsel zu ${newLabel} - Alle Gebiete werden gelöscht`, {
-        description: "Dieser Vorgang kann nicht rückgängig gemacht werden",
-        duration: 4000,
-      });
-
-      onGranularityChange(pendingGranularity);
+  const handleConfirmChange = async () => {
+    if (!pendingGranularity || !areaId) {
+      setShowConfirmDialog(false);
+      setPendingGranularity(null);
+      return;
     }
-    setShowConfirmDialog(false);
-    setPendingGranularity(null);
+
+    const newLabel = getGranularityLabel(pendingGranularity);
+
+    startTransition(async () => {
+      try {
+        const result = await changeAreaGranularityAction(
+          areaId,
+          pendingGranularity,
+          currentGranularity
+        );
+
+        if (result.success && result.data) {
+          const { removedPostalCodes } = result.data;
+          
+          toast.success(`Wechsel zu ${newLabel} erfolgreich`, {
+            description: `${removedPostalCodes} Regionen entfernt. Die Seite wird aktualisiert...`,
+            duration: 3000,
+          });
+          
+          // Refresh the page to load new granularity data
+          router.refresh();
+          
+          // Call the callback for any additional handling
+          onGranularityChange(pendingGranularity);
+        } else {
+          toast.error(result.error || "Fehler beim Ändern der Granularität");
+        }
+      } catch (error) {
+        console.error("Error changing granularity:", error);
+        toast.error("Fehler beim Ändern der Granularität");
+      }
+
+      setShowConfirmDialog(false);
+      setPendingGranularity(null);
+    });
   };
 
   const getSelectItemStatus = (optionValue: string) => {
@@ -164,6 +250,7 @@ export function GranularitySelector({
         <Select
           value={currentGranularity}
           onValueChange={handleGranularitySelect}
+          disabled={isPending}
         >
           <SelectTrigger className="w-full h-8 text-xs">
             <SelectValue placeholder="Granularität wählen" />
