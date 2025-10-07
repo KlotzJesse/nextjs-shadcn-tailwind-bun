@@ -18,12 +18,14 @@ MemoizedSidebarMenuButton.displayName = "MemoizedSidebarMenuButton";
 
 export function NavMain({
   items,
+  onCreateArea,
 }: {
   items: {
     title: string;
     url: string;
     icon?: Icon;
   }[];
+  onCreateArea?: () => void;
 }) {
   return (
     <SidebarGroup>
@@ -33,12 +35,10 @@ export function NavMain({
             <MemoizedSidebarMenuButton
               tooltip="Quick Create"
               className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
-              asChild
+              onClick={onCreateArea}
             >
-              <Link href={"/postal-codes"}>
-                <IconCirclePlusFilled />
-                <span>Neues Gebiet erstellen</span>
-              </Link>
+              <IconCirclePlusFilled />
+              <span>Neues Gebiet erstellen</span>
             </MemoizedSidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

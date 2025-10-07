@@ -156,12 +156,12 @@ export function EnhancedVersionHistoryDialog({
 
   const getChangeTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      create_layer: "Layer Created",
-      update_layer: "Layer Updated",
-      delete_layer: "Layer Deleted",
-      add_postal_codes: "Postal Codes Added",
-      remove_postal_codes: "Postal Codes Removed",
-      update_area: "Area Updated",
+      create_layer: "Layer erstellt",
+      update_layer: "Layer aktualisiert",
+      delete_layer: "Layer gelöscht",
+      add_postal_codes: "Postleitzahlen hinzugefügt",
+      remove_postal_codes: "Postleitzahlen entfernt",
+      update_area: "Gebiet aktualisiert",
     };
     return labels[type] || type;
   };
@@ -170,9 +170,9 @@ export function EnhancedVersionHistoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle>Version History & Changes</DialogTitle>
+          <DialogTitle>Versionshistorie & Änderungen</DialogTitle>
           <DialogDescription>
-            View all versions and detailed change history for this area
+            Alle Versionen und detaillierte Änderungshistorie für dieses Gebiet anzeigen
           </DialogDescription>
         </DialogHeader>
 
@@ -180,15 +180,15 @@ export function EnhancedVersionHistoryDialog({
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="versions">
               <IconClock className="h-4 w-4 mr-2" />
-              Versions ({versions.length})
+              Versionen ({versions.length})
             </TabsTrigger>
             <TabsTrigger value="changes">
               <IconDelta className="h-4 w-4 mr-2" />
-              Changes ({changes.length})
+              Änderungen ({changes.length})
             </TabsTrigger>
             <TabsTrigger value="compare" disabled={versions.length < 2}>
               <IconGitBranch className="h-4 w-4 mr-2" />
-              Compare
+              Vergleichen
             </TabsTrigger>
           </TabsList>
 
@@ -196,12 +196,12 @@ export function EnhancedVersionHistoryDialog({
             <ScrollArea className="h-[500px] pr-4">
               {loading ? (
                 <div className="flex items-center justify-center p-8">
-                  Loading versions...
+                  Versionen werden geladen...
                 </div>
               ) : versions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
                   <IconClock className="h-12 w-12 mb-2" />
-                  <p>No versions saved yet</p>
+                  <p>Noch keine Versionen gespeichert</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -222,7 +222,7 @@ export function EnhancedVersionHistoryDialog({
                           <Badge variant="outline">v{version.versionNumber}</Badge>
                           {version.isActive === "true" && (
                             <Badge variant="default" className="bg-blue-600">
-                              Active
+                              Aktiv
                             </Badge>
                           )}
                           {version.branchName && (
@@ -268,7 +268,7 @@ export function EnhancedVersionHistoryDialog({
               {changes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
                   <IconDelta className="h-12 w-12 mb-2" />
-                  <p>No changes recorded yet</p>
+                  <p>Noch keine Änderungen aufgezeichnet</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -326,7 +326,7 @@ export function EnhancedVersionHistoryDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    First Version
+                    Erste Version
                   </label>
                   <select
                     className="w-full p-2 border rounded-md"
@@ -339,7 +339,7 @@ export function EnhancedVersionHistoryDialog({
                       setComparison(null);
                     }}
                   >
-                    <option value="">Select version</option>
+                    <option value="">Version auswählen</option>
                     {versions.map((v) => (
                       <option key={v.id} value={v.id}>
                         v{v.versionNumber} {v.name ? `- ${v.name}` : ""}
@@ -349,7 +349,7 @@ export function EnhancedVersionHistoryDialog({
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Second Version
+                    Zweite Version
                   </label>
                   <select
                     className="w-full p-2 border rounded-md"
@@ -362,7 +362,7 @@ export function EnhancedVersionHistoryDialog({
                       setComparison(null);
                     }}
                   >
-                    <option value="">Select version</option>
+                    <option value="">Version auswählen</option>
                     {versions.map((v) => (
                       <option key={v.id} value={v.id}>
                         v{v.versionNumber} {v.name ? `- ${v.name}` : ""}
@@ -377,7 +377,7 @@ export function EnhancedVersionHistoryDialog({
                 disabled={!selectedVersion || !compareVersion}
                 className="w-full"
               >
-                Compare Versions
+                Versionen vergleichen
               </Button>
 
               {comparison && (
@@ -386,7 +386,7 @@ export function EnhancedVersionHistoryDialog({
                     {comparison.layersAdded?.length > 0 && (
                       <div>
                         <h4 className="font-medium text-green-600 mb-2">
-                          Layers Added ({comparison.layersAdded.length})
+                          Layer hinzugefügt ({comparison.layersAdded.length})
                         </h4>
                         {comparison.layersAdded.map((layer: any, idx: number) => (
                           <div key={idx} className="text-sm pl-4">
@@ -398,7 +398,7 @@ export function EnhancedVersionHistoryDialog({
                     {comparison.layersRemoved?.length > 0 && (
                       <div>
                         <h4 className="font-medium text-red-600 mb-2">
-                          Layers Removed ({comparison.layersRemoved.length})
+                          Layer entfernt ({comparison.layersRemoved.length})
                         </h4>
                         {comparison.layersRemoved.map((layer: any, idx: number) => (
                           <div key={idx} className="text-sm pl-4">
@@ -410,7 +410,7 @@ export function EnhancedVersionHistoryDialog({
                     {comparison.layersModified?.length > 0 && (
                       <div>
                         <h4 className="font-medium text-blue-600 mb-2">
-                          Layers Modified ({comparison.layersModified.length})
+                          Layer geändert ({comparison.layersModified.length})
                         </h4>
                         {comparison.layersModified.map((layer: any, idx: number) => (
                           <div key={idx} className="text-sm pl-4">
@@ -422,10 +422,10 @@ export function EnhancedVersionHistoryDialog({
                     <div className="pt-4 border-t">
                       <div className="text-sm space-y-1">
                         <div className="text-green-600">
-                          +{comparison.postalCodesAdded?.length || 0} postal codes added
+                          +{comparison.postalCodesAdded?.length || 0} Postleitzahlen hinzugefügt
                         </div>
                         <div className="text-red-600">
-                          -{comparison.postalCodesRemoved?.length || 0} postal codes removed
+                          -{comparison.postalCodesRemoved?.length || 0} Postleitzahlen entfernt
                         </div>
                       </div>
                     </div>
@@ -438,7 +438,7 @@ export function EnhancedVersionHistoryDialog({
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            Schließen
           </Button>
           {selectedVersion && (
             <Button
@@ -447,7 +447,7 @@ export function EnhancedVersionHistoryDialog({
               className="gap-2"
             >
               <IconRestore className="h-4 w-4" />
-              Restore v{selectedVersion.versionNumber}
+              v{selectedVersion.versionNumber} wiederherstellen
             </Button>
           )}
         </DialogFooter>

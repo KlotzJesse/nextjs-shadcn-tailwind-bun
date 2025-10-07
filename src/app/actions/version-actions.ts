@@ -322,8 +322,16 @@ export async function restoreVersionAction(
       // Create a new version if branching
       let newVersionId: number | undefined;
       if (options?.createBranch) {
-        const nextVersionNumber = version.versionNumber + 1;
-        
+        // Get the next version number for this area
+        const lastVersion = await tx
+          .select({ versionNumber: areaVersions.versionNumber })
+          .from(areaVersions)
+          .where(eq(areaVersions.areaId, areaId))
+          .orderBy(desc(areaVersions.versionNumber))
+          .limit(1);
+
+        const nextVersionNumber = lastVersion.length > 0 ? lastVersion[0].versionNumber + 1 : 1;
+
         const [newVersion] = await tx
           .insert(areaVersions)
           .values({

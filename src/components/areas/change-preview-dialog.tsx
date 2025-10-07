@@ -47,12 +47,12 @@ export function ChangePreviewDialog({
 
   const getChangeTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      create_layer: "Layer Created",
-      update_layer: "Layer Updated",
-      delete_layer: "Layer Deleted",
-      add_postal_codes: "Postal Codes Added",
-      remove_postal_codes: "Postal Codes Removed",
-      update_area: "Area Updated",
+      create_layer: "Layer erstellt",
+      update_layer: "Layer aktualisiert",
+      delete_layer: "Layer gelöscht",
+      add_postal_codes: "Postleitzahlen hinzugefügt",
+      remove_postal_codes: "Postleitzahlen entfernt",
+      update_area: "Gebiet aktualisiert",
     };
     return labels[type] || type;
   };
@@ -63,12 +63,12 @@ export function ChangePreviewDialog({
         return (
           <div className="space-y-2">
             <p className="text-sm">
-              {mode === "undo" ? "Will remove" : "Will recreate"} layer:{" "}
+              {mode === "undo" ? "Entfernt" : "Erstellt erneut"} Layer:{" "}
               <strong>{change.changeData?.layer?.name}</strong>
             </p>
             <div className="pl-4 space-y-1 text-sm text-muted-foreground">
-              <div>Color: {change.changeData?.layer?.color}</div>
-              <div>Opacity: {change.changeData?.layer?.opacity}%</div>
+              <div>Farbe: {change.changeData?.layer?.color}</div>
+              <div>Deckkraft: {change.changeData?.layer?.opacity}%</div>
             </div>
           </div>
         );
@@ -76,11 +76,11 @@ export function ChangePreviewDialog({
       case "update_layer":
         return (
           <div className="space-y-2">
-            <p className="text-sm font-medium">Layer property changes:</p>
+            <p className="text-sm font-medium">Layer-Eigenschaftsänderungen:</p>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="font-medium text-muted-foreground">
-                  {mode === "undo" ? "Restore to:" : "Change to:"}
+                  {mode === "undo" ? "Wiederherstellen zu:" : "Ändern zu:"}
                 </p>
                 {Object.entries(
                   mode === "undo" ? change.previousData : change.changeData
@@ -98,12 +98,12 @@ export function ChangePreviewDialog({
         return (
           <div className="space-y-2">
             <p className="text-sm">
-              {mode === "undo" ? "Will restore" : "Will delete"} layer:{" "}
+              {mode === "undo" ? "Stellt wieder her" : "Löscht"} Layer:{" "}
               <strong>{change.previousData?.layer?.name}</strong>
             </p>
             {change.previousData?.postalCodes?.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                Including {change.previousData.postalCodes.length} postal codes
+                Einschließlich {change.previousData.postalCodes.length} Postleitzahlen
               </p>
             )}
           </div>
@@ -113,8 +113,8 @@ export function ChangePreviewDialog({
         return (
           <div className="space-y-2">
             <p className="text-sm">
-              {mode === "undo" ? "Will remove" : "Will add"}{" "}
-              {change.changeData?.postalCodes?.length || 0} postal codes
+              {mode === "undo" ? "Entfernt" : "Fügt hinzu"}{" "}
+              {change.changeData?.postalCodes?.length || 0} Postleitzahlen
             </p>
             {change.changeData?.postalCodes?.length <= 10 ? (
               <div className="pl-4 text-sm text-muted-foreground">
@@ -124,8 +124,8 @@ export function ChangePreviewDialog({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Too many to display ({change.changeData.postalCodes.length}{" "}
-                codes)
+                Zu viele zum Anzeigen ({change.changeData.postalCodes.length}{" "}
+                Codes)
               </p>
             )}
           </div>
@@ -135,8 +135,8 @@ export function ChangePreviewDialog({
         return (
           <div className="space-y-2">
             <p className="text-sm">
-              {mode === "undo" ? "Will restore" : "Will remove"}{" "}
-              {change.previousData?.postalCodes?.length || 0} postal codes
+              {mode === "undo" ? "Stellt wieder her" : "Entfernt"}{" "}
+              {change.previousData?.postalCodes?.length || 0} Postleitzahlen
             </p>
             {change.previousData?.postalCodes?.length <= 10 ? (
               <div className="pl-4 text-sm text-muted-foreground">
@@ -146,8 +146,8 @@ export function ChangePreviewDialog({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Too many to display ({change.previousData.postalCodes.length}{" "}
-                codes)
+                Zu viele zum Anzeigen ({change.previousData.postalCodes.length}{" "}
+                Codes)
               </p>
             )}
           </div>
@@ -156,11 +156,11 @@ export function ChangePreviewDialog({
       case "update_area":
         return (
           <div className="space-y-2">
-            <p className="text-sm font-medium">Area property changes:</p>
+            <p className="text-sm font-medium">Gebiets-Eigenschaftsänderungen:</p>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="font-medium text-muted-foreground">
-                  {mode === "undo" ? "Restore to:" : "Change to:"}
+                  {mode === "undo" ? "Wiederherstellen zu:" : "Ändern zu:"}
                 </p>
                 {Object.entries(
                   mode === "undo" ? change.previousData : change.changeData
@@ -177,7 +177,7 @@ export function ChangePreviewDialog({
       default:
         return (
           <p className="text-sm text-muted-foreground">
-            No preview available for this change type
+            Keine Vorschau verfügbar für diesen Änderungstyp
           </p>
         );
     }
@@ -193,10 +193,10 @@ export function ChangePreviewDialog({
             ) : (
               <IconArrowForwardUp className="h-5 w-5" />
             )}
-            {mode === "undo" ? "Undo" : "Redo"} Change Preview
+            {mode === "undo" ? "Rückgängig" : "Wiederholen"} Änderungsvorschau
           </DialogTitle>
           <DialogDescription>
-            Review the changes that will be applied
+            Überprüfen Sie die Änderungen, die angewendet werden
           </DialogDescription>
         </DialogHeader>
 
@@ -225,8 +225,8 @@ export function ChangePreviewDialog({
               <IconAlertCircle className="h-4 w-4" />
               <AlertDescription>
                 {mode === "undo"
-                  ? "This will reverse the selected change. You can redo it later if needed."
-                  : "This will reapply the previously undone change."}
+                  ? "Dies macht die ausgewählte Änderung rückgängig. Sie können sie später wiederholen, falls nötig."
+                  : "Dies wendet die zuvor rückgängig gemachte Änderung erneut an."}
               </AlertDescription>
             </Alert>
           </div>
@@ -238,13 +238,13 @@ export function ChangePreviewDialog({
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
           >
-            Cancel
+            Abbrechen
           </Button>
           <Button onClick={onConfirm} disabled={isLoading}>
             {isLoading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                Processing...
+                Verarbeitung...
               </>
             ) : (
               <>
@@ -253,7 +253,7 @@ export function ChangePreviewDialog({
                 ) : (
                   <IconArrowForwardUp className="h-4 w-4 mr-2" />
                 )}
-                Confirm {mode === "undo" ? "Undo" : "Redo"}
+                Bestätigen {mode === "undo" ? "Rückgängig" : "Wiederholen"}
               </>
             )}
           </Button>

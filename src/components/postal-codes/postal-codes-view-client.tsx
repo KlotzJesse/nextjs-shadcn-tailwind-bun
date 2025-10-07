@@ -32,6 +32,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PostalCodesOverview } from "./postal-codes-overview";
 
 import {
   AddressAutocompleteErrorBoundary,
@@ -228,7 +229,24 @@ export default function PostalCodesViewClient({
     .filter((code): code is string => Boolean(code));
 
   return (
+    <div className="h-full">
+      <PostalCodesOverview />
+    </div>
+  );
+
+  return (
     <div className="h-full relative">
+      {/* Back to Overview Button */}
+      <div className="absolute top-4 left-4 z-30">
+        <Button
+          variant="outline"
+          onClick={() => setShowMap(false)}
+          size="sm"
+        >
+          ← Zurück zur Übersicht
+        </Button>
+      </div>
+
       {/* Address and Postal Code Tools - horizontal, top right */}
       <div className="absolute top-4 right-4 z-30 flex flex-row gap-3 w-auto">
         <div className="w-80">
