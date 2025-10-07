@@ -48,7 +48,7 @@ export function UndoRedoToolbar({
               className="gap-2"
             >
               <IconArrowBackUp className="h-4 w-4" />
-              Undo
+              Rückgängig
               {undoCount > 0 && (
                 <span className="text-xs text-muted-foreground">
                   ({undoCount})
@@ -57,7 +57,7 @@ export function UndoRedoToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Undo last change (Ctrl+Z)</p>
+            <p>Letzte Änderung rückgängig machen (Strg+Z)</p>
           </TooltipContent>
         </Tooltip>
 
@@ -70,7 +70,7 @@ export function UndoRedoToolbar({
               className="gap-2"
             >
               <IconArrowForwardUp className="h-4 w-4" />
-              Redo
+              Wiederholen
               {redoCount > 0 && (
                 <span className="text-xs text-muted-foreground">
                   ({redoCount})
@@ -79,14 +79,14 @@ export function UndoRedoToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Redo last undone change (Ctrl+Shift+Z or Ctrl+Y)</p>
+            <p>Letzte rückgängig gemachte Änderung wiederholen (Strg+Umschalt+Z oder Strg+Y)</p>
           </TooltipContent>
         </Tooltip>
 
         {isLoading && (
           <div className="ml-2 flex items-center text-xs text-muted-foreground">
             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1" />
-            Processing...
+            Verarbeitung...
           </div>
         )}
       </div>

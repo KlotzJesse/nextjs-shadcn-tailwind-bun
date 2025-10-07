@@ -648,7 +648,7 @@ function DrawingToolsImpl({
                     variant="outline"
                     size="sm"
                     className="h-7 px-1.5"
-                    title="Create Version"
+                    title="Version erstellen"
                   >
                     <IconDeviceFloppy className="h-3 w-3" />
                   </Button>

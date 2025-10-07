@@ -278,7 +278,7 @@ export function EnhancedConflictResolutionDialog({
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
           >
-            Cancel
+            Abbrechen
           </Button>
           <Button
             onClick={handleResolve}

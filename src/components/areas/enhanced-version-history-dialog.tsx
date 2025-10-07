@@ -300,13 +300,13 @@ export function EnhancedVersionHistoryDialog({
                           </span>
                         )}
                         {change.changeType === "create_layer" && (
-                          <span>Created layer: {change.changeData?.layer?.name}</span>
+                          <span>Layer erstellt: {change.changeData?.layer?.name}</span>
                         )}
                         {change.changeType === "update_layer" && (
-                          <span>Updated layer properties</span>
+                          <span>Layer-Eigenschaften aktualisiert</span>
                         )}
                         {change.changeType === "delete_layer" && (
-                          <span>Deleted layer: {change.previousData?.layer?.name}</span>
+                          <span>Layer gelöscht: {change.previousData?.layer?.name}</span>
                         )}
                         {change.createdBy && (
                           <span className="text-xs text-muted-foreground ml-2">
