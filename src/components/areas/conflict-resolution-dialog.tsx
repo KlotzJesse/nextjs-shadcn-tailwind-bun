@@ -12,8 +12,8 @@ import {
 import { useLayerConflicts } from "@/lib/hooks/use-layer-conflicts";
 import { Layer } from "@/lib/hooks/use-areas";
 import { updateLayerAction } from "@/app/actions/layer-actions";
-import { IconAlertTriangle, IconCheck } from "@tabler/icons-react";
-import { useState } from "react";
+import { IconAlertTriangle, IconCheck, IconLoader } from "@tabler/icons-react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -38,12 +38,19 @@ export function ConflictResolutionDialog({
   areaId,
   layers,
 }: ConflictResolutionDialogProps) {
-  const { conflicts, detectConflicts } = useLayerConflicts(layers);
+  const { conflicts, detectConflicts, isDetecting } = useLayerConflicts(layers);
 
   const [selectedConflicts, setSelectedConflicts] = useState<Set<string>>(
     new Set()
   );
   const [resolutionStrategy, setResolutionStrategy] = useState<string>("");
+
+  // Automatically detect conflicts when dialog opens
+  useEffect(() => {
+    if (open) {
+      detectConflicts();
+    }
+  }, [open, detectConflicts]);
 
   const handleDetect = () => {
     detectConflicts();
@@ -113,7 +120,14 @@ export function ConflictResolutionDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {conflicts.length === 0 ? (
+          {isDetecting ? (
+            <div className="flex items-center justify-center gap-2 p-8">
+              <IconLoader className="h-5 w-5 animate-spin" />
+              <span className="text-sm text-muted-foreground">
+                Scanne nach Konflikten...
+              </span>
+            </div>
+          ) : conflicts.length === 0 ? (
             <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
               <IconCheck className="h-5 w-5 text-green-600" />
               <span className="text-sm text-green-700 dark:text-green-300">
@@ -193,11 +207,18 @@ export function ConflictResolutionDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Schließen
           </Button>
-          <Button onClick={handleDetect} variant="secondary">
-            Neu scannen
+          <Button onClick={handleDetect} variant="secondary" disabled={isDetecting}>
+            {isDetecting ? (
+              <>
+                <IconLoader className="h-4 w-4 mr-2 animate-spin" />
+                Scannen...
+              </>
+            ) : (
+              "Neu scannen"
+            )}
           </Button>
           {selectedConflicts.size > 0 && (
-            <Button onClick={handleResolve} disabled={!resolutionStrategy}>
+            <Button onClick={handleResolve} disabled={!resolutionStrategy || isDetecting}>
               {selectedConflicts.size} Konflikt
               {selectedConflicts.size !== 1 ? "e" : ""} auflösen
             </Button>

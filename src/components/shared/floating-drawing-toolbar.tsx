@@ -11,9 +11,22 @@ import {
   Triangle,
 } from "lucide-react";
 import { toast } from "sonner";
+import dynamic from "next/dynamic";
+
+// Floating undo/redo toolbar
+const UndoRedoToolbar = dynamic(
+  () =>
+    import("@/components/areas/undo-redo-toolbar").then(
+      (m) => m.UndoRedoToolbar
+    ),
+  {
+    ssr: false,
+  }
+);
 
 interface FloatingDrawingToolbarProps {
   currentMode: TerraDrawMode | null;
+  areaId: number | null | undefined;
   onModeChange: (mode: TerraDrawMode | null) => void;
 }
 
@@ -64,6 +77,7 @@ const drawingModes = [
 
 export function FloatingDrawingToolbar({
   currentMode,
+  areaId,
   onModeChange,
 }: FloatingDrawingToolbarProps) {
   // Map drawing mode IDs to TerraDrawModes
@@ -126,7 +140,7 @@ export function FloatingDrawingToolbar({
 
   return (
     <div className="absolute bottom-6 left-0 right-0 z-10 pointer-events-none">
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-2">
         <div className="bg-white/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-2 pointer-events-auto">
           <div className="flex items-center gap-1">
             {drawingModes.map((mode) => {
@@ -148,6 +162,9 @@ export function FloatingDrawingToolbar({
               );
             })}
           </div>
+        </div>
+        <div className="pointer-events-auto">
+          <UndoRedoToolbar areaId={areaId!} variant="floating" />
         </div>
       </div>
     </div>

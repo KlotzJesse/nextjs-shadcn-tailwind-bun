@@ -44,6 +44,8 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useTransition, useOptimistic } from "react";
 import { toast } from "sonner";
+import { UndoRedoToolbar } from "@/components/areas/undo-redo-toolbar";
+import { EnhancedVersionHistoryDialog } from "@/components/areas/enhanced-version-history-dialog";
 
 import {
   AddressAutocompleteErrorBoundary,
@@ -172,16 +174,6 @@ export function PostalCodesViewClientWithLayers({
       return;
     }
 
-    if (isWorkingWithVersion) {
-      // When working with a version, this is a branching operation
-      toast.info(
-        `${postalCodes.length} PLZ hinzugefügt - wird in neuer Version gespeichert`,
-        {
-          duration: 3000,
-        }
-      );
-    }
-
     startTransition(async () => {
       updateOptimisticLayers({ type: "add", layerId, postalCodes });
 
@@ -194,18 +186,7 @@ export function PostalCodesViewClientWithLayers({
         if (!result.success) {
           throw new Error(result.error);
         }
-
-        if (isWorkingWithVersion) {
-          // Auto-suggest creating version after changes
-          setTimeout(() => {
-            toast.info(
-              "Erstellen Sie eine neue Version um Ihre Änderungen zu speichern",
-              {
-                duration: 5000,
-              }
-            );
-          }, 1000);
-        }
+        // Success handled by map click interaction toast
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -225,16 +206,6 @@ export function PostalCodesViewClientWithLayers({
       return;
     }
 
-    if (isWorkingWithVersion) {
-      // When working with a version, this is a branching operation
-      toast.info(
-        `${postalCodes.length} PLZ entfernt - wird in neuer Version gespeichert`,
-        {
-          duration: 3000,
-        }
-      );
-    }
-
     startTransition(async () => {
       updateOptimisticLayers({ type: "remove", layerId, postalCodes });
 
@@ -247,18 +218,7 @@ export function PostalCodesViewClientWithLayers({
         if (!result.success) {
           throw new Error(result.error);
         }
-
-        if (isWorkingWithVersion) {
-          // Auto-suggest creating version after changes
-          setTimeout(() => {
-            toast.info(
-              "Erstellen Sie eine neue Version um Ihre Änderungen zu speichern",
-              {
-                duration: 5000,
-              }
-            );
-          }, 1000);
-        }
+        // Success handled by map click interaction toast
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -318,12 +278,25 @@ export function PostalCodesViewClientWithLayers({
     mode: "distance" | "time",
     method: "osrm" | "approximation"
   ) => {
-    await performDrivingRadiusSearch({
+    const result = await drivingRadiusSearchAction({
       latitude: coordinates[1],
       longitude: coordinates[0],
       maxDuration: radius, // Using radius as maxDuration for time mode
       granularity,
     });
+    if (result.success && result.data) {
+      const postalCodes = result.data.postalCodes;
+      if (activeLayerId && areaId) {
+        await addPostalCodesToLayer(activeLayerId, postalCodes);
+        toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
+      } else {
+        toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
+          duration: 3000,
+        });
+      }
+    } else {
+      toast.error("Fehler bei der Fahrtzeitsuche");
+    }
   };
 
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
@@ -332,6 +305,7 @@ export function PostalCodesViewClientWithLayers({
     null
   );
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [showEnhancedHistory, setShowEnhancedHistory] = useState(false);
 
   // Set first layer as active if none selected
   useEffect(() => {
@@ -362,13 +336,10 @@ export function PostalCodesViewClientWithLayers({
 
     // Granularity changes are now handled through the GranularitySelector component
     // which updates the area's granularity via server action and triggers a refresh
-    toast.info(
-      "Granularität wird über den Bereich aktualisiert",
-      {
-        description: "Die Änderung wird automatisch gespeichert",
-        duration: 3000,
-      }
-    );
+    toast.info("Granularität wird über den Bereich aktualisiert", {
+      description: "Die Änderung wird automatisch gespeichert",
+      duration: 3000,
+    });
   };
 
   // Handle direct address selection (pin icon)
@@ -559,6 +530,15 @@ export function PostalCodesViewClientWithLayers({
         granularity={defaultGranularity}
         onImport={handleImport}
       />
+
+      {/* Enhanced Version History Dialog */}
+      {areaId && (
+        <EnhancedVersionHistoryDialog
+          open={showEnhancedHistory}
+          onOpenChange={setShowEnhancedHistory}
+          areaId={areaId}
+        />
+      )}
     </div>
   );
 }

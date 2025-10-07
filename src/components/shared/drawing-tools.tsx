@@ -79,7 +79,7 @@ import {
   IconHistory,
 } from "@tabler/icons-react";
 import { ConflictResolutionDialog } from "@/components/areas/conflict-resolution-dialog";
-import { VersionHistoryDialog } from "@/components/areas/version-history-dialog";
+import { EnhancedVersionHistoryDialog } from "@/components/areas/enhanced-version-history-dialog";
 import { CreateVersionDialog } from "@/components/areas/create-version-dialog";
 import { LayerMergeDialog } from "@/components/areas/layer-merge-dialog";
 import { GranularitySelector } from "@/components/shared/granularity-selector";
@@ -514,10 +514,6 @@ function DrawingToolsImpl({
     await updateLayerColor(layerId, color);
   };
 
-  const handleOpacityChange = async (layerId: number, opacity: number) => {
-    await updateLayer(layerId, { opacity });
-  };
-
   const handleDeleteLayer = async (layerId: number) => {
     if (!deleteLayer) return;
     if (!confirm("Möchten Sie diesen Layer wirklich löschen?")) return;
@@ -634,7 +630,7 @@ function DrawingToolsImpl({
                     variant="outline"
                     size="sm"
                     className="h-7 px-1.5"
-                    title="Konflikte"
+                    title="Conflicts"
                   >
                     <IconAlertTriangle className="h-3 w-3" />
                   </Button>
@@ -643,7 +639,7 @@ function DrawingToolsImpl({
                     variant="outline"
                     size="sm"
                     className="h-7 px-1.5"
-                    title="Historie"
+                    title="Version History"
                   >
                     <IconClock className="h-3 w-3" />
                   </Button>
@@ -652,7 +648,7 @@ function DrawingToolsImpl({
                     variant="outline"
                     size="sm"
                     className="h-7 px-1.5"
-                    title="Snapshot"
+                    title="Create Version"
                   >
                     <IconDeviceFloppy className="h-3 w-3" />
                   </Button>
@@ -661,7 +657,7 @@ function DrawingToolsImpl({
                     variant="outline"
                     size="sm"
                     className="h-7 px-1.5"
-                    title="Merge"
+                    title="Merge Layers"
                   >
                     <IconGitMerge className="h-3 w-3" />
                   </Button>
@@ -699,172 +695,143 @@ function DrawingToolsImpl({
                   </Button>
                 </div>
 
-                {/* Layer list */}
-                <div className="space-y-1 max-h-48 overflow-y-auto">
+                {/* Layer list - Optimized with shadcn */}
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {layers.map((layer) => (
                     <div
                       key={layer.id}
-                      className={`p-1.5 rounded border cursor-pointer transition-colors ${
+                      className={`group relative rounded-lg border transition-all ${
                         activeLayerId === layer.id
-                          ? "border-primary bg-accent"
-                          : "border-border hover:border-primary/50"
+                          ? "border-primary bg-accent shadow-sm"
+                          : "border-border hover:border-primary/50 hover:bg-accent/50"
                       }`}
-                      onClick={() => onLayerSelect?.(layer.id)}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1 flex-1 min-w-0">
-                          <div
-                            className="w-2.5 h-2.5 rounded flex-shrink-0"
-                            style={{
-                              backgroundColor: layer.color,
-                              opacity: layer.opacity / 100,
-                            }}
-                          />
-                          {editingLayerId === layer.id ? (
-                            <Input
-                              value={editingLayerName}
-                              onChange={(e) =>
-                                setEditingLayerName(e.target.value)
-                              }
-                              className="h-5 text-xs flex-1"
-                              autoFocus
-                              onClick={(e) => e.stopPropagation()}
-                              onKeyDown={(e) => {
-                                e.stopPropagation();
-                                if (e.key === "Enter") {
-                                  handleRenameLayer(layer.id, editingLayerName);
-                                } else if (e.key === "Escape") {
-                                  setEditingLayerId(null);
-                                  setEditingLayerName("");
-                                }
-                              }}
-                              onBlur={() => {
-                                if (editingLayerName.trim()) {
-                                  handleRenameLayer(layer.id, editingLayerName);
-                                } else {
-                                  setEditingLayerId(null);
-                                  setEditingLayerName("");
-                                }
-                              }}
+                      <div
+                        className="px-3 py-2 cursor-pointer"
+                        onClick={() => onLayerSelect?.(layer.id)}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          {/* Layer info */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {/* Color indicator */}
+                            <div
+                              className="w-3 h-3 rounded-sm flex-shrink-0 border border-border"
+                              style={{ backgroundColor: layer.color }}
                             />
-                          ) : (
-                            <span
-                              className="font-medium text-xs truncate cursor-text"
-                              onDoubleClick={(e) => {
-                                e.stopPropagation();
-                                setEditingLayerId(layer.id);
-                                setEditingLayerName(layer.name);
-                              }}
-                              title="Doppelklick zum Umbenennen"
-                            >
-                              {layer.name}
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground flex-shrink-0">
-                            ({layer.postalCodes?.length || 0})
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 flex-shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleLayerVisibility(layer.id);
-                            }}
-                            title={
-                              layer.isVisible === "true"
-                                ? "Ausblenden"
-                                : "Einblenden"
-                            }
-                          >
-                            {layer.isVisible === "true" ? (
-                              <IconEye className="h-2.5 w-2.5" />
-                            ) : (
-                              <IconEyeOff className="h-2.5 w-2.5" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 flex-shrink-0 text-destructive hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteLayer(layer.id);
-                            }}
-                            title={
-                              isViewingVersion
-                                ? "Gebiet wird in neuer Version gelöscht"
-                                : "Gebiet löschen"
-                            }
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Color and opacity controls */}
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-5 px-1 text-xs"
+                            
+                            {/* Name - editable on double-click */}
+                            {editingLayerId === layer.id ? (
+                              <Input
+                                value={editingLayerName}
+                                onChange={(e) => setEditingLayerName(e.target.value)}
+                                className="h-6 text-sm flex-1"
+                                autoFocus
                                 onClick={(e) => e.stopPropagation()}
-                                title={
-                                  isViewingVersion
-                                    ? "Änderung wird in neuer Version gespeichert"
-                                    : "Farbe ändern"
-                                }
+                                onKeyDown={(e) => {
+                                  e.stopPropagation();
+                                  if (e.key === "Enter") {
+                                    handleRenameLayer(layer.id, editingLayerName);
+                                  } else if (e.key === "Escape") {
+                                    setEditingLayerId(null);
+                                    setEditingLayerName("");
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (editingLayerName.trim()) {
+                                    handleRenameLayer(layer.id, editingLayerName);
+                                  } else {
+                                    setEditingLayerId(null);
+                                    setEditingLayerName("");
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span
+                                className="font-medium text-sm truncate"
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingLayerId(layer.id);
+                                  setEditingLayerName(layer.name);
+                                }}
+                                title="Doppelklick zum Umbenennen"
                               >
-                                <IconPalette className="h-2.5 w-2.5 mr-0.5" />
-                                <div
-                                  className="w-3 h-3 rounded"
-                                  style={{ backgroundColor: layer.color }}
-                                />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-auto p-2"
-                              onClick={(e: React.MouseEvent) =>
-                                e.stopPropagation()
-                              }
+                                {layer.name}
+                              </span>
+                            )}
+                            
+                            {/* Postal code count */}
+                            <Badge variant="secondary" className="text-xs">
+                              {layer.postalCodes?.length || 0}
+                            </Badge>
+                          </div>
+
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Color picker */}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Farbe ändern"
+                                >
+                                  <IconPalette className="h-3.5 w-3.5" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-auto p-3"
+                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                              >
+                                <div className="grid grid-cols-4 gap-2">
+                                  {DEFAULT_COLORS.map((color) => (
+                                    <button
+                                      key={color}
+                                      className="w-8 h-8 rounded-md border-2 hover:scale-110 transition-transform"
+                                      style={{
+                                        backgroundColor: color,
+                                        borderColor: layer.color === color ? 'currentColor' : 'transparent'
+                                      }}
+                                      onClick={() => handleColorChange(layer.id, color)}
+                                    />
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+
+                            {/* Visibility toggle */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleLayerVisibility(layer.id);
+                              }}
+                              title={layer.isVisible === "true" ? "Ausblenden" : "Einblenden"}
                             >
-                              <div className="grid grid-cols-4 gap-1.5">
-                                {DEFAULT_COLORS.map((color) => (
-                                  <button
-                                    key={color}
-                                    className="w-7 h-7 rounded border-2 border-transparent hover:border-primary"
-                                    style={{ backgroundColor: color }}
-                                    onClick={() =>
-                                      handleColorChange(layer.id, color)
-                                    }
-                                  />
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <div
-                          className="flex items-center gap-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Slider
-                            value={[layer.opacity]}
-                            onValueChange={([value]) =>
-                              handleOpacityChange(layer.id, value)
-                            }
-                            min={0}
-                            max={100}
-                            step={5}
-                            className="flex-1"
-                          />
-                          <span className="text-xs w-7 text-right flex-shrink-0">
-                            {layer.opacity}%
-                          </span>
+                              {layer.isVisible === "true" ? (
+                                <IconEye className="h-3.5 w-3.5" />
+                              ) : (
+                                <IconEyeOff className="h-3.5 w-3.5 opacity-50" />
+                              )}
+                            </Button>
+
+                            {/* Delete */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteLayer(layer.id);
+                              }}
+                              title="Gebiet löschen"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1088,7 +1055,7 @@ function DrawingToolsImpl({
               areaId={areaId}
               layers={layers}
             />
-            <VersionHistoryDialog
+            <EnhancedVersionHistoryDialog
               open={showVersionHistory}
               onOpenChange={setShowVersionHistory}
               areaId={areaId}
@@ -1098,7 +1065,7 @@ function DrawingToolsImpl({
               onOpenChange={setShowCreateVersion}
               areaId={areaId}
               onVersionCreated={() => {
-                // Optionally refresh layers or show success message
+                onLayerUpdate?.();
               }}
             />
             <LayerMergeDialog

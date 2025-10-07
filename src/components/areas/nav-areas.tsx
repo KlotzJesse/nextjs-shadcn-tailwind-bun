@@ -306,7 +306,7 @@ export function NavAreas({
           <AlertDialogHeader>
             <AlertDialogTitle>Gebiet löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Sind Sie sicher, dass Sie das Gebiet "{areaToDelete?.name}"
+              Sind Sie sicher, dass Sie das Gebiet &quot;{areaToDelete?.name}&quot;
               löschen möchten?
               <br />
               <br />

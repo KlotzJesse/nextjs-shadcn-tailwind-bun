@@ -175,6 +175,7 @@ export const areas = pgTable(
     isArchived: varchar("is_archived", { length: 5 })
       .notNull()
       .default("false"),
+    currentVersionId: integer("current_version_id"), // FK to active version
     createdAt: timestamp("created_at", { mode: "string" })
       .defaultNow()
       .notNull(),
@@ -195,6 +196,10 @@ export const areas = pgTable(
       "btree",
       table.isArchived.asc().nullsLast().op("text_ops")
     ),
+    index("idx_areas_current_version").using(
+      "btree",
+      table.currentVersionId.asc().nullsLast().op("int4_ops")
+    ),
   ]
 );
 
@@ -208,6 +213,10 @@ export const areaVersions = pgTable(
     description: text(),
     snapshot: jsonb().notNull(), // Full snapshot of layers and postal codes
     changesSummary: text("changes_summary"), // Human-readable summary of changes
+    parentVersionId: integer("parent_version_id"), // FK to parent version for branching
+    branchName: varchar("branch_name", { length: 255 }), // Name for branch versions
+    isActive: varchar("is_active", { length: 5 }).notNull().default("false"), // Current working version
+    changeCount: integer("change_count").notNull().default(0), // Number of changes in this version
     createdBy: varchar("created_by", { length: 255 }),
     createdAt: timestamp("created_at", { mode: "string" })
       .defaultNow()
@@ -221,6 +230,15 @@ export const areaVersions = pgTable(
     index("idx_area_versions_created_at").using(
       "btree",
       table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("idx_area_versions_parent").using(
+      "btree",
+      table.parentVersionId.asc().nullsLast().op("int4_ops")
+    ),
+    index("idx_area_versions_is_active").using(
+      "btree",
+      table.areaId.asc().nullsLast().op("int4_ops"),
+      table.isActive.asc().nullsLast().op("text_ops")
     ),
     unique("area_versions_area_id_version_number_unique").on(
       table.areaId,
@@ -282,5 +300,71 @@ export const areaLayerPostalCodes = pgTable(
       table.layerId,
       table.postalCode
     ),
+  ]
+);
+
+// Change tracking table for event sourcing and undo/redo
+export const areaChanges = pgTable(
+  "area_changes",
+  {
+    id: serial().primaryKey().notNull(),
+    areaId: integer("area_id").notNull(),
+    changeType: varchar("change_type", { length: 50 }).notNull(), // create_layer, update_layer, delete_layer, add_postal_codes, remove_postal_codes, etc.
+    entityType: varchar("entity_type", { length: 50 }).notNull(), // area, layer, postal_code
+    entityId: integer("entity_id"), // ID of affected entity (nullable)
+    changeData: jsonb("change_data").notNull(), // Full details of the change
+    previousData: jsonb("previous_data"), // Previous state for undo (nullable)
+    versionId: integer("version_id"), // FK to area_versions (nullable - changes before first save)
+    sequenceNumber: integer("sequence_number").notNull(), // Order within area/version
+    isUndone: varchar("is_undone", { length: 5 }).notNull().default("false"), // Track if change was undone
+    createdBy: varchar("created_by", { length: 255 }),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_area_changes_area_id").using(
+      "btree",
+      table.areaId.asc().nullsLast().op("int4_ops")
+    ),
+    index("idx_area_changes_version_id").using(
+      "btree",
+      table.versionId.asc().nullsLast().op("int4_ops")
+    ),
+    index("idx_area_changes_sequence").using(
+      "btree",
+      table.areaId.asc().nullsLast().op("int4_ops"),
+      table.sequenceNumber.asc().nullsLast().op("int4_ops")
+    ),
+    index("idx_area_changes_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("idx_area_changes_entity").using(
+      "btree",
+      table.entityType.asc().nullsLast().op("text_ops"),
+      table.entityId.asc().nullsLast().op("int4_ops")
+    ),
+  ]
+);
+
+// Undo/redo stack tracking per area
+export const areaUndoStacks = pgTable(
+  "area_undo_stacks",
+  {
+    id: serial().primaryKey().notNull(),
+    areaId: integer("area_id").notNull(),
+    undoStack: jsonb("undo_stack").notNull().default([]), // Array of change IDs that can be undone
+    redoStack: jsonb("redo_stack").notNull().default([]), // Array of change IDs that can be redone
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_area_undo_stacks_area_id").using(
+      "btree",
+      table.areaId.asc().nullsLast().op("int4_ops")
+    ),
+    unique("area_undo_stacks_area_id_unique").on(table.areaId),
   ]
 );

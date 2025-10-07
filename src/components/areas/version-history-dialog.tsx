@@ -82,11 +82,11 @@ export function VersionHistoryDialog({
       <DialogContent className="max-w-3xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Versionshistorie</DialogTitle>
-          <DialogDescription className="space-y-2">
-            <div>
-              Alle gespeicherten Versionen dieses Gebiets anzeigen und
-              wiederherstellen.
-            </div>
+          <DialogDescription>
+            Alle gespeicherten Versionen dieses Gebiets anzeigen und
+            wiederherstellen.
+          </DialogDescription>
+          <div className="space-y-2 mt-2">
             <div className="flex flex-wrap items-center gap-2">
               {!versionId && versions.length > 0 && (
                 <Badge variant="default">
@@ -108,7 +108,7 @@ export function VersionHistoryDialog({
                 Version (Branching)
               </div>
             )}
-          </DialogDescription>
+          </div>
         </DialogHeader>
 
         <ScrollArea className="h-[500px] pr-4">

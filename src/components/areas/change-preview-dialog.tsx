@@ -1,0 +1,264 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  IconAlertCircle,
+  IconArrowBackUp,
+  IconArrowForwardUp,
+} from "@tabler/icons-react";
+
+interface ChangePreviewDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  change: {
+    id: number;
+    changeType: string;
+    entityType: string;
+    changeData: any;
+    previousData: any;
+    createdAt: string;
+    createdBy: string | null;
+  } | null;
+  mode: "undo" | "redo";
+  onConfirm: () => void;
+  isLoading?: boolean;
+}
+
+export function ChangePreviewDialog({
+  open,
+  onOpenChange,
+  change,
+  mode,
+  onConfirm,
+  isLoading = false,
+}: ChangePreviewDialogProps) {
+  if (!change) return null;
+
+  const getChangeTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      create_layer: "Layer Created",
+      update_layer: "Layer Updated",
+      delete_layer: "Layer Deleted",
+      add_postal_codes: "Postal Codes Added",
+      remove_postal_codes: "Postal Codes Removed",
+      update_area: "Area Updated",
+    };
+    return labels[type] || type;
+  };
+
+  const renderChangeDetails = () => {
+    switch (change.changeType) {
+      case "create_layer":
+        return (
+          <div className="space-y-2">
+            <p className="text-sm">
+              {mode === "undo" ? "Will remove" : "Will recreate"} layer:{" "}
+              <strong>{change.changeData?.layer?.name}</strong>
+            </p>
+            <div className="pl-4 space-y-1 text-sm text-muted-foreground">
+              <div>Color: {change.changeData?.layer?.color}</div>
+              <div>Opacity: {change.changeData?.layer?.opacity}%</div>
+            </div>
+          </div>
+        );
+
+      case "update_layer":
+        return (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Layer property changes:</p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="font-medium text-muted-foreground">
+                  {mode === "undo" ? "Restore to:" : "Change to:"}
+                </p>
+                {Object.entries(
+                  mode === "undo" ? change.previousData : change.changeData
+                ).map(([key, value]) => (
+                  <div key={key} className="pl-2">
+                    {key}: <strong>{String(value)}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case "delete_layer":
+        return (
+          <div className="space-y-2">
+            <p className="text-sm">
+              {mode === "undo" ? "Will restore" : "Will delete"} layer:{" "}
+              <strong>{change.previousData?.layer?.name}</strong>
+            </p>
+            {change.previousData?.postalCodes?.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Including {change.previousData.postalCodes.length} postal codes
+              </p>
+            )}
+          </div>
+        );
+
+      case "add_postal_codes":
+        return (
+          <div className="space-y-2">
+            <p className="text-sm">
+              {mode === "undo" ? "Will remove" : "Will add"}{" "}
+              {change.changeData?.postalCodes?.length || 0} postal codes
+            </p>
+            {change.changeData?.postalCodes?.length <= 10 ? (
+              <div className="pl-4 text-sm text-muted-foreground">
+                {change.changeData.postalCodes.map((code: string) => (
+                  <div key={code}>{code}</div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Too many to display ({change.changeData.postalCodes.length}{" "}
+                codes)
+              </p>
+            )}
+          </div>
+        );
+
+      case "remove_postal_codes":
+        return (
+          <div className="space-y-2">
+            <p className="text-sm">
+              {mode === "undo" ? "Will restore" : "Will remove"}{" "}
+              {change.previousData?.postalCodes?.length || 0} postal codes
+            </p>
+            {change.previousData?.postalCodes?.length <= 10 ? (
+              <div className="pl-4 text-sm text-muted-foreground">
+                {change.previousData.postalCodes.map((code: string) => (
+                  <div key={code}>{code}</div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Too many to display ({change.previousData.postalCodes.length}{" "}
+                codes)
+              </p>
+            )}
+          </div>
+        );
+
+      case "update_area":
+        return (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Area property changes:</p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="font-medium text-muted-foreground">
+                  {mode === "undo" ? "Restore to:" : "Change to:"}
+                </p>
+                {Object.entries(
+                  mode === "undo" ? change.previousData : change.changeData
+                ).map(([key, value]) => (
+                  <div key={key} className="pl-2">
+                    {key}: <strong>{String(value)}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <p className="text-sm text-muted-foreground">
+            No preview available for this change type
+          </p>
+        );
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {mode === "undo" ? (
+              <IconArrowBackUp className="h-5 w-5" />
+            ) : (
+              <IconArrowForwardUp className="h-5 w-5" />
+            )}
+            {mode === "undo" ? "Undo" : "Redo"} Change Preview
+          </DialogTitle>
+          <DialogDescription>
+            Review the changes that will be applied
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[400px]">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline">
+                {getChangeTypeLabel(change.changeType)}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {new Date(change.createdAt).toLocaleString()}
+              </span>
+            </div>
+
+            {change.createdBy && (
+              <p className="text-sm text-muted-foreground">
+                By: {change.createdBy}
+              </p>
+            )}
+
+            <div className="border rounded-lg p-4 bg-accent/5">
+              {renderChangeDetails()}
+            </div>
+
+            <Alert>
+              <IconAlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {mode === "undo"
+                  ? "This will reverse the selected change. You can redo it later if needed."
+                  : "This will reapply the previously undone change."}
+              </AlertDescription>
+            </Alert>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                Processing...
+              </>
+            ) : (
+              <>
+                {mode === "undo" ? (
+                  <IconArrowBackUp className="h-4 w-4 mr-2" />
+                ) : (
+                  <IconArrowForwardUp className="h-4 w-4 mr-2" />
+                )}
+                Confirm {mode === "undo" ? "Undo" : "Redo"}
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -8,6 +8,7 @@ import {
 } from "../../lib/schema/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { recordChangeAction } from "./change-tracking-actions";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -59,9 +60,15 @@ export async function updateAreaAction(
     name?: string;
     description?: string;
     granularity?: string;
-  }
+  },
+  createdBy?: string
 ): ServerActionResponse {
   try {
+    // Get previous state
+    const previousArea = await db.query.areas.findFirst({
+      where: eq(areas.id, id),
+    });
+
     await db
       .update(areas)
       .set({
@@ -69,6 +76,20 @@ export async function updateAreaAction(
         updatedAt: new Date().toISOString(),
       })
       .where(eq(areas.id, id));
+
+    // Record change
+    await recordChangeAction(id, {
+      changeType: "update_area",
+      entityType: "area",
+      entityId: id,
+      changeData: data,
+      previousData: previousArea ? {
+        name: previousArea.name,
+        description: previousArea.description,
+        granularity: previousArea.granularity,
+      } : undefined,
+      createdBy,
+    });
 
     revalidatePath("/postal-codes");
     return { success: true };
@@ -168,7 +189,8 @@ export async function createLayerAction(
     opacity: number;
     isVisible: boolean;
     orderIndex: number;
-  }
+  },
+  createdBy?: string
 ): ServerActionResponse<{ id: number }> {
   try {
     const [layer] = await db
@@ -182,6 +204,24 @@ export async function createLayerAction(
         orderIndex: data.orderIndex,
       })
       .returning();
+
+    // Record change
+    await recordChangeAction(areaId, {
+      changeType: "create_layer",
+      entityType: "layer",
+      entityId: layer.id,
+      changeData: {
+        layer: {
+          areaId,
+          name: data.name,
+          color: data.color,
+          opacity: data.opacity,
+          isVisible: data.isVisible ? "true" : "false",
+          orderIndex: data.orderIndex,
+        },
+      },
+      createdBy,
+    });
 
     revalidatePath("/postal-codes");
     return { success: true, data: { id: layer.id } };
@@ -201,9 +241,16 @@ export async function updateLayerAction(
     isVisible?: boolean;
     orderIndex?: number;
     postalCodes?: string[];
-  }
+  },
+  createdBy?: string
 ): ServerActionResponse {
   try {
+    // Get previous state
+    const previousLayer = await db.query.areaLayers.findFirst({
+      where: eq(areaLayers.id, layerId),
+      with: { postalCodes: true },
+    });
+
     await db.transaction(async (tx) => {
       // Update layer properties
       if (
@@ -248,6 +295,44 @@ export async function updateLayerAction(
       }
     });
 
+    // Record change
+    const changeData: any = {};
+    const previousData: any = {};
+    
+    if (data.name !== undefined) {
+      changeData.name = data.name;
+      previousData.name = previousLayer?.name;
+    }
+    if (data.color !== undefined) {
+      changeData.color = data.color;
+      previousData.color = previousLayer?.color;
+    }
+    if (data.opacity !== undefined) {
+      changeData.opacity = data.opacity;
+      previousData.opacity = previousLayer?.opacity;
+    }
+    if (data.isVisible !== undefined) {
+      changeData.isVisible = data.isVisible ? "true" : "false";
+      previousData.isVisible = previousLayer?.isVisible;
+    }
+    if (data.orderIndex !== undefined) {
+      changeData.orderIndex = data.orderIndex;
+      previousData.orderIndex = previousLayer?.orderIndex;
+    }
+    if (data.postalCodes !== undefined) {
+      changeData.postalCodes = data.postalCodes;
+      previousData.postalCodes = previousLayer?.postalCodes?.map((pc) => pc.postalCode) || [];
+    }
+
+    await recordChangeAction(areaId, {
+      changeType: "update_layer",
+      entityType: "layer",
+      entityId: layerId,
+      changeData,
+      previousData,
+      createdBy,
+    });
+
     revalidatePath("/postal-codes");
     return { success: true };
   } catch (error) {
@@ -258,9 +343,22 @@ export async function updateLayerAction(
 
 export async function deleteLayerAction(
   areaId: number,
-  layerId: number
+  layerId: number,
+  createdBy?: string
 ): ServerActionResponse {
   try {
+    // Get layer data before deletion
+    const layer = await db.query.areaLayers.findFirst({
+      where: eq(areaLayers.id, layerId),
+      with: {
+        postalCodes: true,
+      },
+    });
+
+    if (!layer) {
+      return { success: false, error: "Layer not found" };
+    }
+
     await db.transaction(async (tx) => {
       // Delete postal codes first
       await tx
@@ -269,6 +367,27 @@ export async function deleteLayerAction(
 
       // Delete layer
       await tx.delete(areaLayers).where(eq(areaLayers.id, layerId));
+    });
+
+    // Record change
+    await recordChangeAction(areaId, {
+      changeType: "delete_layer",
+      entityType: "layer",
+      entityId: layerId,
+      changeData: {},
+      previousData: {
+        layer: {
+          id: layer.id,
+          areaId: layer.areaId,
+          name: layer.name,
+          color: layer.color,
+          opacity: layer.opacity,
+          isVisible: layer.isVisible,
+          orderIndex: layer.orderIndex,
+        },
+        postalCodes: layer.postalCodes?.map((pc) => pc.postalCode) || [],
+      },
+      createdBy,
     });
 
     revalidatePath("/postal-codes");
@@ -282,7 +401,8 @@ export async function deleteLayerAction(
 export async function addPostalCodesToLayerAction(
   areaId: number,
   layerId: number,
-  postalCodes: string[]
+  postalCodes: string[],
+  createdBy?: string
 ): ServerActionResponse {
   try {
     // Validate inputs
@@ -296,6 +416,7 @@ export async function addPostalCodesToLayerAction(
         eq(areaLayers.id, layerId),
         eq(areaLayers.areaId, areaId)
       ),
+      with: { postalCodes: true },
     });
 
     if (!layer) {
@@ -303,24 +424,36 @@ export async function addPostalCodesToLayerAction(
     }
 
     // Get existing postal codes
-    const existing = await db
-      .select({ postalCode: areaLayerPostalCodes.postalCode })
-      .from(areaLayerPostalCodes)
-      .where(eq(areaLayerPostalCodes.layerId, layerId));
-
-    const existingCodes = existing.map((e) => e.postalCode);
+    const existingCodes = layer.postalCodes?.map((pc) => pc.postalCode) || [];
     const newCodes = postalCodes.filter(
       (code) => !existingCodes.includes(code)
     );
 
-    if (newCodes.length > 0) {
-      await db.insert(areaLayerPostalCodes).values(
-        newCodes.map((code) => ({
-          layerId,
-          postalCode: code,
-        }))
-      );
+    if (newCodes.length === 0) {
+      return { success: true }; // No new codes to add
     }
+
+    await db.insert(areaLayerPostalCodes).values(
+      newCodes.map((code) => ({
+        layerId,
+        postalCode: code,
+      }))
+    );
+
+    // Record change
+    await recordChangeAction(areaId, {
+      changeType: "add_postal_codes",
+      entityType: "postal_code",
+      entityId: layerId,
+      changeData: {
+        postalCodes: newCodes,
+        layerId,
+      },
+      previousData: {
+        postalCodes: existingCodes,
+      },
+      createdBy,
+    });
 
     revalidatePath("/postal-codes");
     return { success: true };
@@ -333,7 +466,8 @@ export async function addPostalCodesToLayerAction(
 export async function removePostalCodesFromLayerAction(
   areaId: number,
   layerId: number,
-  postalCodes: string[]
+  postalCodes: string[],
+  createdBy?: string
 ): ServerActionResponse {
   try {
     // Validate inputs
@@ -347,10 +481,18 @@ export async function removePostalCodesFromLayerAction(
         eq(areaLayers.id, layerId),
         eq(areaLayers.areaId, areaId)
       ),
+      with: { postalCodes: true },
     });
 
     if (!layer) {
       return { success: false, error: "Layer not found or does not belong to area" };
+    }
+
+    const existingCodes = layer.postalCodes?.map((pc) => pc.postalCode) || [];
+    const codesToRemove = postalCodes.filter(code => existingCodes.includes(code));
+    
+    if (codesToRemove.length === 0) {
+      return { success: true }; // No codes to remove
     }
 
     await db
@@ -361,6 +503,21 @@ export async function removePostalCodesFromLayerAction(
           inArray(areaLayerPostalCodes.postalCode, postalCodes)
         )
       );
+
+    // Record change
+    await recordChangeAction(areaId, {
+      changeType: "remove_postal_codes",
+      entityType: "postal_code",
+      entityId: layerId,
+      changeData: {
+        postalCodes: codesToRemove,
+        layerId,
+      },
+      previousData: {
+        postalCodes: codesToRemove, // Store removed codes for undo
+      },
+      createdBy,
+    });
 
     revalidatePath("/postal-codes");
     return { success: true };

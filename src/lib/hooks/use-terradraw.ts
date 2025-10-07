@@ -278,7 +278,6 @@ export function useTerraDraw({
   // Expose debug function globally for testing
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).debugTerraDraw = debugTerraDraw;
     }
   }, [debugTerraDraw]);

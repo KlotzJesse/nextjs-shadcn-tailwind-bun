@@ -197,11 +197,13 @@ const BaseMapComponent = ({
         role="region"
         aria-label="Interaktive Karte"
       />
-      {/* Floating Drawing Toolbar - Always visible in center */}
+      {/* Floating Drawing Toolbar - Center bottom */}
       <FloatingDrawingToolbar
         currentMode={interactions.currentDrawingMode}
         onModeChange={interactions.handleDrawingModeChange}
+        areaId={areaId}
       />
+
       {interactions.isDrawingToolsVisible && (
         <div
           className="absolute top-4 left-4 z-10"

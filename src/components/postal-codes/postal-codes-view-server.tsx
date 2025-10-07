@@ -116,62 +116,9 @@ export async function PostalCodesViewServer({
   activeLayerId,
   versionId,
 }: PostalCodesViewServerProps) {
-  // If we have an areaId, fetch the area and layers data on the server
+  // ALWAYS load current state from database
+  // versionId is only used for side-by-side comparison UI, not for data loading
   if (areaId && areaId > 0) {
-    // Determine which version to load
-    let targetVersionId = versionId;
-
-    // If no specific version is requested, try to get the latest version
-    if (!targetVersionId) {
-      targetVersionId = await getLatestVersionId(areaId);
-    }
-
-    // If we have a target version (either specified or latest), load version data
-    if (targetVersionId && targetVersionId > 0) {
-      const versionData = await loadVersionData(areaId, targetVersionId);
-
-      if (versionData) {
-        // Also fetch all areas for the sidebar (current data)
-        const areasResult = await getAreasAction();
-        const allAreas = areasResult.success ? areasResult.data || [] : [];
-
-        // Add the version area to the areas list if it's not already there
-        const areas = allAreas.some((a) => a.id === areaId)
-          ? allAreas
-          : [...allAreas, versionData.area];
-
-        console.log("Loading version data:", {
-          versionId: targetVersionId,
-          areaId,
-          areaName: versionData.area.name,
-          layersCount: versionData.layers.length,
-          areasCount: areas.length,
-          layersDetails: versionData.layers.map((l: any) => ({
-            id: l.id,
-            name: l.name,
-            isVisible: l.isVisible,
-            postalCodesCount: l.postalCodes?.length,
-          })),
-        });
-
-        return (
-          <PostalCodesViewClientWithLayers
-            initialData={initialData}
-            statesData={statesData}
-            defaultGranularity={defaultGranularity}
-            areaId={areaId}
-            activeLayerId={activeLayerId || null}
-            initialAreas={areas}
-            initialArea={versionData.area}
-            initialLayers={versionData.layers}
-            isViewingVersion={true}
-            versionId={targetVersionId}
-          />
-        );
-      }
-    }
-
-    // Fallback to current data (if no versions exist or version loading failed)
     const [areasResult, areaResult, layersResult] = await Promise.all([
       getAreasAction(),
       getAreaByIdAction(areaId),
@@ -182,12 +129,12 @@ export async function PostalCodesViewServer({
     const area = areaResult.success ? areaResult.data : null;
     const layers = layersResult.success ? layersResult.data : [];
 
-    console.log("Loading current data (fallback):", {
+    console.log("Loading CURRENT state (always):", {
       areaId,
       areaName: area?.name,
       layersCount: layers?.length,
       areasCount: areas?.length,
-      hasVersions: "unknown",
+      versionId: versionId || "none",
       layersDetails: layers?.map((l: any) => ({
         id: l.id,
         name: l.name,
@@ -206,6 +153,8 @@ export async function PostalCodesViewServer({
         initialAreas={areas || []}
         initialArea={area}
         initialLayers={layers || []}
+        isViewingVersion={false}
+        versionId={versionId || null}
       />
     );
   }
