@@ -16,7 +16,7 @@ interface PostalCodeSearchProps {
 export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const { addSelectedRegion } = useMapState();
+  const { granularity } = useMapState();
 
   const searchPostalCodes = useStableCallback((query: string) => {
     if (!query.trim()) {
@@ -63,17 +63,11 @@ export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
   });
 
   const selectPostalCode = useStableCallback((postalCode: string) => {
-    const selectionPromise = async () => {
-      addSelectedRegion(postalCode);
-      setSearchResults([]); // Clear search results after selection
-      return `PLZ ${postalCode} zur Auswahl hinzugefügt`;
-    };
-
-    return toast.promise(selectionPromise(), {
-      loading: `📋 PLZ ${postalCode} wird hinzugefügt...`,
-      success: (message: string) => message,
-      error: "Fehler beim Hinzufügen der PLZ",
+    setSearchResults([]); // Clear search results after selection
+    toast.success(`� ${postalCode} gefunden`, {
+      duration: 2000,
     });
+    return postalCode;
   });
 
   const clearSearch = useStableCallback(() => {

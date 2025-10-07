@@ -15,6 +15,8 @@ type LassoSelectionProps = {
   data: FeatureCollection<MultiPolygon | Polygon, GeoJsonProperties>;
   granularity: string;
   enabled: boolean;
+  onRegionSelect?: (regionCode: string) => void;
+  onRegionDeselect?: (regionCode: string) => void;
 };
 
 export function useLassoSelection({
@@ -23,8 +25,9 @@ export function useLassoSelection({
   data,
   granularity,
   enabled,
+  onRegionSelect,
+  onRegionDeselect,
 }: LassoSelectionProps) {
-  const { addSelectedRegion, removeSelectedRegion } = useMapState();
   const isDrawing = useRef(false);
   const lassoPoints = useRef<[number, number][]>([]);
 
@@ -102,7 +105,7 @@ export function useLassoSelection({
 
         // Update selected regions
         selectedFeatures.forEach((featureId) => {
-          addSelectedRegion(featureId);
+          onRegionSelect?.(featureId);
         });
       }
 
@@ -205,7 +208,7 @@ export function useLassoSelection({
     data,
     granularity,
     enabled,
-    addSelectedRegion,
-    removeSelectedRegion,
+    onRegionSelect,
+    onRegionDeselect,
   ]);
 }

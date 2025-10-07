@@ -448,7 +448,7 @@ function DrawingToolsImpl({
   const drawingModeToTerraDrawMode = (modeId: string): TerraDrawMode | null => {
     switch (modeId) {
       case "cursor":
-        return "select";
+        return "cursor";
       case "freehand":
         return "freehand";
       case "circle":
@@ -467,7 +467,7 @@ function DrawingToolsImpl({
     mode: TerraDrawMode | null
   ): string | null => {
     switch (mode) {
-      case "select":
+      case "cursor":
         return "cursor";
       case "freehand":
         return "freehand";
@@ -990,83 +990,101 @@ function DrawingToolsImpl({
         </Collapsible>
 
         {/* Actions Section */}
-        {currentMode && currentMode !== "select" && (
-          <>
-            <Separator />
-            <Collapsible
-              open={actionsOpen}
-              onOpenChange={setActionsOpen}
-              className="space-y-2"
-            >
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-between h-7 px-2 text-xs font-semibold"
-                >
-                  <span>Aktionen</span>
-                  {actionsOpen ? (
-                    <ChevronUp className="h-3 w-3" />
-                  ) : (
-                    <ChevronDown className="h-3 w-3" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1 pt-2">
-                {currentMode && currentMode !== "select" && (
+        {currentMode !== null &&
+          [
+            "freehand",
+            "circle",
+            "rectangle",
+            "polygon",
+            "point",
+            "linestring",
+            "angled-rectangle",
+          ].includes(currentMode) && (
+            <>
+              <Separator />
+              <Collapsible
+                open={actionsOpen}
+                onOpenChange={setActionsOpen}
+                className="space-y-2"
+              >
+                <CollapsibleTrigger asChild>
                   <Button
-                    variant="destructive"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      onClearAll();
-                      toast.success("🗑️ Zeichnungen gelöscht", {
-                        duration: 2000,
-                      });
-                    }}
-                    className="w-full h-7 text-xs"
-                    title="Alle Zeichnungen löschen"
+                    className="w-full justify-between h-7 px-2 text-xs font-semibold"
                   >
-                    <X className="h-3 w-3 mr-1.5" />
-                    Zeichnung löschen
-                  </Button>
-                )}
-                {activeLayerId && areaId && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={
-                      isFilling || !layers.find((l) => l.id === activeLayerId)
-                    }
-                    onClick={() => {
-                      const activeLayer = layers.find(
-                        (l) => l.id === activeLayerId
-                      );
-                      if (postalCodesData && activeLayer) {
-                        fillRegions(
-                          "holes",
-                          postalCodesData,
-                          activeLayer,
-                          addPostalCodesToLayer,
-                          setIsFilling,
-                          granularity
-                        );
-                      }
-                    }}
-                    className="w-full h-7 text-xs"
-                    title="Nur Löcher füllen"
-                  >
-                    {isFilling ? (
-                      <Loader2Icon className="h-3 w-3 mr-1.5 animate-spin" />
+                    <span>Aktionen</span>
+                    {actionsOpen ? (
+                      <ChevronUp className="h-3 w-3" />
                     ) : (
-                      <Diamond className="h-3 w-3 mr-1.5" />
+                      <ChevronDown className="h-3 w-3" />
                     )}
-                    Löcher füllen
                   </Button>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-          </>
-        )}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1 pt-2">
+                  {currentMode !== null &&
+                    [
+                      "freehand",
+                      "circle",
+                      "rectangle",
+                      "polygon",
+                      "point",
+                      "linestring",
+                      "angled-rectangle",
+                    ].includes(currentMode) && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          onClearAll();
+                          toast.success("🗑️ Zeichnungen gelöscht", {
+                            duration: 2000,
+                          });
+                        }}
+                        className="w-full h-7 text-xs"
+                        title="Alle Zeichnungen löschen"
+                      >
+                        <X className="h-3 w-3 mr-1.5" />
+                        Zeichnung löschen
+                      </Button>
+                    )}
+                  {activeLayerId && areaId && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={
+                        isFilling || !layers.find((l) => l.id === activeLayerId)
+                      }
+                      onClick={() => {
+                        const activeLayer = layers.find(
+                          (l) => l.id === activeLayerId
+                        );
+                        if (postalCodesData && activeLayer) {
+                          fillRegions(
+                            "holes",
+                            postalCodesData,
+                            activeLayer,
+                            addPostalCodesToLayer ?? (async () => {}),
+                            setIsFilling,
+                            granularity
+                          );
+                        }
+                      }}
+                      className="w-full h-7 text-xs"
+                      title="Nur Löcher füllen"
+                    >
+                      {isFilling ? (
+                        <Loader2Icon className="h-3 w-3 mr-1.5 animate-spin" />
+                      ) : (
+                        <Diamond className="h-3 w-3 mr-1.5" />
+                      )}
+                      Löcher füllen
+                    </Button>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          )}
 
         {/* Export Section */}
         {postalCodesData && (

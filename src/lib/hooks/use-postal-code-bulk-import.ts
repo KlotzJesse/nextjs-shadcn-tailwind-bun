@@ -1,10 +1,15 @@
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { useMapState } from "@/lib/url-state/map-state";
 import {
-    findPostalCodeMatches,
-    parsePostalCodeInput,
+  findPostalCodeMatches,
+  parsePostalCodeInput,
 } from "@/lib/utils/postal-code-parser";
-import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import {
+  FeatureCollection,
+  GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
 import { toast } from "sonner";
 
 interface PostalCodeBulkImportProps {
@@ -12,9 +17,10 @@ interface PostalCodeBulkImportProps {
   granularity: string;
 }
 
-export function usePostalCodeBulkImport({ data, granularity }: PostalCodeBulkImportProps) {
-  const { addSelectedRegions } = useMapState();
-
+export function usePostalCodeBulkImport({
+  data,
+  granularity,
+}: PostalCodeBulkImportProps) {
   const importPostalCodes = useStableCallback(async (input: string) => {
     if (!input.trim()) {
       toast.error("Keine PLZ-Eingabe gefunden");
@@ -24,7 +30,7 @@ export function usePostalCodeBulkImport({ data, granularity }: PostalCodeBulkImp
     try {
       // Parse the input
       const parsed = parsePostalCodeInput(input);
-      const validCodes = parsed.filter(p => p.isValid);
+      const validCodes = parsed.filter((p) => p.isValid);
 
       if (validCodes.length === 0) {
         toast.error("Keine gültigen PLZ gefunden");
@@ -40,7 +46,7 @@ export function usePostalCodeBulkImport({ data, granularity }: PostalCodeBulkImp
       }
 
       // Extract all matched postal codes
-      const allMatches = matches.flatMap(match => match.matched);
+      const allMatches = matches.flatMap((match) => match.matched);
       const uniqueMatches = [...new Set(allMatches)];
 
       if (uniqueMatches.length === 0) {
@@ -48,13 +54,15 @@ export function usePostalCodeBulkImport({ data, granularity }: PostalCodeBulkImp
         return { success: false, count: 0 };
       }
 
-      // Add to selection
-      addSelectedRegions(uniqueMatches);
+      // Add success notification
+      toast.success(`📍 ${uniqueMatches.length} PLZ-Bereiche hinzugefügt`, {
+        duration: 3000,
+      });
 
       return {
         success: true,
         count: uniqueMatches.length,
-        matches: uniqueMatches
+        matches: uniqueMatches,
       };
     } catch (error) {
       console.error("Error importing postal codes:", error);
@@ -67,14 +75,14 @@ export function usePostalCodeBulkImport({ data, granularity }: PostalCodeBulkImp
     if (!input.trim()) return { valid: 0, invalid: 0, total: 0 };
 
     const parsed = parsePostalCodeInput(input);
-    const valid = parsed.filter(p => p.isValid).length;
-    const invalid = parsed.filter(p => !p.isValid).length;
+    const valid = parsed.filter((p) => p.isValid).length;
+    const invalid = parsed.filter((p) => !p.isValid).length;
 
     return {
       valid,
       invalid,
       total: parsed.length,
-      parsed
+      parsed,
     };
   });
 

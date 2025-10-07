@@ -8,6 +8,9 @@ interface CursorSelectionProps {
   isMapLoaded: boolean;
   layerId: string;
   enabled: boolean;
+  selectedRegions?: string[];
+  onRegionSelect?: (regionCode: string) => void;
+  onRegionDeselect?: (regionCode: string) => void;
 }
 
 export function useCursorSelection({
@@ -15,10 +18,10 @@ export function useCursorSelection({
   isMapLoaded,
   layerId,
   enabled,
+  selectedRegions = [],
+  onRegionSelect,
+  onRegionDeselect,
 }: CursorSelectionProps) {
-  const { selectedRegions, addSelectedRegion, removeSelectedRegion } =
-    useMapState();
-
   // Track last hovered region to avoid redundant setFilter calls
   const lastRegionIdRef = useRef<string | null>(null);
   const throttleTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -31,9 +34,9 @@ export function useCursorSelection({
     const regionCode = feature.properties?.code;
     if (regionCode) {
       if (selectedRegions.includes(regionCode)) {
-        removeSelectedRegion(regionCode);
+        onRegionDeselect?.(regionCode);
       } else {
-        addSelectedRegion(regionCode);
+        onRegionSelect?.(regionCode);
       }
     }
   });

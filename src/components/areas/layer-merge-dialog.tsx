@@ -39,7 +39,11 @@ export function LayerMergeDialog({
   layers,
   onMergeComplete,
 }: LayerMergeDialogProps) {
-  const { mergeLayers } = useLayerMerge(areaId);
+  const { mergeLayers } = useLayerMerge({
+    areaId,
+    layers,
+    onLayerUpdate: onMergeComplete,
+  });
   const [selectedLayers, setSelectedLayers] = useState<Set<number>>(new Set());
   const [targetLayerId, setTargetLayerId] = useState<string>("");
   const [strategy, setStrategy] = useState<

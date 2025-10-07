@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
-import { useAreaLayers } from "./use-area-layers";
+import { updateLayerAction } from "@/app/actions/area-actions";
 
 const AUTOSAVE_DELAY = 2000; // 2 seconds
 
 export function useAreaAutosave(areaId: number, activeLayerId: number | null) {
-  const { updateLayer } = useAreaLayers(areaId);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingChangesRef = useRef<Map<number, string[]>>(new Map());
 
@@ -26,14 +25,14 @@ export function useAreaAutosave(areaId: number, activeLayerId: number | null) {
         // Save all pending changes
         for (const [lid, codes] of changes) {
           try {
-            await updateLayer(lid, { postalCodes: codes });
+            await updateLayerAction(areaId, lid, { postalCodes: codes });
           } catch (error) {
             console.error("Autosave failed:", error);
           }
         }
       }, AUTOSAVE_DELAY);
     },
-    [updateLayer]
+    [areaId]
   );
 
   const cancelAutosave = useCallback(() => {
@@ -55,12 +54,12 @@ export function useAreaAutosave(areaId: number, activeLayerId: number | null) {
 
     for (const [lid, codes] of changes) {
       try {
-        await updateLayer(lid, { postalCodes: codes });
+        await updateLayerAction(areaId, lid, { postalCodes: codes });
       } catch (error) {
         console.error("Force save failed:", error);
       }
     }
-  }, [updateLayer]);
+  }, [areaId]);
 
   // Cleanup on unmount
   useEffect(() => {

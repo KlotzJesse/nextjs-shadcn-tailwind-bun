@@ -1,10 +1,19 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
-import { useAreaLayers } from "./use-area-layers";
+import { type Layer } from "./use-areas";
+import { updateLayerAction } from "@/app/actions/area-actions";
 
-export function useLayerMerge(areaId: number) {
-  const { layers, updateLayer } = useAreaLayers(areaId);
+interface LayerMergeProps {
+  areaId: number;
+  layers: Layer[];
+  onLayerUpdate?: () => void;
+}
 
+export function useLayerMerge({
+  areaId,
+  layers,
+  onLayerUpdate,
+}: LayerMergeProps) {
   const mergeLayers = useCallback(
     async (
       sourceLayerIds: number[],
@@ -52,7 +61,9 @@ export function useLayerMerge(areaId: number) {
         }
 
         // Update target layer with merged postal codes
-        await updateLayer(targetLayerId, { postalCodes: mergedPostalCodes });
+        await updateLayerAction(areaId, targetLayerId, {
+          postalCodes: mergedPostalCodes,
+        });
 
         toast.success(
           `${sourceLayers.length} Layer in "${targetLayer.name}" zusammengeführt`
@@ -66,7 +77,7 @@ export function useLayerMerge(areaId: number) {
         throw error;
       }
     },
-    [layers, updateLayer]
+    [layers, areaId, onLayerUpdate]
   );
 
   const splitLayer = useCallback(
@@ -87,7 +98,9 @@ export function useLayerMerge(areaId: number) {
             ?.map((pc) => pc.postalCode)
             .filter((code) => !postalCodes.includes(code)) || [];
 
-        await updateLayer(sourceLayerId, { postalCodes: remainingCodes });
+        await updateLayerAction(areaId, sourceLayerId, {
+          postalCodes: remainingCodes,
+        });
 
         // Create new layer is handled by the calling component
         toast.success(`Layer "${sourceLayer.name}" aufgeteilt`);
@@ -100,7 +113,7 @@ export function useLayerMerge(areaId: number) {
         throw error;
       }
     },
-    [layers, updateLayer]
+    [layers, areaId, onLayerUpdate]
   );
 
   return {
