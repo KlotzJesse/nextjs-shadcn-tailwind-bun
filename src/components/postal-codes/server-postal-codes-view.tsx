@@ -9,12 +9,14 @@ interface ServerPostalCodesViewProps {
   defaultGranularity: string;
   areaId?: number | null;
   activeLayerId?: number | null;
+  versionId?: number | null;
 }
 
 export default async function ServerPostalCodesView({
   defaultGranularity,
   areaId,
   activeLayerId,
+  versionId,
 }: ServerPostalCodesViewProps) {
   const [postalCodesData, statesData] = await Promise.all([
     getPostalCodesDataForGranularity(defaultGranularity),
@@ -30,6 +32,7 @@ export default async function ServerPostalCodesView({
           defaultGranularity={defaultGranularity}
           areaId={areaId}
           activeLayerId={activeLayerId}
+          versionId={versionId}
         />
       </Suspense>
     </PostalCodesErrorBoundary>

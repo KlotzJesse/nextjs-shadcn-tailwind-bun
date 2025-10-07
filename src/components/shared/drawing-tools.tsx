@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardAction,
@@ -75,11 +76,13 @@ import {
   IconClock,
   IconDeviceFloppy,
   IconGitMerge,
+  IconHistory,
 } from "@tabler/icons-react";
 import { ConflictResolutionDialog } from "@/components/areas/conflict-resolution-dialog";
 import { VersionHistoryDialog } from "@/components/areas/version-history-dialog";
 import { CreateVersionDialog } from "@/components/areas/create-version-dialog";
 import { LayerMergeDialog } from "@/components/areas/layer-merge-dialog";
+import { GranularitySelector } from "@/components/shared/granularity-selector";
 
 export interface DrawingToolsProps {
   currentMode: TerraDrawMode | null;
@@ -107,6 +110,9 @@ export interface DrawingToolsProps {
     layerId: number,
     codes: string[]
   ) => Promise<void>;
+  // Version viewing props
+  isViewingVersion?: boolean;
+  versionId?: number | null;
 }
 
 const DEFAULT_COLORS = [
@@ -190,7 +196,7 @@ async function fillRegions(
   }
 
   if (!activeLayer) {
-    toast.error("Bitte wählen Sie einen aktiven Layer aus");
+    toast.error("Bitte wählen Sie ein aktives Gebiet aus");
     return;
   }
 
@@ -268,9 +274,10 @@ function DrawingToolsImpl({
   onLayerUpdate,
   addPostalCodesToLayer,
   removePostalCodesFromLayer,
+  isViewingVersion = false,
+  versionId,
 }: DrawingToolsProps) {
   // Collapsible section states
-  const [toolsOpen, setToolsOpen] = useState(true);
   const [layersOpen, setLayersOpen] = useState(areaId ? true : false);
   const [regionsOpen, setRegionsOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -329,7 +336,20 @@ function DrawingToolsImpl({
   const toggleLayerVisibility = async (layerId: number) => {
     const layer = layers.find((l) => l.id === layerId);
     if (!layer) return;
+
+    // When viewing a version, this creates a "branch" - the change will be part of the next version
     const newVisibility = layer.isVisible === "true" ? "false" : "true";
+
+    if (isViewingVersion) {
+      // For version viewing, we need to update the optimistic state without hitting the database
+      // The parent component should handle this optimistic update
+      toast.info("Änderung wird in neuer Version gespeichert", {
+        duration: 3000,
+      });
+      // TODO: Implement optimistic layer state update for version viewing
+      return;
+    }
+
     await updateLayer(layerId, { isVisible: newVisibility });
   };
 
@@ -353,7 +373,7 @@ function DrawingToolsImpl({
       pendingPostalCodes.length === 0
     ) {
       if (!areaId || !activeLayerId) {
-        toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+        toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
           duration: 3000,
         });
       } else if (pendingPostalCodes.length === 0) {
@@ -361,7 +381,7 @@ function DrawingToolsImpl({
           duration: 2000,
         });
       } else if (!addPostalCodesToLayer) {
-        toast.error("Layer-Funktion nicht verfügbar", { duration: 2000 });
+        toast.error("Gebiets-Funktion nicht verfügbar", { duration: 2000 });
       }
       return;
     }
@@ -375,7 +395,7 @@ function DrawingToolsImpl({
       toast.success(
         `${pendingPostalCodes.length} Region${
           pendingPostalCodes.length === 1 ? "" : "en"
-        } zu Layer hinzugefügt`,
+        } zu Gebiet hinzugefügt`,
         { duration: 2000 }
       );
       // Call the original onAddPending to clear the pending codes
@@ -401,13 +421,13 @@ function DrawingToolsImpl({
       pendingPostalCodes.length === 0
     ) {
       if (!areaId || !activeLayerId) {
-        toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+        toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
           duration: 3000,
         });
       } else if (pendingPostalCodes.length === 0) {
         toast.info("Keine Regionen zum Entfernen gefunden", { duration: 2000 });
       } else if (!removePostalCodesFromLayer) {
-        toast.error("Layer-Funktion nicht verfügbar", { duration: 2000 });
+        toast.error("Gebiets-Funktion nicht verfügbar", { duration: 2000 });
       }
       return;
     }
@@ -421,7 +441,7 @@ function DrawingToolsImpl({
       toast.success(
         `${pendingPostalCodes.length} Region${
           pendingPostalCodes.length === 1 ? "" : "en"
-        } aus Layer entfernt`,
+        } aus Gebiet entfernt`,
         { duration: 2000 }
       );
       // Call the original onRemovePending to clear the pending codes
@@ -443,66 +463,6 @@ function DrawingToolsImpl({
       );
     }
   }, [areaId, layers.length]);
-
-  // Map drawing mode IDs to TerraDrawModes
-  const drawingModeToTerraDrawMode = (modeId: string): TerraDrawMode | null => {
-    switch (modeId) {
-      case "cursor":
-        return "cursor";
-      case "freehand":
-        return "freehand";
-      case "circle":
-        return "circle";
-      case "rectangle":
-        return "rectangle";
-      case "polygon":
-        return "polygon";
-      default:
-        return null;
-    }
-  };
-
-  // Map TerraDrawMode back to drawing mode ID for UI state
-  const terraDrawModeToDrawingMode = (
-    mode: TerraDrawMode | null
-  ): string | null => {
-    switch (mode) {
-      case "cursor":
-        return "cursor";
-      case "freehand":
-        return "freehand";
-      case "circle":
-        return "circle";
-      case "rectangle":
-        return "rectangle";
-      case "polygon":
-        return "polygon";
-      default:
-        return null;
-    }
-  };
-
-  const handleModeClick = (modeId: string) => {
-    const terraDrawMode = drawingModeToTerraDrawMode(modeId);
-    if (currentMode === terraDrawMode) {
-      // Deactivate current mode
-      onModeChange(null);
-      const modeInfo = drawingModes.find((m) => m.id === modeId);
-      toast.success(`🖱️ ${modeInfo?.name || "Werkzeug"} deaktiviert`, {
-        duration: 2000,
-      });
-    } else {
-      // Activate new mode
-      onModeChange(terraDrawMode);
-      const modeInfo = drawingModes.find((m) => m.id === modeId);
-      toast.success(`🎯 ${modeInfo?.name || "Werkzeug"} aktiviert`, {
-        description: modeInfo?.description,
-        duration: 3000,
-      });
-    }
-  };
-
-  const allModes = drawingModes;
 
   // Helper: get all postal codes from active layer, prepending D-
   const getPostalCodes = () => {
@@ -564,7 +524,7 @@ function DrawingToolsImpl({
 
     try {
       await deleteLayer(layerId);
-      toast.success("Layer gelöscht");
+      toast.success("Gebiet gelöscht");
     } catch (error) {
       // Error already handled by hook
     }
@@ -572,7 +532,7 @@ function DrawingToolsImpl({
 
   const handleRenameLayer = async (layerId: number, newName: string) => {
     if (!newName.trim()) {
-      toast.error("Layer-Name darf nicht leer sein");
+      toast.error("Gebiets-Name darf nicht leer sein");
       return;
     }
 
@@ -580,16 +540,34 @@ function DrawingToolsImpl({
       await updateLayer(layerId, { name: newName.trim() });
       setEditingLayerId(null);
       setEditingLayerName("");
-      toast.success("Layer umbenannt");
+      toast.success("Gebiet umbenannt");
     } catch (error) {
       // Error already handled by hook
     }
   };
 
   return (
-    <Card role="region" aria-label="Kartentools-Panel" className="gap-2">
+    <Card
+      role="region"
+      aria-label="Kartentools-Panel"
+      className="gap-2 max-w-md"
+    >
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Kartentools</CardTitle>
+        {isViewingVersion && (
+          <div className="flex items-center gap-2 py-1">
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 text-xs"
+            >
+              <IconHistory className="h-3 w-3" />
+              Versionsansicht
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              Änderungen erstellen neue Version
+            </span>
+          </div>
+        )}
         <CardAction>
           <button
             type="button"
@@ -603,6 +581,33 @@ function DrawingToolsImpl({
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-2">
+        {/* Granularity Management Section */}
+        {granularity && onGranularityChange && (
+          <>
+            <Collapsible open={true}>
+              <div className="pb-2">
+                <div className="text-xs font-semibold mb-2 flex items-center justify-between">
+                  <span>PLZ-Granularität</span>
+                  <Badge variant="outline" className="text-xs">
+                    {granularity === "1digit" && "1-stellig"}
+                    {granularity === "2digit" && "2-stellig"}
+                    {granularity === "3digit" && "3-stellig"}
+                    {granularity === "5digit" && "5-stellig"}
+                  </Badge>
+                </div>
+                <GranularitySelector
+                  currentGranularity={granularity}
+                  onGranularityChange={onGranularityChange}
+                  areaId={areaId}
+                  layers={layers}
+                  isViewingVersion={isViewingVersion}
+                />
+              </div>
+            </Collapsible>
+            <Separator />
+          </>
+        )}
+
         {/* Layer Management Section - Only show if areaId is provided */}
         {areaId && (
           <>
@@ -613,7 +618,7 @@ function DrawingToolsImpl({
                   size="sm"
                   className="w-full justify-between h-7 px-2 text-xs font-semibold"
                 >
-                  <span>Layer ({layers.length})</span>
+                  <span>Gebiete ({layers.length})</span>
                   {layersOpen ? (
                     <ChevronUp className="h-3 w-3" />
                   ) : (
@@ -667,7 +672,11 @@ function DrawingToolsImpl({
                   <Input
                     value={newLayerName}
                     onChange={(e) => setNewLayerName(e.target.value)}
-                    placeholder="Neuer Layer..."
+                    placeholder={
+                      isViewingVersion
+                        ? "Neues Gebiet (neue Version)..."
+                        : "Neues Gebiet..."
+                    }
                     className="h-7 text-xs"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -680,6 +689,11 @@ function DrawingToolsImpl({
                     disabled={!newLayerName.trim() || isCreating}
                     size="icon"
                     className="h-7 w-7"
+                    title={
+                      isViewingVersion
+                        ? "Gebiet wird in neuer Version erstellt"
+                        : "Gebiet erstellen"
+                    }
                   >
                     <IconPlus className="h-3 w-3" />
                   </Button>
@@ -779,7 +793,11 @@ function DrawingToolsImpl({
                               e.stopPropagation();
                               handleDeleteLayer(layer.id);
                             }}
-                            title="Layer löschen"
+                            title={
+                              isViewingVersion
+                                ? "Gebiet wird in neuer Version gelöscht"
+                                : "Gebiet löschen"
+                            }
                           >
                             <X className="h-2.5 w-2.5" />
                           </Button>
@@ -796,6 +814,11 @@ function DrawingToolsImpl({
                                 size="sm"
                                 className="h-5 px-1 text-xs"
                                 onClick={(e) => e.stopPropagation()}
+                                title={
+                                  isViewingVersion
+                                    ? "Änderung wird in neuer Version gespeichert"
+                                    : "Farbe ändern"
+                                }
                               >
                                 <IconPalette className="h-2.5 w-2.5 mr-0.5" />
                                 <div
@@ -853,65 +876,6 @@ function DrawingToolsImpl({
           </>
         )}
 
-        {/* Drawing Tools Section */}
-        <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
-          <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-between h-7 px-2 text-xs font-semibold"
-            >
-              <span>Zeichenwerkzeuge</span>
-              {toolsOpen ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-2 pt-2">
-            {/* Granularität Auswahl */}
-            {granularity && onGranularityChange && (
-              <Select value={granularity} onValueChange={onGranularityChange}>
-                <SelectTrigger className="w-full h-7 text-xs">
-                  <SelectValue placeholder="Granularität" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1digit">PLZ 1</SelectItem>
-                  <SelectItem value="2digit">PLZ 2</SelectItem>
-                  <SelectItem value="3digit">PLZ 3</SelectItem>
-                  <SelectItem value="5digit">PLZ 5</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-            {/* Werkzeuge Grid - compact */}
-            <div className="grid grid-cols-3 gap-1">
-              {allModes.map((mode) => {
-                const Icon = mode.icon;
-                const isActive =
-                  terraDrawModeToDrawingMode(currentMode) === mode.id;
-                return (
-                  <Button
-                    key={mode.id}
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    className="h-auto p-1.5 flex flex-col items-center gap-0.5"
-                    onClick={() => handleModeClick(mode.id)}
-                    title={mode.description}
-                  >
-                    <Icon className="h-3 w-3" />
-                    <span className="text-[10px] leading-none">
-                      {mode.name}
-                    </span>
-                  </Button>
-                );
-              })}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        <Separator />
-
         {/* Regions Section */}
         <Collapsible
           open={regionsOpen}
@@ -963,7 +927,7 @@ function DrawingToolsImpl({
                     size="sm"
                     onClick={handleAddPendingToLayer}
                     className="h-6 text-xs"
-                    title="Gefundene zum aktiven Layer hinzufügen"
+                    title="Gefundene zum aktiven Gebiet hinzufügen"
                     disabled={
                       !areaId || !activeLayerId || !addPostalCodesToLayer
                     }

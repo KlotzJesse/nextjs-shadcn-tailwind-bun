@@ -195,7 +195,7 @@ export function LayerManagementPanel({
             variant="outline"
             size="sm"
             className="h-8 px-2"
-            title="Layer zusammenführen"
+            title="Gebiete zusammenführen"
           >
             <IconGitMerge className="h-3.5 w-3.5" />
           </Button>

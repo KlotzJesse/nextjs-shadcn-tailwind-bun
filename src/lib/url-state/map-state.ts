@@ -28,6 +28,7 @@ export function useMapState() {
   // Area and layer management
   const [areaId, setAreaId] = useQueryState("areaId");
   const [activeLayerId, setActiveLayerId] = useQueryState("activeLayerId");
+  const [versionId, setVersionId] = useQueryState("versionId");
 
   // Parse area and layer IDs
   const parsedAreaId = useMemo(() => {
@@ -37,6 +38,10 @@ export function useMapState() {
   const parsedActiveLayerId = useMemo(() => {
     return activeLayerId ? parseInt(activeLayerId, 10) : null;
   }, [activeLayerId]);
+
+  const parsedVersionId = useMemo(() => {
+    return versionId ? parseInt(versionId, 10) : null;
+  }, [versionId]);
 
   // --- Atomic map view helpers ---
   const setMapCenterZoom = useStableCallback(
@@ -54,6 +59,10 @@ export function useMapState() {
     setActiveLayerId(id !== null ? id.toString() : null);
   });
 
+  const setVersion = useStableCallback((id: number | null) => {
+    setVersionId(id !== null ? id.toString() : null);
+  });
+
   return {
     // State
     selectionMode: selectionMode || "cursor",
@@ -63,6 +72,7 @@ export function useMapState() {
     radius: radius ? parseInt(radius, 10) : 10,
     areaId: parsedAreaId,
     activeLayerId: parsedActiveLayerId,
+    versionId: parsedVersionId,
     // Setters
     setSelectionMode,
     setGranularity,
@@ -72,6 +82,7 @@ export function useMapState() {
     ),
     setArea,
     setActiveLayer,
+    setVersion,
   };
 }
 

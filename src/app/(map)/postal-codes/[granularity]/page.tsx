@@ -67,6 +67,9 @@ export default async function PostalCodesPage({
   const activeLayerId = search.activeLayerId
     ? parseInt(search.activeLayerId as string, 10)
     : null;
+  const versionId = search.versionId
+    ? parseInt(search.versionId as string, 10)
+    : null;
 
   return (
     <div className="h-full px-4 lg:px-6">
@@ -76,6 +79,7 @@ export default async function PostalCodesPage({
             defaultGranularity={granularity}
             areaId={areaId}
             activeLayerId={activeLayerId}
+            versionId={versionId}
           />
         </Suspense>
       </PostalCodesErrorBoundary>

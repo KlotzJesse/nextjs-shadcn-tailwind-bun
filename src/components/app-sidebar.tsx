@@ -3,6 +3,7 @@
 import {
   IconDashboard,
   IconFolder,
+  IconMapPin2,
   IconInnerShadowTop,
 } from "@tabler/icons-react";
 import * as React from "react";
@@ -56,7 +57,7 @@ export function AppSidebar({
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <a href="#">
-                <IconInnerShadowTop className="!size-5" />
+                <IconMapPin2 className="!size-5" />
                 <span className="text-base font-semibold">
                   KRAUSS Gebietsmanagement
                 </span>

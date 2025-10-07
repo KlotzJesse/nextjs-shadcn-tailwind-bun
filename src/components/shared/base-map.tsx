@@ -33,6 +33,15 @@ const DrawingTools = dynamic(
   }
 );
 
+// Floating drawing toolbar for center map overlay
+const FloatingDrawingToolbar = dynamic(
+  () =>
+    import("./floating-drawing-toolbar").then((m) => m.FloatingDrawingToolbar),
+  {
+    ssr: false,
+  }
+);
+
 // Memoized error message component to prevent re-renders
 const MapErrorMessage = memo(({ message }: MapErrorMessageProps) => (
   <div className="flex items-center justify-center w-full h-full min-h-[400px] text-destructive">
@@ -65,6 +74,8 @@ const BaseMapComponent = ({
   areaId,
   addPostalCodesToLayer,
   removePostalCodesFromLayer,
+  isViewingVersion = false,
+  versionId,
 }: BaseMapProps) => {
   // Stable ref for map container
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -186,6 +197,11 @@ const BaseMapComponent = ({
         role="region"
         aria-label="Interaktive Karte"
       />
+      {/* Floating Drawing Toolbar - Always visible in center */}
+      <FloatingDrawingToolbar
+        currentMode={interactions.currentDrawingMode}
+        onModeChange={interactions.handleDrawingModeChange}
+      />
       {interactions.isDrawingToolsVisible && (
         <div
           className="absolute top-4 left-4 z-10"
@@ -217,11 +233,14 @@ const BaseMapComponent = ({
                   // This will be handled by the parent component
                   // through the layers prop updates
                 }}
+                isViewingVersion={isViewingVersion}
+                versionId={versionId}
               />
             </Suspense>
           </DrawingToolsErrorBoundary>
         </div>
       )}
+
       {!interactions.isDrawingToolsVisible && (
         <div
           className="absolute top-4 left-4 z-10"

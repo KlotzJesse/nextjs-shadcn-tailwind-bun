@@ -268,7 +268,7 @@ export function LayerMergeDialog({
             onClick={handleMerge}
             disabled={selectedLayers.size < 2 || !targetLayerId || isMerging}
           >
-            {isMerging ? "Zusammenführen..." : "Layer zusammenführen"}
+            {isMerging ? "Zusammenführen..." : "Gebiete zusammenführen"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -13,12 +13,13 @@ import {
   useVersionHistory,
   type AreaVersion,
 } from "@/lib/hooks/use-version-history";
-import { IconClock, IconRestore } from "@tabler/icons-react";
+import { IconClock, IconEye, IconRestore } from "@tabler/icons-react";
 import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { useMapState } from "@/lib/url-state/map-state";
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export function VersionHistoryDialog({
   areaId,
 }: VersionHistoryDialogProps) {
   const { getVersionHistory, restoreVersion } = useVersionHistory(areaId);
+  const { versionId, setVersion } = useMapState();
   const [versions, setVersions] = useState<AreaVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<AreaVersion | null>(
@@ -56,9 +58,17 @@ export function VersionHistoryDialog({
     }
   };
 
+  const handleViewVersion = (version: AreaVersion) => {
+    // Set the version ID in URL to view this version
+    setVersion(version.id);
+    onOpenChange(false);
+  };
+
   const handleRestore = async (version: AreaVersion) => {
     try {
       await restoreVersion(version);
+      // Clear version from URL to go back to current version
+      setVersion(null);
       onOpenChange(false);
       // Reload page to show restored data
       window.location.reload();
@@ -72,9 +82,32 @@ export function VersionHistoryDialog({
       <DialogContent className="max-w-3xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Versionshistorie</DialogTitle>
-          <DialogDescription>
-            Alle gespeicherten Versionen dieses Gebiets anzeigen und
-            wiederherstellen.
+          <DialogDescription className="space-y-2">
+            <div>
+              Alle gespeicherten Versionen dieses Gebiets anzeigen und
+              wiederherstellen.
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {!versionId && versions.length > 0 && (
+                <Badge variant="default">
+                  Aktuelle Version {versions[0]?.versionNumber} angezeigt
+                </Badge>
+              )}
+              {versionId && (
+                <Badge variant="secondary">
+                  Version{" "}
+                  {versions.find((v) => v.id === versionId)?.versionNumber ||
+                    versionId}{" "}
+                  aktiv
+                </Badge>
+              )}
+            </div>
+            {versionId && (
+              <div className="text-sm text-muted-foreground">
+                💡 Änderungen an dieser Version erstellen automatisch eine neue
+                Version (Branching)
+              </div>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -99,20 +132,45 @@ export function VersionHistoryDialog({
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                     selectedVersion?.id === version.id
                       ? "border-primary bg-accent"
+                      : versionId === version.id
+                      ? "border-green-500 bg-green-50 dark:bg-green-900/10"
+                      : !versionId &&
+                        version.versionNumber === versions[0]?.versionNumber
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
                       : "hover:border-primary/50"
                   }`}
                   onClick={() => setSelectedVersion(version)}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
+                  <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <Badge variant="outline" className="flex-shrink-0">
                         Version {version.versionNumber}
                       </Badge>
+                      {versionId === version.id && (
+                        <Badge
+                          variant="default"
+                          className="bg-green-600 flex-shrink-0"
+                        >
+                          Aktuelle Ansicht
+                        </Badge>
+                      )}
+                      {!versionId &&
+                        version.versionNumber ===
+                          versions[0]?.versionNumber && (
+                          <Badge
+                            variant="default"
+                            className="bg-blue-600 flex-shrink-0"
+                          >
+                            Aktuelle Version
+                          </Badge>
+                        )}
                       {version.name && (
-                        <span className="font-medium">{version.name}</span>
+                        <span className="font-medium truncate">
+                          {version.name}
+                        </span>
                       )}
                     </div>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">
                       {formatDistanceToNow(new Date(version.createdAt), {
                         addSuffix: true,
                         locale: de,
@@ -132,8 +190,8 @@ export function VersionHistoryDialog({
 
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>
-                      {version.snapshot.layers.length} Layer
-                      {version.snapshot.layers.length !== 1 ? "s" : ""}
+                      {version.snapshot.layers.length} Gebiet
+                      {version.snapshot.layers.length !== 1 ? "e" : ""}
                     </span>
                     <span>
                       {version.snapshot.layers.reduce(
@@ -148,7 +206,7 @@ export function VersionHistoryDialog({
                   {selectedVersion?.id === version.id && (
                     <div className="mt-3 pt-3 border-t">
                       <div className="text-sm font-medium mb-2">
-                        Layer Details:
+                        Gebiets-Details:
                       </div>
                       <div className="space-y-1">
                         {version.snapshot.layers.map((layer, idx) => (
@@ -175,18 +233,41 @@ export function VersionHistoryDialog({
           )}
         </ScrollArea>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Schließen
           </Button>
-          {selectedVersion && (
+          {versionId && (
             <Button
-              onClick={() => handleRestore(selectedVersion)}
+              variant="outline"
+              onClick={() => {
+                setVersion(null);
+                onOpenChange(false);
+              }}
               className="gap-2"
             >
-              <IconRestore className="h-4 w-4" />
-              Version {selectedVersion.versionNumber} wiederherstellen
+              <IconEye className="h-4 w-4" />
+              Aktuelle Version
             </Button>
+          )}
+          {selectedVersion && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => handleViewVersion(selectedVersion)}
+                className="gap-2"
+              >
+                <IconEye className="h-4 w-4" />V{selectedVersion.versionNumber}{" "}
+                anzeigen
+              </Button>
+              <Button
+                onClick={() => handleRestore(selectedVersion)}
+                className="gap-2"
+              >
+                <IconRestore className="h-4 w-4" />V
+                {selectedVersion.versionNumber} wiederherstellen
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>

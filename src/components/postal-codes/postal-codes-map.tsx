@@ -26,6 +26,8 @@ interface PostalCodesMapProps {
     layerId: number,
     codes: string[]
   ) => Promise<void>;
+  isViewingVersion?: boolean;
+  versionId?: number | null;
 }
 
 export function PostalCodesMap({
@@ -39,6 +41,8 @@ export function PostalCodesMap({
   areaId = null,
   addPostalCodesToLayer,
   removePostalCodesFromLayer,
+  isViewingVersion = false,
+  versionId,
 }: PostalCodesMapProps) {
   const { center, zoom } = useMapState();
 
@@ -57,6 +61,8 @@ export function PostalCodesMap({
       areaId={areaId}
       addPostalCodesToLayer={addPostalCodesToLayer}
       removePostalCodesFromLayer={removePostalCodesFromLayer}
+      isViewingVersion={isViewingVersion}
+      versionId={versionId}
     />
   );
 }

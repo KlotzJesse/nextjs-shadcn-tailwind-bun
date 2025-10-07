@@ -26,6 +26,8 @@ export interface BaseMapProps {
     layerId: number,
     codes: string[]
   ) => Promise<void>;
+  isViewingVersion?: boolean;
+  versionId?: number | null;
 }
 
 export interface MapConfig {

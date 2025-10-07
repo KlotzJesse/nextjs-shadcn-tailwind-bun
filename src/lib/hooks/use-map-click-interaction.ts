@@ -94,14 +94,14 @@ export function useMapClickInteraction(
             // Remove if it exists
             console.log("[Click] Removing code from layer");
             await removePostalCodesFromLayer(activeLayerId, [regionCode]);
-            toast.success(`PLZ ${regionCode} aus Layer entfernt`, {
+            toast.success(`PLZ ${regionCode} aus Gebiet entfernt`, {
               duration: 2000,
             });
           } else {
             // Add if it doesn't exist
             console.log("[Click] Adding code to layer");
             await addPostalCodesToLayer(activeLayerId, [regionCode]);
-            toast.success(`PLZ ${regionCode} zu Layer hinzugefügt`, {
+            toast.success(`PLZ ${regionCode} zu Gebiet hinzugefügt`, {
               duration: 2000,
             });
           }

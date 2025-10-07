@@ -84,6 +84,12 @@ const PostalCodeImportDialog = dynamic(
   }
 );
 
+import {
+  getGranularityLevel,
+  getGranularityLabel,
+  wouldGranularityChangeCauseDataLoss,
+} from "@/lib/utils/granularity-utils";
+
 interface PostalCodesViewClientWithLayersProps {
   initialData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -93,6 +99,8 @@ interface PostalCodesViewClientWithLayersProps {
   initialAreas: Area[];
   initialArea: Area | null;
   initialLayers: Layer[];
+  isViewingVersion?: boolean;
+  versionId?: number | null;
 }
 
 export function PostalCodesViewClientWithLayers({
@@ -104,6 +112,8 @@ export function PostalCodesViewClientWithLayers({
   initialAreas,
   initialArea,
   initialLayers,
+  isViewingVersion = false,
+  versionId,
 }: PostalCodesViewClientWithLayersProps) {
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [data] =
@@ -149,6 +159,9 @@ export function PostalCodesViewClientWithLayers({
   // Use URL state for active layer instead of local state
   const activeLayerId = mapState.activeLayerId;
 
+  // When viewing a version, we need special handling for layer updates
+  const isWorkingWithVersion = isViewingVersion && versionId;
+
   // Server action wrappers with optimistic updates
   const addPostalCodesToLayer = async (
     layerId: number,
@@ -157,6 +170,16 @@ export function PostalCodesViewClientWithLayers({
     if (!areaId) {
       toast.error("Kein Bereich ausgewählt");
       return;
+    }
+
+    if (isWorkingWithVersion) {
+      // When working with a version, this is a branching operation
+      toast.info(
+        `${postalCodes.length} PLZ hinzugefügt - wird in neuer Version gespeichert`,
+        {
+          duration: 3000,
+        }
+      );
     }
 
     startTransition(async () => {
@@ -170,6 +193,18 @@ export function PostalCodesViewClientWithLayers({
         );
         if (!result.success) {
           throw new Error(result.error);
+        }
+
+        if (isWorkingWithVersion) {
+          // Auto-suggest creating version after changes
+          setTimeout(() => {
+            toast.info(
+              "Erstellen Sie eine neue Version um Ihre Änderungen zu speichern",
+              {
+                duration: 5000,
+              }
+            );
+          }, 1000);
         }
       } catch (error) {
         toast.error(
@@ -190,6 +225,16 @@ export function PostalCodesViewClientWithLayers({
       return;
     }
 
+    if (isWorkingWithVersion) {
+      // When working with a version, this is a branching operation
+      toast.info(
+        `${postalCodes.length} PLZ entfernt - wird in neuer Version gespeichert`,
+        {
+          duration: 3000,
+        }
+      );
+    }
+
     startTransition(async () => {
       updateOptimisticLayers({ type: "remove", layerId, postalCodes });
 
@@ -201,6 +246,18 @@ export function PostalCodesViewClientWithLayers({
         );
         if (!result.success) {
           throw new Error(result.error);
+        }
+
+        if (isWorkingWithVersion) {
+          // Auto-suggest creating version after changes
+          setTimeout(() => {
+            toast.info(
+              "Erstellen Sie eine neue Version um Ihre Änderungen zu speichern",
+              {
+                duration: 5000,
+              }
+            );
+          }, 1000);
         }
       } catch (error) {
         toast.error(
@@ -242,36 +299,14 @@ export function PostalCodesViewClientWithLayers({
       const postalCodes = result.data.postalCodes;
       if (activeLayerId && areaId) {
         await addPostalCodesToLayer(activeLayerId, postalCodes);
-        toast.success(`${postalCodes.length} PLZ zu Layer hinzugefügt`);
+        toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
       } else {
-        toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+        toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
           duration: 3000,
         });
       }
     } else {
       toast.error("Fehler bei der Radiussuche");
-    }
-  };
-
-  const performDrivingRadiusSearch = async (searchData: {
-    latitude: number;
-    longitude: number;
-    maxDuration: number;
-    granularity: string;
-  }) => {
-    const result = await drivingRadiusSearchAction(searchData);
-    if (result.success && result.data) {
-      const postalCodes = result.data.postalCodes;
-      if (activeLayerId && areaId) {
-        await addPostalCodesToLayer(activeLayerId, postalCodes);
-        toast.success(`${postalCodes.length} PLZ zu Layer hinzugefügt`);
-      } else {
-        toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
-          duration: 3000,
-        });
-      }
-    } else {
-      toast.error("Fehler bei der Fahrzeitsuche");
     }
   };
 
@@ -322,27 +357,54 @@ export function PostalCodesViewClientWithLayers({
     }
   }, [optimisticLayers, areaId, activeLayerId]);
 
-  const handleGranularityChange = (newGranularity: string) => {
-    if (newGranularity !== defaultGranularity) {
-      const granularityLabels: Record<string, string> = {
-        "1digit": "1-stellig",
-        "2digit": "2-stellig",
-        "3digit": "3-stellig",
-        "5digit": "5-stellig",
-      };
+  const handleGranularityChange = async (newGranularity: string) => {
+    if (newGranularity === defaultGranularity) return;
 
-      toast.success(
-        `🔄 Wechsel zu ${
-          granularityLabels[newGranularity] || newGranularity
-        } PLZ-Ansicht...`,
-        {
-          duration: 2000,
+    // Check if area has postal codes that would be affected
+    const hasPostalCodes = optimisticLayers.some(
+      (layer) => layer.postalCodes && layer.postalCodes.length > 0
+    );
+
+    if (hasPostalCodes && areaId) {
+      // Check if this change would cause data loss using utility function
+      if (
+        wouldGranularityChangeCauseDataLoss(
+          defaultGranularity,
+          newGranularity,
+          hasPostalCodes
+        )
+      ) {
+        try {
+          // Clear all postal codes from all layers before switching
+          for (const layer of optimisticLayers) {
+            if (layer.postalCodes && layer.postalCodes.length > 0) {
+              const codes = layer.postalCodes.map((pc) => pc.postalCode);
+              await removePostalCodesFromLayer(layer.id, codes);
+            }
+          }
+        } catch (error) {
+          toast.error("Fehler beim Löschen der Regionen");
+          return;
         }
-      );
-
-      const query = areaId ? `?areaId=${areaId}` : "";
-      router.push(`/postal-codes/${newGranularity}${query}`);
+      }
     }
+
+    const newLabel = getGranularityLabel(newGranularity);
+
+    // Show appropriate success message
+    if (hasPostalCodes) {
+      toast.success(`Wechsel zu ${newLabel} PLZ-Ansicht abgeschlossen`, {
+        description: "Gebiete wurden entsprechend angepasst",
+        duration: 3000,
+      });
+    } else {
+      toast.success(`🔄 Wechsel zu ${newLabel} PLZ-Ansicht...`, {
+        duration: 2000,
+      });
+    }
+
+    const query = areaId ? `?areaId=${areaId}` : "";
+    router.push(`/postal-codes/${newGranularity}${query}`);
   };
 
   // Handle direct address selection (pin icon)
@@ -356,7 +418,7 @@ export function PostalCodesViewClientWithLayers({
       if (code) {
         if (activeLayerId && areaId) {
           await addPostalCodesToLayer(activeLayerId, [code]);
-          return `PLZ ${code} zu Layer hinzugefügt`;
+          return `PLZ ${code} zu Gebiet hinzugefügt`;
         } else {
           selectPostalCode(code);
           return `PLZ ${code} ausgewählt`;
@@ -392,9 +454,9 @@ export function PostalCodesViewClientWithLayers({
   const handleImport = async (postalCodes: string[]) => {
     if (activeLayerId && areaId) {
       await addPostalCodesToLayer(activeLayerId, postalCodes);
-      toast.success(`${postalCodes.length} PLZ zu Layer hinzugefügt`);
+      toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
     } else {
-      toast.warning("Bitte wählen Sie einen aktiven Layer aus", {
+      toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
         duration: 3000,
       });
     }
@@ -519,6 +581,8 @@ export function PostalCodesViewClientWithLayers({
             areaId={areaId}
             addPostalCodesToLayer={addPostalCodesToLayer}
             removePostalCodesFromLayer={removePostalCodesFromLayer}
+            isViewingVersion={isViewingVersion}
+            versionId={versionId}
           />
         </MapErrorBoundary>
       </div>
