@@ -1,5 +1,10 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
+import {
+  createVersionAction,
+  getVersionsAction,
+  restoreVersionAction,
+} from "@/app/actions/version-actions";
 
 export interface AreaVersion {
   id: number;
@@ -34,19 +39,13 @@ export function useVersionHistory(areaId: number) {
       createdBy?: string;
     }) => {
       try {
-        const response = await fetch(`/api/areas/${areaId}/versions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to create version");
+        const result = await createVersionAction(areaId, data);
+        if (result.success && result.data) {
+          toast.success(`Version ${result.data.versionNumber} erstellt`);
+          return result.data;
+        } else {
+          throw new Error(result.error || "Failed to create version");
         }
-
-        const version = await response.json();
-        toast.success(`Version ${version.versionNumber} erstellt`);
-        return version;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
@@ -59,11 +58,12 @@ export function useVersionHistory(areaId: number) {
 
   const getVersionHistory = useCallback(async (): Promise<AreaVersion[]> => {
     try {
-      const response = await fetch(`/api/areas/${areaId}/versions`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch versions");
+      const result = await getVersionsAction(areaId);
+      if (result.success && result.data) {
+        return result.data;
+      } else {
+        throw new Error(result.error || "Failed to fetch versions");
       }
-      return response.json();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
@@ -75,44 +75,14 @@ export function useVersionHistory(areaId: number) {
   const restoreVersion = useCallback(
     async (version: AreaVersion) => {
       try {
-        // Restore layers from version snapshot
-        const { layers: snapshotLayers } = version.snapshot;
-
-        // This would need to be implemented by:
-        // 1. Delete all current layers
-        // 2. Recreate layers from snapshot
-        // For now, we'll just show the structure
-
         toast.promise(
           (async () => {
-            // Fetch current area
-            const areaResponse = await fetch(`/api/areas/${areaId}`);
-            const area = await areaResponse.json();
-
-            // Delete all current layers
-            for (const layer of area.layers) {
-              await fetch(`/api/areas/${areaId}/layers/${layer.id}`, {
-                method: "DELETE",
-              });
+            const result = await restoreVersionAction(areaId, version.id);
+            if (result.success) {
+              return `Version ${version.versionNumber} wiederhergestellt`;
+            } else {
+              throw new Error(result.error || "Failed to restore version");
             }
-
-            // Recreate layers from snapshot
-            for (const snapshotLayer of snapshotLayers) {
-              await fetch(`/api/areas/${areaId}/layers`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  name: snapshotLayer.name,
-                  color: snapshotLayer.color,
-                  opacity: snapshotLayer.opacity,
-                  isVisible: snapshotLayer.isVisible,
-                  orderIndex: snapshotLayer.orderIndex,
-                  postalCodes: snapshotLayer.postalCodes,
-                }),
-              });
-            }
-
-            return `Version ${version.versionNumber} wiederhergestellt`;
           })(),
           {
             loading: "Wiederherstellen...",

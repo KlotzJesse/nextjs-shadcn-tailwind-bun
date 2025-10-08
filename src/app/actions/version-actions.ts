@@ -481,3 +481,59 @@ export async function compareVersionsAction(
     return { success: false, error: "Failed to compare versions" };
   }
 }
+/**
+ * Get version info for the version indicator
+ */
+export async function getVersionIndicatorInfoAction(
+  areaId: number,
+  versionId?: number | null
+): ServerActionResponse<{
+  hasVersions: boolean;
+  versionInfo: {
+    versionNumber: number;
+    name?: string;
+    isLatest: boolean;
+  } | null;
+}> {
+  try {
+    const versions = await db.query.areaVersions.findMany({
+      where: eq(areaVersions.areaId, areaId),
+      orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
+    });
+
+    const hasVersions = versions.length > 0;
+
+    let versionInfo = null;
+
+    if (versionId) {
+      // Specific version is selected
+      const version = versions.find((v) => v.id === versionId);
+      if (version) {
+        versionInfo = {
+          versionNumber: version.versionNumber,
+          name: version.name,
+          isLatest: false,
+        };
+      }
+    } else if (versions.length > 0) {
+      // No specific version, but versions exist - showing latest
+      const latestVersion = versions[0];
+      versionInfo = {
+        versionNumber: latestVersion.versionNumber,
+        name: latestVersion.name,
+        isLatest: true,
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        hasVersions,
+        versionInfo,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching version indicator info:", error);
+    return { success: false, error: "Failed to fetch version info" };
+  }
+}

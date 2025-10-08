@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useMapState } from "@/lib/url-state/map-state";
 import { IconEye, IconHistory } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { getVersionIndicatorInfoAction } from "@/app/actions/version-actions";
 
 interface VersionIndicatorProps {
   areaId?: number | null;
@@ -23,31 +24,13 @@ export function VersionIndicator({ areaId }: VersionIndicatorProps) {
 
   useEffect(() => {
     if (areaId) {
-      // First check if area has any versions
-      fetch(`/api/areas/${areaId}/versions`)
-        .then((res) => res.json())
-        .then((versions) => {
-          setHasVersions(versions.length > 0);
-
-          if (versionId) {
-            // Specific version is selected
-            const version = versions.find((v: any) => v.id === versionId);
-            if (version) {
-              setVersionInfo({
-                versionNumber: version.versionNumber,
-                name: version.name,
-                isLatest: false,
-              });
-            }
-          } else if (versions.length > 0) {
-            // No specific version, but versions exist - showing latest
-            const latestVersion = versions[0]; // Already sorted by versionNumber DESC
-            setVersionInfo({
-              versionNumber: latestVersion.versionNumber,
-              name: latestVersion.name,
-              isLatest: true,
-            });
+      getVersionIndicatorInfoAction(areaId, versionId)
+        .then((result) => {
+          if (result.success && result.data) {
+            setHasVersions(result.data.hasVersions);
+            setVersionInfo(result.data.versionInfo);
           } else {
+            setHasVersions(false);
             setVersionInfo(null);
           }
         })
