@@ -29,6 +29,12 @@ interface PostalCodesMapProps {
   isViewingVersion?: boolean;
   versionId?: number | null;
   versions?: any[];
+  initialUndoRedoStatus?: {
+    canUndo: boolean;
+    canRedo: boolean;
+    undoCount: number;
+    redoCount: number;
+  };
   changes?: any[];
 }
 
@@ -40,6 +46,7 @@ export function PostalCodesMap({
   onGranularityChange,
   layers = [],
   activeLayerId = null,
+  initialUndoRedoStatus,
   areaId = null,
   addPostalCodesToLayer,
   removePostalCodesFromLayer,
@@ -67,6 +74,7 @@ export function PostalCodesMap({
       removePostalCodesFromLayer={removePostalCodesFromLayer}
       isViewingVersion={isViewingVersion}
       versionId={versionId}
+      initialUndoRedoStatus={initialUndoRedoStatus}
     />
   );
 }

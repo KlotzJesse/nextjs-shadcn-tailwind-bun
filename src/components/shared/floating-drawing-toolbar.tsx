@@ -28,6 +28,12 @@ interface FloatingDrawingToolbarProps {
   currentMode: TerraDrawMode | null;
   areaId: number | null | undefined;
   onModeChange: (mode: TerraDrawMode | null) => void;
+  initialUndoRedoStatus?: {
+    canUndo: boolean;
+    canRedo: boolean;
+    undoCount: number;
+    redoCount: number;
+  };
 }
 
 const drawingModes = [
@@ -79,6 +85,7 @@ export function FloatingDrawingToolbar({
   currentMode,
   areaId,
   onModeChange,
+  initialUndoRedoStatus,
 }: FloatingDrawingToolbarProps) {
   // Map drawing mode IDs to TerraDrawModes
   const drawingModeToTerraDrawMode = (modeId: string): TerraDrawMode | null => {
@@ -164,7 +171,7 @@ export function FloatingDrawingToolbar({
           </div>
         </div>
         <div className="pointer-events-auto">
-          <UndoRedoToolbar areaId={areaId!} variant="floating" />
+          <UndoRedoToolbar areaId={areaId!} variant="floating" initialStatus={initialUndoRedoStatus} />
         </div>
       </div>
     </div>

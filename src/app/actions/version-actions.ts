@@ -63,7 +63,8 @@ export async function createVersionAction(
         .orderBy(desc(areaVersions.versionNumber))
         .limit(1);
 
-      const nextVersionNumber = lastVersion.length > 0 ? lastVersion[0].versionNumber + 1 : 1;
+      const nextVersionNumber =
+        lastVersion.length > 0 ? lastVersion[0].versionNumber + 1 : 1;
 
       // Get change count since last version or from start
       const changeCount = await tx
@@ -130,9 +131,14 @@ export async function createVersionAction(
         .update(areaChanges)
         .set({
           versionAreaId: version.areaId,
-          versionNumber: version.versionNumber
+          versionNumber: version.versionNumber,
         })
-        .where(and(eq(areaChanges.areaId, areaId), eq(areaChanges.versionAreaId, sql`NULL`)));
+        .where(
+          and(
+            eq(areaChanges.areaId, areaId),
+            eq(areaChanges.versionAreaId, sql`NULL`)
+          )
+        );
 
       return { areaId: version.areaId, versionNumber: version.versionNumber };
     });
@@ -146,7 +152,8 @@ export async function createVersionAction(
     console.error("Error creating version:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to create version",
+      error:
+        error instanceof Error ? error.message : "Failed to create version",
     };
   }
 }
@@ -163,7 +170,12 @@ export async function autoSaveVersionAction(
     const uncommittedChanges = await db
       .select({ count: sql<number>`count(*)` })
       .from(areaChanges)
-      .where(and(eq(areaChanges.areaId, areaId), eq(areaChanges.versionAreaId, sql`NULL`)));
+      .where(
+        and(
+          eq(areaChanges.areaId, areaId),
+          eq(areaChanges.versionAreaId, sql`NULL`)
+        )
+      );
 
     if (uncommittedChanges[0]?.count === 0) {
       return { success: false, error: "No changes to save" };
@@ -286,9 +298,9 @@ export async function restoreVersionAction(
       if (currentLayers.length > 0) {
         const layerIds = currentLayers.map((l) => l.id);
         // Use inArray instead of ANY for proper Drizzle syntax
-        await tx.delete(areaLayerPostalCodes).where(
-          inArray(areaLayerPostalCodes.layerId, layerIds)
-        );
+        await tx
+          .delete(areaLayerPostalCodes)
+          .where(inArray(areaLayerPostalCodes.layerId, layerIds));
         await tx.delete(areaLayers).where(eq(areaLayers.areaId, areaId));
       }
 
@@ -338,7 +350,8 @@ export async function restoreVersionAction(
           .orderBy(desc(areaVersions.versionNumber))
           .limit(1);
 
-        const nextVersionNumber = lastVersion.length > 0 ? lastVersion[0].versionNumber + 1 : 1;
+        const nextVersionNumber =
+          lastVersion.length > 0 ? lastVersion[0].versionNumber + 1 : 1;
 
         const [newVersion] = await tx
           .insert(areaVersions)
@@ -378,7 +391,8 @@ export async function restoreVersionAction(
     console.error("Error restoring version:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to restore version",
+      error:
+        error instanceof Error ? error.message : "Failed to restore version",
     };
   }
 }
@@ -406,12 +420,14 @@ export async function deleteVersionAction(
       }
 
       // Delete associated changes
-      await tx.delete(areaChanges).where(
-        and(
-          eq(areaChanges.versionAreaId, version.areaId),
-          eq(areaChanges.versionNumber, version.versionNumber)
-        )
-      );
+      await tx
+        .delete(areaChanges)
+        .where(
+          and(
+            eq(areaChanges.versionAreaId, version.areaId),
+            eq(areaChanges.versionNumber, version.versionNumber)
+          )
+        );
 
       // Delete the version
       await tx.delete(areaVersions).where(eq(areaVersions.id, versionId));
@@ -423,7 +439,8 @@ export async function deleteVersionAction(
     console.error("Error deleting version:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to delete version",
+      error:
+        error instanceof Error ? error.message : "Failed to delete version",
     };
   }
 }
@@ -449,13 +466,13 @@ export async function compareVersionsAction(
         where: and(
           eq(areaVersions.areaId, areaId1),
           eq(areaVersions.versionNumber, versionNumber1)
-        )
+        ),
       }),
       db.query.areaVersions.findFirst({
         where: and(
           eq(areaVersions.areaId, areaId2),
           eq(areaVersions.versionNumber, versionNumber2)
-        )
+        ),
       }),
     ]);
 
@@ -470,15 +487,20 @@ export async function compareVersionsAction(
     const layers1Map = new Map(snapshot1.layers.map((l: any) => [l.name, l]));
     const layers2Map = new Map(snapshot2.layers.map((l: any) => [l.name, l]));
 
-    const layersAdded = snapshot2.layers.filter((l: any) => !layers1Map.has(l.name));
-    const layersRemoved = snapshot1.layers.filter((l: any) => !layers2Map.has(l.name));
+    const layersAdded = snapshot2.layers.filter(
+      (l: any) => !layers1Map.has(l.name)
+    );
+    const layersRemoved = snapshot1.layers.filter(
+      (l: any) => !layers2Map.has(l.name)
+    );
     const layersModified = snapshot2.layers.filter((l2: any) => {
       const l1 = layers1Map.get(l2.name);
       if (!l1) return false;
       return (
         (l1 as any).color !== l2.color ||
         (l1 as any).opacity !== l2.opacity ||
-        JSON.stringify((l1 as any).postalCodes.sort()) !== JSON.stringify(l2.postalCodes.sort())
+        JSON.stringify((l1 as any).postalCodes.sort()) !==
+          JSON.stringify(l2.postalCodes.sort())
       );
     });
 
@@ -490,8 +512,12 @@ export async function compareVersionsAction(
       snapshot2.layers.flatMap((l: any) => l.postalCodes)
     );
 
-    const postalCodesAdded = Array.from(allCodes2).filter((c) => !allCodes1.has(c));
-    const postalCodesRemoved = Array.from(allCodes1).filter((c) => !allCodes2.has(c));
+    const postalCodesAdded = Array.from(allCodes2).filter(
+      (c) => !allCodes1.has(c)
+    );
+    const postalCodesRemoved = Array.from(allCodes1).filter(
+      (c) => !allCodes2.has(c)
+    );
 
     return {
       success: true,
@@ -506,62 +532,5 @@ export async function compareVersionsAction(
   } catch (error) {
     console.error("Error comparing versions:", error);
     return { success: false, error: "Failed to compare versions" };
-  }
-}
-/**
- * Get version info for the version indicator
- */
-export async function getVersionIndicatorInfoAction(
-  areaId: number,
-  versionId?: number | null
-): ServerActionResponse<{
-  hasVersions: boolean;
-  versionInfo: {
-    versionNumber: number;
-    name?: string;
-    isLatest: boolean;
-  } | null;
-}> {
-  try {
-    const versions = await db.query.areaVersions.findMany({
-      where: eq(areaVersions.areaId, areaId),
-      orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
-    });
-
-    const hasVersions = versions.length > 0;
-
-    let versionInfo = null;
-
-    if (versionId) {
-      // Specific version is selected - for now, assume it's the latest if versionId is provided
-      // This needs to be updated when we have a way to identify specific versions
-      if (versionId && versions.length > 0) {
-        const version = versions.find((v) => v.versionNumber === versionId) || versions[0];
-        versionInfo = {
-          versionNumber: version.versionNumber,
-          name: version.name,
-          isLatest: version.versionNumber === versions[0].versionNumber,
-        };
-      }
-    } else if (versions.length > 0) {
-      // No specific version, but versions exist - showing latest
-      const latestVersion = versions[0];
-      versionInfo = {
-        versionNumber: latestVersion.versionNumber,
-        name: latestVersion.name,
-        isLatest: true,
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        hasVersions,
-        versionInfo,
-      },
-    };
-  } catch (error) {
-    console.error("Error fetching version indicator info:", error);
-    return { success: false, error: "Failed to fetch version info" };
   }
 }

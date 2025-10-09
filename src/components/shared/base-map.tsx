@@ -5,12 +5,10 @@ import {
 import { DrawingToolsSkeleton } from "@/components/ui/loading-skeletons";
 import { useMapCenterZoomSync } from "@/lib/hooks/use-map-center-zoom-sync";
 import { useMapConfig } from "@/lib/hooks/use-map-config";
-import { useMapDataValidation } from "@/lib/hooks/use-map-data-validation";
 import { useMapInitialization } from "@/lib/hooks/use-map-initialization";
 import { useMapInteractions } from "@/lib/hooks/use-map-interactions";
 import { useMapLayers } from "@/lib/hooks/use-map-layers";
 import { useMapOptimizations } from "@/lib/hooks/use-map-optimizations";
-import { useMapPerformanceMonitor } from "@/lib/hooks/use-map-performance-monitor";
 import { useMapSelectedFeaturesSource } from "@/lib/hooks/use-map-selected-features-source";
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { useMapState } from "@/lib/url-state/map-state";
@@ -78,15 +76,13 @@ const BaseMapComponent = ({
   versionId,
   versions,
   changes,
+  initialUndoRedoStatus,
 }: BaseMapProps) => {
   // Stable ref for map container
   const mapContainer = useRef<HTMLDivElement>(null);
 
   // Stable map configuration using custom hook
   const mapConfig = useMapConfig(center, zoom);
-
-  // Memoized data validation for early return
-  const { isValid: isDataValid, errorMessage } = useMapDataValidation(data);
 
   // Map initialization with stable config
   const { mapRef: map, isMapLoaded } = useMapInitialization({
@@ -152,16 +148,6 @@ const BaseMapComponent = ({
     setMapCenterZoom,
   });
 
-  // Performance monitoring (development only)
-  useMapPerformanceMonitor({
-    featureCount: optimizations.featureCount,
-    selectedCount: optimizations.selectedCount,
-    isMapLoaded,
-    layersLoaded,
-    currentDrawingMode: interactions.currentDrawingMode,
-    componentName: "BaseMap",
-  });
-
   // Memoized toggle handlers with React 19 batching optimization
   const handleShowTools = useStableCallback(() => {
     startTransition(() => {
@@ -181,15 +167,6 @@ const BaseMapComponent = ({
     });
   });
 
-  // Early return with stable error message
-  if (!isDataValid) {
-    return (
-      <MapErrorMessage
-        message={errorMessage || "Unknown error occurred with map data."}
-      />
-    );
-  }
-
   return (
     <MapErrorBoundary>
       <div
@@ -204,6 +181,7 @@ const BaseMapComponent = ({
         currentMode={interactions.currentDrawingMode}
         onModeChange={interactions.handleDrawingModeChange}
         areaId={areaId}
+        initialUndoRedoStatus={initialUndoRedoStatus}
       />
 
       {interactions.isDrawingToolsVisible && (

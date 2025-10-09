@@ -67,46 +67,15 @@ export function useTerraDraw({
     onStop?.();
   });
 
-  // Debug logging only on mount/unmount to prevent rerender triggers
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      const map = mapRef.current;
-      console.log(
-        "[TerraDraw] useTerraDraw hook mounted. map:",
-        map,
-        "isMapLoaded:",
-        isMapLoaded,
-        "isEnabled:",
-        isEnabled,
-        "mode:",
-        mode
-      );
-      return () => {
-        console.log("[TerraDraw] useTerraDraw hook unmounted.");
-      };
-    }
-  }, [mapRef, isMapLoaded, isEnabled, mode]); // Include all dependencies for proper debugging  // Only initialize TerraDraw once, after map is loaded
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapLoaded || isInitializedRef.current) return;
-
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        "[TerraDraw] Initializing TerraDraw with ready map and style..."
-      );
-      console.log("[TerraDraw] Map instance:", map);
-      console.log("[TerraDraw] Map container:", map?.getContainer());
-      console.log("[TerraDraw] Map loaded():", map?.loaded());
-    }
 
     try {
       // Create adapter with explicit configuration
       const adapter = new TerraDrawMapLibreGLAdapter({
         map,
       });
-      if (process.env.NODE_ENV === "development") {
-        console.log("[TerraDraw] Adapter created:", adapter);
-      }
 
       const draw = new TerraDraw({
         adapter,
@@ -130,33 +99,15 @@ export function useTerraDraw({
         ],
       });
 
-      if (process.env.NODE_ENV === "development") {
-        console.log("[TerraDraw] TerraDraw instance created:", draw);
-      }
-
       draw.on(
         "finish",
         (_id: string | number, context: { action: string; mode: string }) => {
           try {
-            if (process.env.NODE_ENV === "development") {
-              console.log("[TerraDraw] Finish event:", { _id, context });
-            }
             if (context.action === "draw") {
               const allFeatures = draw.getSnapshot();
-              if (process.env.NODE_ENV === "development") {
-                console.log(
-                  "[TerraDraw] All features after draw:",
-                  allFeatures
-                );
-              }
+
               const featureIds = allFeatures.map((feature) => feature.id);
               if (featureIds.length > 0) {
-                if (process.env.NODE_ENV === "development") {
-                  console.log(
-                    "[TerraDraw] Calling onSelectionChange with:",
-                    featureIds
-                  );
-                }
                 stableOnSelectionChange(
                   featureIds.filter((id) => id !== undefined && id !== null)
                 );
@@ -168,37 +119,11 @@ export function useTerraDraw({
         }
       );
 
-      // Add change event listener for debugging
-      if (process.env.NODE_ENV === "development") {
-        draw.on("change", (features: unknown[], type: string) => {
-          console.log("[TerraDraw] Change event:", { features, type });
-        });
-      }
-
-      // Add ready event listener
-      draw.on("ready", () => {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] TerraDraw is ready");
-        }
-      });
-
-      // Start TerraDraw immediately since we know map and style are ready
-      if (process.env.NODE_ENV === "development") {
-        console.log("[TerraDraw] Starting TerraDraw in select mode");
-      }
       draw.start();
       draw.setMode("select");
-      if (process.env.NODE_ENV === "development") {
-        console.log("[TerraDraw] TerraDraw started successfully");
-      }
 
       drawRef.current = draw;
       isInitializedRef.current = true;
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "[TerraDraw] TerraDraw initialized and started successfully"
-        );
-      }
     } catch (error) {
       console.error("[TerraDraw] Failed to initialize TerraDraw:", error);
       isInitializedRef.current = false;
@@ -245,65 +170,12 @@ export function useTerraDraw({
     return drawRef.current.getModeState();
   });
 
-  // Debug function to test TerraDraw manually
-  const debugTerraDraw = useStableCallback(() => {
-    const map = mapRef.current;
-    if (!drawRef.current || !map) {
-      console.log("[TerraDraw] Debug: Not initialized");
-      return;
-    }
-
-    console.log("[TerraDraw] Debug: Current state");
-    console.log("- Mode:", drawRef.current.getModeState());
-    console.log("- Features:", drawRef.current.getSnapshot());
-    console.log("- Map interactions:", {
-      dragPan: map.dragPan.isEnabled(),
-      scrollZoom: map.scrollZoom.isEnabled(),
-      boxZoom: map.boxZoom.isEnabled(),
-    });
-
-    // Try to manually set to freehand mode
-    try {
-      console.log("[TerraDraw] Debug: Manually setting to freehand");
-      drawRef.current.setMode("freehand");
-      console.log(
-        "[TerraDraw] Debug: Mode after manual set:",
-        drawRef.current.getModeState()
-      );
-    } catch (error) {
-      console.error("[TerraDraw] Debug: Error setting mode:", error);
-    }
-  });
-
-  // Expose debug function globally for testing
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      (window as any).debugTerraDraw = debugTerraDraw;
-    }
-  }, [debugTerraDraw]);
-
   // Handle mode changes with stable callbacks
   useEffect(() => {
     const map = mapRef.current;
-    if (process.env.NODE_ENV === "development") {
-      console.log("[TerraDraw] Mode change effect triggered:", {
-        drawRef: !!drawRef.current,
-        isInitialized: isInitializedRef.current,
-        isEnabled,
-        mode,
-        map: !!map,
-      });
-    }
 
     if (!drawRef.current || !isInitializedRef.current || !map) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[TerraDraw] Mode change skipped - not ready");
-      }
       return;
-    }
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[TerraDraw] Processing mode change:", { isEnabled, mode });
     }
 
     try {
@@ -312,45 +184,20 @@ export function useTerraDraw({
       try {
         const currentModeState = drawRef.current.getModeState();
         isStarted = !!currentModeState;
-        if (process.env.NODE_ENV === "development") {
-          console.log(
-            "[TerraDraw] Current mode state:",
-            currentModeState,
-            "isStarted:",
-            isStarted
-          );
-        }
       } catch {
-        if (process.env.NODE_ENV === "development") {
-          console.log(
-            "[TerraDraw] Could not get mode state, assuming not started"
-          );
-        }
         isStarted = false;
       }
 
       // Ensure TerraDraw is started
       if (!isStarted) {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Starting TerraDraw");
-        }
         drawRef.current.start();
         drawRef.current.setMode("select");
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] TerraDraw started in select mode");
-        }
       }
 
       // Now handle mode switching
       if (isEnabled && mode && mode !== "cursor") {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Enabling drawing mode:", mode);
-        }
-
         // Disable map interactions BEFORE setting mode
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Disabling map interactions");
-        }
+
         map.dragPan.disable();
         map.scrollZoom.disable();
         map.boxZoom.disable();
@@ -359,39 +206,19 @@ export function useTerraDraw({
         map.getContainer().style.cursor = "crosshair";
 
         // Set the drawing mode
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Setting mode to:", mode);
-        }
+
         drawRef.current.setMode(mode);
 
-        // Verify the mode was set
-        if (process.env.NODE_ENV === "development") {
-          const newMode = drawRef.current.getModeState();
-          console.log("[TerraDraw] Verified mode after set:", newMode);
-        }
-
         // Force a repaint to ensure events are properly attached
-        map.triggerRepaint();
+        //map.triggerRepaint();
 
         stableOnStart();
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Drawing mode enabled successfully");
-        }
       } else {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Switching to select/cursor mode");
-        }
-
         // Set to select mode
         drawRef.current.setMode("select");
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Set to select mode");
-        }
 
         // Re-enable map interactions
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Re-enabling map interactions");
-        }
+
         map.dragPan.enable();
         map.scrollZoom.enable();
         map.boxZoom.enable();
@@ -400,9 +227,6 @@ export function useTerraDraw({
         map.getContainer().style.cursor = "";
 
         stableOnStop();
-        if (process.env.NODE_ENV === "development") {
-          console.log("[TerraDraw] Cursor mode enabled successfully");
-        }
       }
     } catch (error) {
       console.error("[TerraDraw] Error in mode change:", error);

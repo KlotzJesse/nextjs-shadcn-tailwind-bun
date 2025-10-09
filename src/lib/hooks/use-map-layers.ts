@@ -82,10 +82,6 @@ export function useMapLayers({
       return;
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("[useMapLayers] Initializing layers...");
-    }
-
     // Create stable references for functions to avoid dependency issues
     const selectedFeatureCollection = (() => {
       return getSelectedFeatureCollection();
@@ -200,14 +196,6 @@ export function useMapLayers({
           visibility: "visible",
         },
       } as LayerSpecification);
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("[useMapLayers] Added border layer:", `${layerId}-border`);
-        console.log(
-          "[useMapLayers] Border layer paint properties:",
-          map.getPaintProperty(`${layerId}-border`, "line-dasharray")
-        );
-      }
     }
     // 3. Selected postal code fill (above postal code border)
     // This shows a preview of what will be added to the active layer
@@ -418,12 +406,6 @@ export function useMapLayers({
           : ids.hoverLayerId
       );
     }
-
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        "[useMapLayers] Layers initialized successfully - optimized!"
-      );
-    }
   }, [
     map,
     isMapLoaded,
@@ -538,19 +520,6 @@ export function useMapLayers({
       return;
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("[useMapLayers] Rendering area layers:", layers.length);
-      layers.forEach((layer) => {
-        console.log(`[useMapLayers] Layer ${layer.id} (${layer.name}):`, {
-          postalCodesCount: layer.postalCodes?.length || 0,
-          color: layer.color,
-          opacity: layer.opacity,
-          isVisible: layer.isVisible,
-          isActive: activeLayerId === layer.id,
-        });
-      });
-    }
-
     // Create a feature collection for each layer with its postal codes
     layers.forEach((layer) => {
       const layerSourceId = `area-layer-${layer.id}-source`;
@@ -568,22 +537,6 @@ export function useMapLayers({
           feature.properties?.postalCode;
         return code && postalCodes.includes(code.toString());
       });
-
-      if (process.env.NODE_ENV === "development" && postalCodes.length > 0) {
-        console.log(
-          `[useMapLayers] Layer ${layer.id} matched ${layerFeatures.length}/${postalCodes.length} features`
-        );
-        if (layerFeatures.length === 0 && postalCodes.length > 0) {
-          console.warn(
-            `[useMapLayers] No features found for layer ${layer.id}. First postal code:`,
-            postalCodes[0]
-          );
-          console.warn(
-            `[useMapLayers] First data feature code:`,
-            data.features[0]?.properties?.code
-          );
-        }
-      }
 
       const layerFeatureCollection: FeatureCollection<
         Polygon | MultiPolygon,

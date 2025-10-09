@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { type InferSelectModel, type InferInsertModel } from "drizzle-orm";
 import {
   check,
   foreignKey,
@@ -327,7 +328,12 @@ export const areaChanges = pgTable(
   },
   (table) => [
     // Combined primary key: changes are unique within area + version + sequence
-    primaryKey(table.areaId, table.versionAreaId, table.versionNumber, table.sequenceNumber),
+    primaryKey(
+      table.areaId,
+      table.versionAreaId,
+      table.versionNumber,
+      table.sequenceNumber
+    ),
     index("idx_area_changes_created_at").using(
       "btree",
       table.createdAt.asc().nullsLast().op("timestamp_ops")
@@ -341,13 +347,13 @@ export const areaChanges = pgTable(
     foreignKey({
       columns: [table.areaId],
       foreignColumns: [areas.id],
-      name: "fk_area_changes_area_id"
+      name: "fk_area_changes_area_id",
     }).onDelete("cascade"),
     // Foreign key to area_versions (composite)
     foreignKey({
       columns: [table.versionAreaId, table.versionNumber],
       foreignColumns: [areaVersions.areaId, areaVersions.versionNumber],
-      name: "fk_area_changes_version"
+      name: "fk_area_changes_version",
     }),
   ]
 );
@@ -372,3 +378,39 @@ export const areaUndoStacks = pgTable(
     unique("area_undo_stacks_area_id_unique").on(table.areaId),
   ]
 );
+
+// Type definitions for all tables
+export type SelectPerformanceMetrics = typeof performanceMetrics.$inferSelect;
+export type InsertPerformanceMetrics = typeof performanceMetrics.$inferInsert;
+
+export type SelectApiCache = typeof apiCache.$inferSelect;
+export type InsertApiCache = typeof apiCache.$inferInsert;
+
+export type SelectErrorLogs = typeof errorLogs.$inferSelect;
+export type InsertErrorLogs = typeof errorLogs.$inferInsert;
+
+export type SelectPostalCodes = typeof postalCodes.$inferSelect;
+export type InsertPostalCodes = typeof postalCodes.$inferInsert;
+
+export type SelectStates = typeof states.$inferSelect;
+export type InsertStates = typeof states.$inferInsert;
+
+export type SelectAreas = typeof areas.$inferSelect;
+export type InsertAreas = typeof areas.$inferInsert;
+
+export type SelectAreaVersions = typeof areaVersions.$inferSelect;
+export type InsertAreaVersions = typeof areaVersions.$inferInsert;
+
+export type SelectAreaLayers = typeof areaLayers.$inferSelect;
+export type InsertAreaLayers = typeof areaLayers.$inferInsert;
+
+export type SelectAreaLayerPostalCodes =
+  typeof areaLayerPostalCodes.$inferSelect;
+export type InsertAreaLayerPostalCodes =
+  typeof areaLayerPostalCodes.$inferInsert;
+
+export type SelectAreaChanges = typeof areaChanges.$inferSelect;
+export type InsertAreaChanges = typeof areaChanges.$inferInsert;
+
+export type SelectAreaUndoStacks = typeof areaUndoStacks.$inferSelect;
+export type InsertAreaUndoStacks = typeof areaUndoStacks.$inferInsert;

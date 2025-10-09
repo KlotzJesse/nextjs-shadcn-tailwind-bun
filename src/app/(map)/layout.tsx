@@ -53,12 +53,9 @@ export default async function MapLayout({
           <AppSidebarWithData />
         </Suspense>
         <SidebarInset>
-          <Suspense fallback={<Skeleton className="w-full h-12" />}>
-            <SiteHeader />
-          </Suspense>
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2 h-full">
-              <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 h-full">
+              <div className="flex flex-col gap-4 pb-4 md:gap-6 md:pb-6 h-full">
                 {children}
               </div>
             </div>

@@ -27,39 +27,14 @@ import {
   compareVersionsAction,
 } from "@/app/actions/version-actions";
 import { toast } from "sonner";
-
-interface Version {
-  id: number;
-  areaId: number;
-  versionNumber: number;
-  name: string | null;
-  description: string | null;
-  snapshot: any;
-  changesSummary: string | null;
-  parentVersionId: number | null;
-  branchName: string | null;
-  isActive: string;
-  changeCount: number;
-  createdBy: string | null;
-  createdAt: string;
-}
-
-interface Change {
-  id: number;
-  changeType: string;
-  entityType: string;
-  changeData: any;
-  previousData: any;
-  createdAt: string;
-  createdBy: string | null;
-}
+import { SelectAreaVersions, SelectAreaChanges } from "@/lib/schema/schema";
 
 interface EnhancedVersionHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   areaId: number;
-  initialVersions: Version[];
-  initialChanges: Change[];
+  initialVersions: SelectAreaVersions[];
+  initialChanges: SelectAreaChanges[];
 }
 
 export function EnhancedVersionHistoryDialog({
@@ -69,15 +44,21 @@ export function EnhancedVersionHistoryDialog({
   initialVersions,
   initialChanges,
 }: EnhancedVersionHistoryDialogProps) {
-  const [versions] = useState<Version[]>(initialVersions);
-  const [changes] = useState<Change[]>(initialChanges);
-  const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
-  const [compareVersion, setCompareVersion] = useState<Version | null>(null);
+  const [versions] = useState<SelectAreaVersions[]>(initialVersions);
+  const [changes] = useState<SelectAreaChanges[]>(initialChanges);
+  const [selectedVersion, setSelectedVersion] =
+    useState<SelectAreaVersions | null>(null);
+  const [compareVersion, setCompareVersion] =
+    useState<SelectAreaVersions | null>(null);
   const [comparison, setComparison] = useState<any>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleRestore = async (version: Version) => {
-    if (!confirm(`Restore version ${version.versionNumber}? This will create a new branch.`)) {
+  const handleRestore = async (version: SelectAreaVersions) => {
+    if (
+      !confirm(
+        `Restore version ${version.versionNumber}? This will create a new branch.`
+      )
+    ) {
       return;
     }
 
@@ -140,7 +121,8 @@ export function EnhancedVersionHistoryDialog({
         <DialogHeader>
           <DialogTitle>Versionshistorie & Änderungen</DialogTitle>
           <DialogDescription>
-            Alle Versionen und detaillierte Änderungshistorie für dieses Gebiet anzeigen
+            Alle Versionen und detaillierte Änderungshistorie für dieses Gebiet
+            anzeigen
           </DialogDescription>
         </DialogHeader>
 
@@ -183,7 +165,9 @@ export function EnhancedVersionHistoryDialog({
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline">v{version.versionNumber}</Badge>
+                          <Badge variant="outline">
+                            v{version.versionNumber}
+                          </Badge>
                           {version.isActive === "true" && (
                             <Badge variant="default" className="bg-blue-600">
                               Aktiv
@@ -218,7 +202,9 @@ export function EnhancedVersionHistoryDialog({
                         <span>
                           {version.snapshot?.layers?.length || 0} layer(s)
                         </span>
-                        {version.createdBy && <span>by {version.createdBy}</span>}
+                        {version.createdBy && (
+                          <span>by {version.createdBy}</span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -238,7 +224,11 @@ export function EnhancedVersionHistoryDialog({
                 <div className="space-y-2">
                   {changes.map((change) => (
                     <div
-                      key={`${change.areaId}-${change.versionAreaId || 'null'}-${change.versionNumber || 'null'}-${change.sequenceNumber}`}
+                      key={`${change.areaId}-${
+                        change.versionAreaId || "null"
+                      }-${change.versionNumber || "null"}-${
+                        change.sequenceNumber
+                      }`}
                       className="p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-start justify-between mb-1">
@@ -255,22 +245,29 @@ export function EnhancedVersionHistoryDialog({
                       <div className="text-sm">
                         {change.changeType === "add_postal_codes" && (
                           <span>
-                            Added {change.changeData?.postalCodes?.length || 0} postal code(s)
+                            Added {change.changeData?.postalCodes?.length || 0}{" "}
+                            postal code(s)
                           </span>
                         )}
                         {change.changeType === "remove_postal_codes" && (
                           <span>
-                            Removed {change.changeData?.postalCodes?.length || 0} postal code(s)
+                            Removed{" "}
+                            {change.changeData?.postalCodes?.length || 0} postal
+                            code(s)
                           </span>
                         )}
                         {change.changeType === "create_layer" && (
-                          <span>Layer erstellt: {change.changeData?.layer?.name}</span>
+                          <span>
+                            Layer erstellt: {change.changeData?.layer?.name}
+                          </span>
                         )}
                         {change.changeType === "update_layer" && (
                           <span>Layer-Eigenschaften aktualisiert</span>
                         )}
                         {change.changeType === "delete_layer" && (
-                          <span>Layer gelöscht: {change.previousData?.layer?.name}</span>
+                          <span>
+                            Layer gelöscht: {change.previousData?.layer?.name}
+                          </span>
                         )}
                         {change.createdBy && (
                           <span className="text-xs text-muted-foreground ml-2">
@@ -352,11 +349,16 @@ export function EnhancedVersionHistoryDialog({
                         <h4 className="font-medium text-green-600 mb-2">
                           Layer hinzugefügt ({comparison.layersAdded.length})
                         </h4>
-                        {comparison.layersAdded.map((layer: any, idx: number) => (
-                          <div key={`added-${layer.name}-${idx}`} className="text-sm pl-4">
-                            + {layer.name}
-                          </div>
-                        ))}
+                        {comparison.layersAdded.map(
+                          (layer: any, idx: number) => (
+                            <div
+                              key={`added-${layer.name}-${idx}`}
+                              className="text-sm pl-4"
+                            >
+                              + {layer.name}
+                            </div>
+                          )
+                        )}
                       </div>
                     )}
                     {comparison.layersRemoved?.length > 0 && (
@@ -364,11 +366,16 @@ export function EnhancedVersionHistoryDialog({
                         <h4 className="font-medium text-red-600 mb-2">
                           Layer entfernt ({comparison.layersRemoved.length})
                         </h4>
-                        {comparison.layersRemoved.map((layer: any, idx: number) => (
-                          <div key={`removed-${layer.name}-${idx}`} className="text-sm pl-4">
-                            - {layer.name}
-                          </div>
-                        ))}
+                        {comparison.layersRemoved.map(
+                          (layer: any, idx: number) => (
+                            <div
+                              key={`removed-${layer.name}-${idx}`}
+                              className="text-sm pl-4"
+                            >
+                              - {layer.name}
+                            </div>
+                          )
+                        )}
                       </div>
                     )}
                     {comparison.layersModified?.length > 0 && (
@@ -376,20 +383,27 @@ export function EnhancedVersionHistoryDialog({
                         <h4 className="font-medium text-blue-600 mb-2">
                           Layer geändert ({comparison.layersModified.length})
                         </h4>
-                        {comparison.layersModified.map((layer: any, idx: number) => (
-                          <div key={`modified-${layer.name}-${idx}`} className="text-sm pl-4">
-                            ~ {layer.name}
-                          </div>
-                        ))}
+                        {comparison.layersModified.map(
+                          (layer: any, idx: number) => (
+                            <div
+                              key={`modified-${layer.name}-${idx}`}
+                              className="text-sm pl-4"
+                            >
+                              ~ {layer.name}
+                            </div>
+                          )
+                        )}
                       </div>
                     )}
                     <div className="pt-4 border-t">
                       <div className="text-sm space-y-1">
                         <div className="text-green-600">
-                          +{comparison.postalCodesAdded?.length || 0} Postleitzahlen hinzugefügt
+                          +{comparison.postalCodesAdded?.length || 0}{" "}
+                          Postleitzahlen hinzugefügt
                         </div>
                         <div className="text-red-600">
-                          -{comparison.postalCodesRemoved?.length || 0} Postleitzahlen entfernt
+                          -{comparison.postalCodesRemoved?.length || 0}{" "}
+                          Postleitzahlen entfernt
                         </div>
                       </div>
                     </div>
@@ -410,8 +424,8 @@ export function EnhancedVersionHistoryDialog({
               disabled={isPending || selectedVersion.isActive === "true"}
               className="gap-2"
             >
-              <IconRestore className="h-4 w-4" />
-              v{selectedVersion.versionNumber} wiederherstellen
+              <IconRestore className="h-4 w-4" />v
+              {selectedVersion.versionNumber} wiederherstellen
             </Button>
           )}
         </DialogFooter>

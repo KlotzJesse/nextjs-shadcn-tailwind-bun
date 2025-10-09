@@ -1,11 +1,8 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useMapState } from "@/lib/url-state/map-state";
 import { IconEye, IconHistory } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
-import { getVersionIndicatorInfoAction } from "@/app/actions/version-actions";
+import { getVersionIndicatorInfo } from "@/lib/db/data-functions";
+import { Result } from "pg";
 
 interface VersionIndicatorProps {
   areaId?: number | null;
@@ -17,58 +14,34 @@ interface VersionInfo {
   isLatest?: boolean;
 }
 
-export function VersionIndicator({ areaId }: VersionIndicatorProps) {
-  const { versionId, setVersion } = useMapState();
-  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
-  const [hasVersions, setHasVersions] = useState(false);
+export async function VersionIndicator({ areaId }: VersionIndicatorProps) {
+  const versionInfo = await getVersionIndicatorInfo(areaId!, 1);
 
-  useEffect(() => {
-    if (areaId) {
-      getVersionIndicatorInfoAction(areaId, versionId)
-        .then((result) => {
-          if (result.success && result.data) {
-            setHasVersions(result.data.hasVersions);
-            setVersionInfo(result.data.versionInfo);
-          } else {
-            setHasVersions(false);
-            setVersionInfo(null);
-          }
-        })
-        .catch(console.error);
-    } else {
-      setVersionInfo(null);
-      setHasVersions(false);
-    }
-  }, [versionId, areaId]);
+  console.log("VERSION INFO:", versionInfo);
 
   // Don't show anything if no area is selected or no versions exist
-  if (!areaId || !hasVersions || !versionInfo) {
+  if (!areaId || !versionInfo.hasVersions || !versionInfo.versionInfo) {
     return null;
   }
 
   return (
     <div className="flex items-center gap-2">
       <Badge
-        variant={versionInfo.isLatest ? "default" : "secondary"}
+        variant={versionInfo.versionInfo.isLatest ? "default" : "secondary"}
         className="flex items-center gap-1"
       >
         <IconHistory className="h-3 w-3" />
-        {versionInfo.isLatest ? "Aktuelle " : ""}Version{" "}
-        {versionInfo.versionNumber}
-        {versionInfo.name && ` (${versionInfo.name})`}
+        {versionInfo.versionInfo.isLatest ? "Aktuelle " : ""}Version{" "}
+        {versionInfo.versionInfo.versionNumber}
+        {versionInfo.versionInfo.name && ` (${versionInfo.versionInfo.name})`}
       </Badge>
-      {!versionInfo.isLatest && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setVersion(null)}
-          className="h-6 text-xs"
-        >
+      {!versionInfo.versionInfo.isLatest && (
+        <Button variant="outline" size="sm" className="h-6 text-xs">
           <IconEye className="h-3 w-3 mr-1" />
           Aktuelle Version
         </Button>
       )}
-      {!versionInfo.isLatest && (
+      {!versionInfo.versionInfo.isLatest && (
         <span className="text-xs text-muted-foreground">
           Änderungen → neue Version
         </span>

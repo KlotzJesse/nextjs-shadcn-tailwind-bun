@@ -241,21 +241,6 @@ export function PostalCodesViewClientWithLayers({
     });
   };
 
-  // Debug layer functions
-  useEffect(() => {
-    console.log(
-      "[postal-codes-view-client-layers] Layer functions available:",
-      {
-        areaId,
-        activeLayerId,
-        addFunction: !!addPostalCodesToLayer,
-        removeFunction: !!removePostalCodesFromLayer,
-        layersCount: optimisticLayers.length,
-      }
-    );
-  }, [areaId, activeLayerId, optimisticLayers.length]);
-
-
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
   const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
 
@@ -325,22 +310,6 @@ export function PostalCodesViewClientWithLayers({
       setActiveLayer(firstLayerId);
     }
   }, [activeLayerId, optimisticLayers.length, setActiveLayer]);
-
-  // Debug logging for layers
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[PostalCodesViewClientWithLayers] Layers updated:", {
-        count: optimisticLayers.length,
-        areaId,
-        activeLayerId,
-        layers: optimisticLayers.map((l) => ({
-          id: l.id,
-          name: l.name,
-          postalCodesCount: l.postalCodes?.length || 0,
-        })),
-      });
-    }
-  }, [optimisticLayers, areaId, activeLayerId]);
 
   const handleGranularityChange = async (newGranularity: string) => {
     if (newGranularity === defaultGranularity) return;
@@ -531,6 +500,7 @@ export function PostalCodesViewClientWithLayers({
             versionId={versionId}
             versions={versions}
             changes={changes}
+            initialUndoRedoStatus={initialUndoRedoStatus}
           />
         </MapErrorBoundary>
       </div>

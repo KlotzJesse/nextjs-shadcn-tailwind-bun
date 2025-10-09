@@ -7,16 +7,16 @@ import { useState } from "react";
  * Optimized for React 19 with minimal re-renders
  */
 export function useMapDrawingTools() {
-  const [currentDrawingMode, setCurrentDrawingMode] = useState<TerraDrawMode | null>(null);
+  const [currentDrawingMode, setCurrentDrawingMode] =
+    useState<TerraDrawMode | null>(null);
   const [isDrawingToolsVisible, setIsDrawingToolsVisible] = useState(true);
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleDrawingModeChange = useStableCallback((mode: TerraDrawMode | null) => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[useMapDrawingTools] Drawing mode changed:", mode);
+  const handleDrawingModeChange = useStableCallback(
+    (mode: TerraDrawMode | null) => {
+      setCurrentDrawingMode(mode);
     }
-    setCurrentDrawingMode(mode);
-  });
+  );
 
   const toggleToolsVisibility = useStableCallback(() => {
     setIsDrawingToolsVisible((prev) => !prev);
@@ -31,10 +31,12 @@ export function useMapDrawingTools() {
   });
 
   // Check if currently in cursor mode (for hover/click interactions)
-  const isCursorMode = currentDrawingMode === "cursor" || currentDrawingMode === null;
+  const isCursorMode =
+    currentDrawingMode === "cursor" || currentDrawingMode === null;
 
   // Check if drawing tools are active (not cursor mode)
-  const isDrawingActive = currentDrawingMode !== null && currentDrawingMode !== "cursor";
+  const isDrawingActive =
+    currentDrawingMode !== null && currentDrawingMode !== "cursor";
 
   return {
     // State

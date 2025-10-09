@@ -18,6 +18,8 @@ export async function EnhancedVersionHistoryDialogServer({
     getChangeHistory(areaId, { limit: 50 }),
   ]);
 
+  console.log(initialVersions, initialChanges);
+
   return (
     <EnhancedVersionHistoryDialog
       open={open}

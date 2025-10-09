@@ -58,17 +58,6 @@ export function useMapInteractions({
     hideTools,
   } = useMapDrawingTools();
 
-  // Debug logging for drawing mode changes - only log on actual mode changes
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[useMapInteractions] Drawing mode state:", {
-        currentDrawingMode,
-        isCursorMode,
-        isDrawingActive,
-      });
-    }
-  }, [currentDrawingMode, isCursorMode, isDrawingActive]); // Only log when drawing mode actually changes
-
   // TerraDraw selection logic - now managed per layer
   const {
     terraDrawRef,
