@@ -4,7 +4,6 @@ import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geo
 import type { Map as MapLibre } from 'maplibre-gl';
 import { useEffect } from "react";
 import { useLassoSelection } from "./use-lasso-selection";
-import { useRadiusSelection } from "./use-radius-selection";
 
 interface DrawToolsProps {
   map: MapLibre | null;
@@ -34,15 +33,7 @@ export function useMapDrawTools({
     enabled: selectionMode === 'lasso' && drawMode === 'lasso'
   })
 
-  // Use radius selection when in radius mode
-  useRadiusSelection({
-    map,
-    isMapLoaded,
-    data,
-    granularity,
-    onRadiusSelect,
-    enabled: selectionMode === 'radius' && drawMode === 'radius'
-  })
+  // Radius selection functionality moved to server actions
 
   // Handle mode changes
   useEffect(() => {

@@ -14,12 +14,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useDrivingRadiusSearch } from "@/lib/hooks/use-driving-radius-search";
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
-import { useRadiusSearch } from "@/lib/hooks/use-radius-search";
 import { useMapState } from "@/lib/url-state/map-state";
-import { useAreaAutosave } from "@/lib/hooks/use-area-autosave";
 import {
   addPostalCodesToLayerAction,
   removePostalCodesFromLayerAction,
@@ -101,6 +98,16 @@ interface PostalCodesViewClientWithLayersProps {
   initialAreas: Area[];
   initialArea: Area | null;
   initialLayers: Layer[];
+  initialVersions: any[];
+  initialChanges: any[];
+  initialUndoRedoStatus: {
+    canUndo: boolean;
+    canRedo: boolean;
+    undoCount: number;
+    redoCount: number;
+  };
+  versions: any[];
+  changes: any[];
   isViewingVersion?: boolean;
   versionId?: number | null;
 }
@@ -114,6 +121,11 @@ export function PostalCodesViewClientWithLayers({
   initialAreas,
   initialArea,
   initialLayers,
+  initialVersions,
+  initialChanges,
+  initialUndoRedoStatus,
+  versions,
+  changes,
   isViewingVersion = false,
   versionId,
 }: PostalCodesViewClientWithLayersProps) {
@@ -243,7 +255,6 @@ export function PostalCodesViewClientWithLayers({
     );
   }, [areaId, activeLayerId, optimisticLayers.length]);
 
-  const { scheduleAutosave } = useAreaAutosave(areaId || 0, activeLayerId);
 
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
   const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
@@ -518,6 +529,8 @@ export function PostalCodesViewClientWithLayers({
             removePostalCodesFromLayer={removePostalCodesFromLayer}
             isViewingVersion={isViewingVersion}
             versionId={versionId}
+            versions={versions}
+            changes={changes}
           />
         </MapErrorBoundary>
       </div>
@@ -537,6 +550,8 @@ export function PostalCodesViewClientWithLayers({
           open={showEnhancedHistory}
           onOpenChange={setShowEnhancedHistory}
           areaId={areaId}
+          initialVersions={initialVersions}
+          initialChanges={initialChanges}
         />
       )}
     </div>

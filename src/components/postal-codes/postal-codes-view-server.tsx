@@ -1,9 +1,5 @@
 import { Suspense } from "react";
-import {
-  getAreasAction,
-  getAreaByIdAction,
-  getLayersAction,
-} from "@/app/actions/area-actions";
+import { getAreas, getAreaById, getLayers, getVersions, getChangeHistory, getUndoRedoStatus } from "@/lib/db/data-functions";
 import { PostalCodesViewClientWithLayers } from "./postal-codes-view-client-layers";
 import PostalCodesViewClient from "./postal-codes-view-client";
 import { areas, areaLayers } from "@/lib/schema/schema";
@@ -119,15 +115,14 @@ export async function PostalCodesViewServer({
   // ALWAYS load current state from database
   // versionId is only used for side-by-side comparison UI, not for data loading
   if (areaId && areaId > 0) {
-    const [areasResult, areaResult, layersResult] = await Promise.all([
-      getAreasAction(),
-      getAreaByIdAction(areaId),
-      getLayersAction(areaId),
+    const [areas, area, layers, versions, changes, undoRedoStatus] = await Promise.all([
+      getAreas(),
+      getAreaById(areaId),
+      getLayers(areaId),
+      getVersions(areaId),
+      getChangeHistory(areaId, { limit: 50 }),
+      getUndoRedoStatus(areaId),
     ]);
-
-    const areas = areasResult.success ? areasResult.data : [];
-    const area = areaResult.success ? areaResult.data : null;
-    const layers = layersResult.success ? layersResult.data : [];
 
     console.log("Loading CURRENT state (always):", {
       areaId,
@@ -150,11 +145,16 @@ export async function PostalCodesViewServer({
         defaultGranularity={defaultGranularity}
         areaId={areaId}
         activeLayerId={activeLayerId || null}
-        initialAreas={areas || []}
+        initialAreas={areas}
         initialArea={area}
-        initialLayers={layers || []}
+        initialLayers={layers}
+        initialVersions={versions}
+        initialChanges={changes}
+        initialUndoRedoStatus={undoRedoStatus}
         isViewingVersion={false}
         versionId={versionId || null}
+        versions={versions}
+        changes={changes}
       />
     );
   }

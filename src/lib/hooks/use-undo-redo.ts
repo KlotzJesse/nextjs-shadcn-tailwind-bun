@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   undoChangeAction,
   redoChangeAction,
-  getUndoRedoStatusAction,
 } from "@/app/actions/change-tracking-actions";
 import { toast } from "sonner";
 
@@ -15,45 +14,35 @@ interface UndoRedoStatus {
   redoCount: number;
 }
 
-export function useUndoRedo(areaId: number | null) {
-  const [status, setStatus] = useState<UndoRedoStatus>({
-    canUndo: false,
-    canRedo: false,
-    undoCount: 0,
-    redoCount: 0,
-  });
+export function useUndoRedo(areaId: number | null, initialStatus?: UndoRedoStatus, onStatusUpdate?: () => void) {
+  const [status, setStatus] = useState<UndoRedoStatus>(
+    initialStatus || {
+      canUndo: false,
+      canRedo: false,
+      undoCount: 0,
+      redoCount: 0,
+    }
+  );
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const refreshStatus = useCallback(async () => {
-    if (!areaId) {
-      setStatus({ canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 });
-      return;
-    }
+  // Function to update status (can be called from parent components)
+  const updateStatus = useCallback((newStatus: UndoRedoStatus) => {
+    setStatus(newStatus);
+  }, []);
 
-    try {
-      const result = await getUndoRedoStatusAction(areaId);
-      if (result.success && result.data) {
-        setStatus(result.data);
+  // Listen for storage events to refresh when changes are made in other tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'undo-redo-refresh' && areaId) {
+        setRefreshTrigger(prev => prev + 1);
       }
-    } catch (error) {
-      console.error("Error fetching undo/redo status:", error);
-    }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [areaId]);
 
-  useEffect(() => {
-    refreshStatus();
-  }, [refreshStatus]);
-
-  // Separate effect for polling to avoid dependency issues
-  useEffect(() => {
-    if (!areaId) return;
-    
-    const interval = setInterval(() => {
-      refreshStatus();
-    }, 2000);
-    
-    return () => clearInterval(interval);
-  }, [areaId, refreshStatus]);
 
   const undo = useCallback(async () => {
     if (!areaId || !status.canUndo || isLoading) return;
@@ -61,11 +50,11 @@ export function useUndoRedo(areaId: number | null) {
     setIsLoading(true);
     try {
       const result = await undoChangeAction(areaId);
-      
+
       if (result.success) {
         toast.success("Änderung rückgängig gemacht");
-        // Refresh status immediately
-        setTimeout(() => refreshStatus(), 100);
+        // Trigger revalidation to update status
+        onStatusUpdate?.();
       } else {
         toast.error(result.error || "Fehler beim Rückgängigmachen");
       }
@@ -75,7 +64,7 @@ export function useUndoRedo(areaId: number | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [areaId, status.canUndo, isLoading, refreshStatus]);
+  }, [areaId, status.canUndo, isLoading, onStatusUpdate]);
 
   const redo = useCallback(async () => {
     if (!areaId || !status.canRedo || isLoading) return;
@@ -83,11 +72,11 @@ export function useUndoRedo(areaId: number | null) {
     setIsLoading(true);
     try {
       const result = await redoChangeAction(areaId);
-      
+
       if (result.success) {
         toast.success("Änderung wiederhergestellt");
-        // Refresh status immediately
-        setTimeout(() => refreshStatus(), 100);
+        // Trigger revalidation to update status
+        onStatusUpdate?.();
       } else {
         toast.error(result.error || "Fehler beim Wiederherstellen");
       }
@@ -97,7 +86,7 @@ export function useUndoRedo(areaId: number | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [areaId, status.canRedo, isLoading, refreshStatus]);
+  }, [areaId, status.canRedo, isLoading, onStatusUpdate]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -129,6 +118,6 @@ export function useUndoRedo(areaId: number | null) {
     undo,
     redo,
     isLoading,
-    refreshStatus,
+    updateStatus,
   };
 }

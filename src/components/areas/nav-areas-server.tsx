@@ -1,4 +1,4 @@
-import { getAreasAction } from "@/app/actions/area-actions";
+import { getAreas } from "@/lib/db/data-functions";
 import { NavAreas } from "./nav-areas";
 import { Suspense } from "react";
 import {
@@ -19,8 +19,7 @@ async function NavAreasContent({
   currentAreaId,
   onAreaSelect,
 }: NavAreasServerProps) {
-  const result = await getAreasAction();
-  const areas = result.success ? result.data || [] : [];
+  const areas = await getAreas();
 
   return (
     <NavAreas

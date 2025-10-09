@@ -42,7 +42,7 @@ export function CreateAreaDialog({
     e.preventDefault();
     startTransition(async () => {
       try {
-        const result = await createAreaAction({ name, description });
+        const result = await createAreaAction({ name, description, granularity, createdBy: "user" });
         if (result.success && result.data) {
           setName("");
           setDescription("");

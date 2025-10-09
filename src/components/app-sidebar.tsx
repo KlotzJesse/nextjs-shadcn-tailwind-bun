@@ -13,7 +13,7 @@ import * as React from "react";
 import { NavMain } from "@/components/nav-main";
 import { NavAreas } from "@/components/areas/nav-areas";
 import { CreateAreaDialog } from "@/components/areas/create-area-dialog";
-import { type Area } from "@/lib/hooks/use-areas";
+import { type Area } from "@/lib/types/area-types";
 import {
   Sidebar,
   SidebarContent,

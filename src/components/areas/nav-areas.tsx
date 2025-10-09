@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { type Area } from "@/lib/hooks/use-areas";
+import { type Area } from "@/lib/types/area-types";
 import {
   IconFolder,
   IconPlus,

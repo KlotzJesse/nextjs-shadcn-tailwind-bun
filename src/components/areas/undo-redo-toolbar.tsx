@@ -15,15 +15,24 @@ interface UndoRedoToolbarProps {
   areaId: number | null;
   className?: string;
   variant?: "default" | "floating";
+  initialStatus?: {
+    canUndo: boolean;
+    canRedo: boolean;
+    undoCount: number;
+    redoCount: number;
+  };
+  onStatusUpdate?: () => void;
 }
 
 export function UndoRedoToolbar({
   areaId,
   className,
   variant = "default",
+  initialStatus,
+  onStatusUpdate,
 }: UndoRedoToolbarProps) {
   const { canUndo, canRedo, undoCount, redoCount, undo, redo, isLoading } =
-    useUndoRedo(areaId);
+    useUndoRedo(areaId, initialStatus, onStatusUpdate);
 
   if (!areaId) return null;
 

@@ -4,7 +4,7 @@ const BaseMap = dynamic(() =>
 );
 
 import { useMapState } from "@/lib/url-state/map-state";
-import { Layer } from "@/lib/hooks/use-areas";
+import { Layer } from "@/lib/types/area-types";
 import {
   FeatureCollection,
   GeoJsonProperties,
@@ -28,6 +28,8 @@ interface PostalCodesMapProps {
   ) => Promise<void>;
   isViewingVersion?: boolean;
   versionId?: number | null;
+  versions?: any[];
+  changes?: any[];
 }
 
 export function PostalCodesMap({
@@ -43,6 +45,8 @@ export function PostalCodesMap({
   removePostalCodesFromLayer,
   isViewingVersion = false,
   versionId,
+  versions,
+  changes,
 }: PostalCodesMapProps) {
   const { center, zoom } = useMapState();
 

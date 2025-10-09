@@ -59,7 +59,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { type Area, type Layer } from "@/lib/hooks/use-areas";
+import { type Area, type Layer } from "@/lib/types/area-types";
 import {
   createLayerAction,
   updateLayerAction,
@@ -113,6 +113,9 @@ export interface DrawingToolsProps {
   // Version viewing props
   isViewingVersion?: boolean;
   versionId?: number | null;
+  // Version and change data for dialogs
+  versions?: any[];
+  changes?: any[];
 }
 
 const DEFAULT_COLORS = [
@@ -276,6 +279,8 @@ function DrawingToolsImpl({
   removePostalCodesFromLayer,
   isViewingVersion = false,
   versionId,
+  versions = [],
+  changes = [],
 }: DrawingToolsProps) {
   // Collapsible section states
   const [layersOpen, setLayersOpen] = useState(areaId ? true : false);
@@ -1059,6 +1064,8 @@ function DrawingToolsImpl({
               open={showVersionHistory}
               onOpenChange={setShowVersionHistory}
               areaId={areaId}
+              initialVersions={versions}
+              initialChanges={changes}
             />
             <CreateVersionDialog
               open={showCreateVersion}

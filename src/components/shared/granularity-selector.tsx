@@ -25,7 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { type Layer } from "@/lib/hooks/use-areas";
+import { type Layer } from "@/lib/types/area-types";
 import { AlertTriangle, Info, Lock } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";

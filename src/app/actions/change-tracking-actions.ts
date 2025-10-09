@@ -10,7 +10,7 @@ import {
   areaLayerPostalCodes,
 } from "../../lib/schema/schema";
 import { eq, and, desc, asc, inArray, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -27,6 +27,13 @@ export interface ChangeRecord {
   createdBy?: string;
 }
 
+export interface ChangeKey {
+  areaId: number;
+  versionAreaId: number | null;
+  versionNumber: number | null;
+  sequenceNumber: number;
+}
+
 // ===============================
 // CHANGE RECORDING
 // ===============================
@@ -37,23 +44,29 @@ export interface ChangeRecord {
 export async function recordChangeAction(
   areaId: number,
   change: ChangeRecord
-): ServerActionResponse<{ changeId: number }> {
+): ServerActionResponse<ChangeKey> {
   try {
-    // Get the next sequence number for this area
+    // Get current active version if exists
+    const area = await db.query.areas.findFirst({
+      where: eq(areas.id, areaId),
+      columns: { currentVersionNumber: true },
+    });
+
+    // Get the next sequence number for this area + version scope
     const lastChange = await db
       .select({ sequenceNumber: areaChanges.sequenceNumber })
       .from(areaChanges)
-      .where(eq(areaChanges.areaId, areaId))
+      .where(
+        and(
+          eq(areaChanges.areaId, areaId),
+          eq(areaChanges.versionAreaId, area?.currentVersionNumber ? areaId : null),
+          eq(areaChanges.versionNumber, area?.currentVersionNumber || null)
+        )
+      )
       .orderBy(desc(areaChanges.sequenceNumber))
       .limit(1);
 
     const nextSequence = lastChange.length > 0 ? lastChange[0].sequenceNumber + 1 : 1;
-
-    // Get current active version if exists
-    const area = await db.query.areas.findFirst({
-      where: eq(areas.id, areaId),
-      columns: { currentVersionId: true },
-    });
 
     // Insert the change
     const [newChange] = await db
@@ -65,26 +78,40 @@ export async function recordChangeAction(
         entityId: change.entityId,
         changeData: change.changeData,
         previousData: change.previousData,
-        versionId: area?.currentVersionId || null,
+        versionAreaId: area?.currentVersionNumber ? areaId : null,
+        versionNumber: area?.currentVersionNumber || null,
         sequenceNumber: nextSequence,
         createdBy: change.createdBy,
       })
-      .returning({ id: areaChanges.id });
+      .returning();
 
-    // Update undo stack
-    await updateUndoStackAfterChange(areaId, newChange.id);
+    // Update undo stack with composite key
+    const changeKey: ChangeKey = {
+      areaId: newChange.areaId,
+      versionAreaId: newChange.versionAreaId,
+      versionNumber: newChange.versionNumber,
+      sequenceNumber: newChange.sequenceNumber,
+    };
+    await updateUndoStackAfterChange(areaId, changeKey);
 
     // Update version change count if there's an active version
-    if (area?.currentVersionId) {
+    if (area?.currentVersionNumber) {
       await db
         .update(areaVersions)
         .set({
           changeCount: sql`${areaVersions.changeCount} + 1`,
         })
-        .where(eq(areaVersions.id, area.currentVersionId));
+        .where(
+          and(
+            eq(areaVersions.areaId, areaId),
+            eq(areaVersions.versionNumber, area.currentVersionNumber)
+          )
+        );
     }
 
-    return { success: true, data: { changeId: newChange.id } };
+    revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
+    return { success: true, data: changeKey };
   } catch (error) {
     console.error("Error recording change:", error);
     return { success: false, error: "Failed to record change" };
@@ -96,7 +123,7 @@ export async function recordChangeAction(
  */
 async function updateUndoStackAfterChange(
   areaId: number,
-  changeId: number
+  changeKey: ChangeKey
 ): Promise<void> {
   const stack = await db.query.areaUndoStacks.findFirst({
     where: eq(areaUndoStacks.areaId, areaId),
@@ -106,16 +133,16 @@ async function updateUndoStackAfterChange(
     // Create new stack
     await db.insert(areaUndoStacks).values({
       areaId,
-      undoStack: [changeId],
+      undoStack: [changeKey],
       redoStack: [],
     });
   } else {
     // Add to undo stack and clear redo stack
-    const currentUndoStack = (stack.undoStack as number[]) || [];
+    const currentUndoStack = (stack.undoStack as ChangeKey[]) || [];
     await db
       .update(areaUndoStacks)
       .set({
-        undoStack: [...currentUndoStack, changeId],
+        undoStack: [...currentUndoStack, changeKey],
         redoStack: [], // Clear redo stack when new change is made
         updatedAt: new Date().toISOString(),
       })
@@ -132,7 +159,7 @@ async function updateUndoStackAfterChange(
  */
 export async function undoChangeAction(
   areaId: number
-): ServerActionResponse<{ changeId: number }> {
+): ServerActionResponse<ChangeKey> {
   try {
     const result = await db.transaction(async (tx) => {
       // Get undo stack
@@ -140,17 +167,22 @@ export async function undoChangeAction(
         where: eq(areaUndoStacks.areaId, areaId),
       });
 
-      if (!stack || !(stack.undoStack as number[]).length) {
+      if (!stack || !(stack.undoStack as ChangeKey[]).length) {
         throw new Error("No changes to undo");
       }
 
-      const undoStack = stack.undoStack as number[];
-      const redoStack = (stack.redoStack as number[]) || [];
-      const changeId = undoStack[undoStack.length - 1];
+      const undoStack = stack.undoStack as ChangeKey[];
+      const redoStack = (stack.redoStack as ChangeKey[]) || [];
+      const changeKey = undoStack[undoStack.length - 1];
 
       // Get the change to undo
       const change = await tx.query.areaChanges.findFirst({
-        where: eq(areaChanges.id, changeId),
+        where: and(
+          eq(areaChanges.areaId, changeKey.areaId),
+          eq(areaChanges.versionAreaId, changeKey.versionAreaId),
+          eq(areaChanges.versionNumber, changeKey.versionNumber),
+          eq(areaChanges.sequenceNumber, changeKey.sequenceNumber)
+        ),
       });
 
       if (!change) {
@@ -164,22 +196,30 @@ export async function undoChangeAction(
       await tx
         .update(areaChanges)
         .set({ isUndone: "true" })
-        .where(eq(areaChanges.id, changeId));
+        .where(
+          and(
+            eq(areaChanges.areaId, changeKey.areaId),
+            eq(areaChanges.versionAreaId, changeKey.versionAreaId),
+            eq(areaChanges.versionNumber, changeKey.versionNumber),
+            eq(areaChanges.sequenceNumber, changeKey.sequenceNumber)
+          )
+        );
 
       // Update stacks
       await tx
         .update(areaUndoStacks)
         .set({
           undoStack: undoStack.slice(0, -1),
-          redoStack: [...redoStack, changeId],
+          redoStack: [...redoStack, changeKey],
           updatedAt: new Date().toISOString(),
         })
         .where(eq(areaUndoStacks.id, stack.id));
 
-      return { changeId };
+      return changeKey;
     });
 
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true, data: result };
   } catch (error) {
     console.error("Error undoing change:", error);
@@ -195,7 +235,7 @@ export async function undoChangeAction(
  */
 export async function redoChangeAction(
   areaId: number
-): ServerActionResponse<{ changeId: number }> {
+): ServerActionResponse<ChangeKey> {
   try {
     const result = await db.transaction(async (tx) => {
       // Get undo stack
@@ -203,17 +243,22 @@ export async function redoChangeAction(
         where: eq(areaUndoStacks.areaId, areaId),
       });
 
-      if (!stack || !(stack.redoStack as number[]).length) {
+      if (!stack || !(stack.redoStack as ChangeKey[]).length) {
         throw new Error("No changes to redo");
       }
 
-      const undoStack = (stack.undoStack as number[]) || [];
-      const redoStack = stack.redoStack as number[];
-      const changeId = redoStack[redoStack.length - 1];
+      const undoStack = (stack.undoStack as ChangeKey[]) || [];
+      const redoStack = stack.redoStack as ChangeKey[];
+      const changeKey = redoStack[redoStack.length - 1];
 
       // Get the change to redo
       const change = await tx.query.areaChanges.findFirst({
-        where: eq(areaChanges.id, changeId),
+        where: and(
+          eq(areaChanges.areaId, changeKey.areaId),
+          eq(areaChanges.versionAreaId, changeKey.versionAreaId),
+          eq(areaChanges.versionNumber, changeKey.versionNumber),
+          eq(areaChanges.sequenceNumber, changeKey.sequenceNumber)
+        ),
       });
 
       if (!change) {
@@ -227,22 +272,30 @@ export async function redoChangeAction(
       await tx
         .update(areaChanges)
         .set({ isUndone: "false" })
-        .where(eq(areaChanges.id, changeId));
+        .where(
+          and(
+            eq(areaChanges.areaId, changeKey.areaId),
+            eq(areaChanges.versionAreaId, changeKey.versionAreaId),
+            eq(areaChanges.versionNumber, changeKey.versionNumber),
+            eq(areaChanges.sequenceNumber, changeKey.sequenceNumber)
+          )
+        );
 
       // Update stacks
       await tx
         .update(areaUndoStacks)
         .set({
-          undoStack: [...undoStack, changeId],
+          undoStack: [...undoStack, changeKey],
           redoStack: redoStack.slice(0, -1),
           updatedAt: new Date().toISOString(),
         })
         .where(eq(areaUndoStacks.id, stack.id));
 
-      return { changeId };
+      return changeKey;
     });
 
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true, data: result };
   } catch (error) {
     console.error("Error redoing change:", error);
@@ -434,10 +487,18 @@ export async function getChangeHistoryAction(
     let whereConditions = eq(areaChanges.areaId, areaId);
 
     if (options?.versionId) {
-      whereConditions = and(
-        whereConditions,
-        eq(areaChanges.versionId, options.versionId)
-      )!;
+      // For now, we'll need to get the version first to get the composite key
+      // This is a limitation of the current design - we might need to change this later
+      const version = await db.query.areaVersions.findFirst({
+        where: eq(areaVersions.id, options.versionId),
+      });
+      if (version) {
+        whereConditions = and(
+          whereConditions,
+          eq(areaChanges.versionAreaId, version.areaId),
+          eq(areaChanges.versionNumber, version.versionNumber)
+        )!;
+      }
     }
 
     if (!options?.includeUndone) {
@@ -468,43 +529,47 @@ export async function getChangeHistoryAction(
 /**
  * Get undo/redo stack status
  */
-export async function getUndoRedoStatusAction(
-  areaId: number
-): ServerActionResponse<{
-  canUndo: boolean;
-  canRedo: boolean;
-  undoCount: number;
-  redoCount: number;
-}> {
-  try {
-    const stack = await db.query.areaUndoStacks.findFirst({
-      where: eq(areaUndoStacks.areaId, areaId),
-    });
+export const getUndoRedoStatusAction = unstable_cache(
+  async (
+    areaId: number
+  ): ServerActionResponse<{
+    canUndo: boolean;
+    canRedo: boolean;
+    undoCount: number;
+    redoCount: number;
+  }> => {
+    try {
+      const stack = await db.query.areaUndoStacks.findFirst({
+        where: eq(areaUndoStacks.areaId, areaId),
+      });
 
-    if (!stack) {
+      if (!stack) {
+        return {
+          success: true,
+          data: { canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 },
+        };
+      }
+
+      const undoStack = (stack.undoStack as ChangeKey[]) || [];
+      const redoStack = (stack.redoStack as ChangeKey[]) || [];
+
       return {
         success: true,
-        data: { canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 },
+        data: {
+          canUndo: undoStack.length > 0,
+          canRedo: redoStack.length > 0,
+          undoCount: undoStack.length,
+          redoCount: redoStack.length,
+        },
       };
+    } catch (error) {
+      console.error("Error getting undo/redo status:", error);
+      return { success: false, error: "Failed to get undo/redo status" };
     }
-
-    const undoStack = (stack.undoStack as number[]) || [];
-    const redoStack = (stack.redoStack as number[]) || [];
-
-    return {
-      success: true,
-      data: {
-        canUndo: undoStack.length > 0,
-        canRedo: redoStack.length > 0,
-        undoCount: undoStack.length,
-        redoCount: redoStack.length,
-      },
-    };
-  } catch (error) {
-    console.error("Error getting undo/redo status:", error);
-    return { success: false, error: "Failed to get undo/redo status" };
-  }
-}
+  },
+  ["undo-redo-status"],
+  { tags: ["undo-redo-status"] }
+);
 
 /**
  * Clear undo/redo stacks (useful when creating a new version)

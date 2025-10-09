@@ -19,17 +19,13 @@ import {
   IconGitBranch,
   IconDelta,
 } from "@tabler/icons-react";
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import {
-  getVersionsAction,
   restoreVersionAction,
   compareVersionsAction,
 } from "@/app/actions/version-actions";
-import {
-  getChangeHistoryAction,
-} from "@/app/actions/change-tracking-actions";
 import { toast } from "sonner";
 
 interface Version {
@@ -62,53 +58,23 @@ interface EnhancedVersionHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   areaId: number;
+  initialVersions: Version[];
+  initialChanges: Change[];
 }
 
 export function EnhancedVersionHistoryDialog({
   open,
   onOpenChange,
   areaId,
+  initialVersions,
+  initialChanges,
 }: EnhancedVersionHistoryDialogProps) {
-  const [versions, setVersions] = useState<Version[]>([]);
-  const [changes, setChanges] = useState<Change[]>([]);
+  const [versions] = useState<Version[]>(initialVersions);
+  const [changes] = useState<Change[]>(initialChanges);
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
   const [compareVersion, setCompareVersion] = useState<Version | null>(null);
   const [comparison, setComparison] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (open && areaId) {
-      loadVersions();
-      loadChanges();
-    }
-  }, [open, areaId]);
-
-  const loadVersions = async () => {
-    setLoading(true);
-    try {
-      const result = await getVersionsAction(areaId);
-      if (result.success && result.data) {
-        setVersions(result.data);
-      }
-    } catch (error) {
-      console.error("Failed to load versions:", error);
-      toast.error("Failed to load versions");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadChanges = async () => {
-    try {
-      const result = await getChangeHistoryAction(areaId, { limit: 50 });
-      if (result.success && result.data) {
-        setChanges(result.data);
-      }
-    } catch (error) {
-      console.error("Failed to load changes:", error);
-    }
-  };
 
   const handleRestore = async (version: Version) => {
     if (!confirm(`Restore version ${version.versionNumber}? This will create a new branch.`)) {
@@ -140,8 +106,10 @@ export function EnhancedVersionHistoryDialog({
 
     try {
       const result = await compareVersionsAction(
-        selectedVersion.id,
-        compareVersion.id
+        selectedVersion.areaId,
+        selectedVersion.versionNumber,
+        compareVersion.areaId,
+        compareVersion.versionNumber
       );
 
       if (result.success && result.data) {
@@ -194,11 +162,7 @@ export function EnhancedVersionHistoryDialog({
 
           <TabsContent value="versions" className="mt-4">
             <ScrollArea className="h-[500px] pr-4">
-              {loading ? (
-                <div className="flex items-center justify-center p-8">
-                  Versionen werden geladen...
-                </div>
-              ) : versions.length === 0 ? (
+              {versions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
                   <IconClock className="h-12 w-12 mb-2" />
                   <p>Noch keine Versionen gespeichert</p>
@@ -274,7 +238,7 @@ export function EnhancedVersionHistoryDialog({
                 <div className="space-y-2">
                   {changes.map((change) => (
                     <div
-                      key={change.id}
+                      key={`${change.areaId}-${change.versionAreaId || 'null'}-${change.versionNumber || 'null'}-${change.sequenceNumber}`}
                       className="p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-start justify-between mb-1">
@@ -389,7 +353,7 @@ export function EnhancedVersionHistoryDialog({
                           Layer hinzugefügt ({comparison.layersAdded.length})
                         </h4>
                         {comparison.layersAdded.map((layer: any, idx: number) => (
-                          <div key={idx} className="text-sm pl-4">
+                          <div key={`added-${layer.name}-${idx}`} className="text-sm pl-4">
                             + {layer.name}
                           </div>
                         ))}
@@ -401,7 +365,7 @@ export function EnhancedVersionHistoryDialog({
                           Layer entfernt ({comparison.layersRemoved.length})
                         </h4>
                         {comparison.layersRemoved.map((layer: any, idx: number) => (
-                          <div key={idx} className="text-sm pl-4">
+                          <div key={`removed-${layer.name}-${idx}`} className="text-sm pl-4">
                             - {layer.name}
                           </div>
                         ))}
@@ -413,7 +377,7 @@ export function EnhancedVersionHistoryDialog({
                           Layer geändert ({comparison.layersModified.length})
                         </h4>
                         {comparison.layersModified.map((layer: any, idx: number) => (
-                          <div key={idx} className="text-sm pl-4">
+                          <div key={`modified-${layer.name}-${idx}`} className="text-sm pl-4">
                             ~ {layer.name}
                           </div>
                         ))}

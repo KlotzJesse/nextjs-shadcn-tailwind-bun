@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import {
   createVersionAction,
-  getVersionsAction,
   restoreVersionAction,
 } from "@/app/actions/version-actions";
 
@@ -56,21 +55,6 @@ export function useVersionHistory(areaId: number) {
     [areaId]
   );
 
-  const getVersionHistory = useCallback(async (): Promise<AreaVersion[]> => {
-    try {
-      const result = await getVersionsAction(areaId);
-      if (result.success && result.data) {
-        return result.data;
-      } else {
-        throw new Error(result.error || "Failed to fetch versions");
-      }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      toast.error(`Fehler beim Laden der Versionen: ${errorMessage}`);
-      throw error;
-    }
-  }, [areaId]);
 
   const restoreVersion = useCallback(
     async (version: AreaVersion) => {
@@ -102,7 +86,6 @@ export function useVersionHistory(areaId: number) {
 
   return {
     createVersion,
-    getVersionHistory,
     restoreVersion,
   };
 }

@@ -7,8 +7,9 @@ import {
   areaLayerPostalCodes,
 } from "../../lib/schema/schema";
 import { eq, and, inArray } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { recordChangeAction } from "./change-tracking-actions";
+import { createVersionAction } from "./version-actions";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -36,17 +37,35 @@ export async function getAreasAction(): ServerActionResponse<any[]> {
 export async function createAreaAction(data: {
   name: string;
   description?: string;
+  granularity?: string;
+  createdBy?: string;
 }): ServerActionResponse<{ id: number }> {
   try {
+    // Create the area first
     const [area] = await db
       .insert(areas)
       .values({
         name: data.name,
         description: data.description,
+        granularity: data.granularity || "5digit",
       })
       .returning();
 
+    // Create the first version automatically
+    const versionResult = await createVersionAction(area.id, {
+      name: "Initial Version",
+      description: "Automatically created first version",
+      createdBy: data.createdBy,
+    });
+
+    if (!versionResult.success) {
+      // If version creation fails, we should clean up the area
+      await db.delete(areas).where(eq(areas.id, area.id));
+      throw new Error("Failed to create initial version");
+    }
+
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true, data: { id: area.id } };
   } catch (error) {
     console.error("Error creating area:", error);
@@ -92,6 +111,7 @@ export async function updateAreaAction(
     });
 
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true };
   } catch (error) {
     console.error("Error updating area:", error);
@@ -224,6 +244,7 @@ export async function createLayerAction(
     });
 
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true, data: { id: layer.id } };
   } catch (error) {
     console.error("Error creating layer:", error);
@@ -334,6 +355,7 @@ export async function updateLayerAction(
     });
 
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true };
   } catch (error) {
     console.error("Error updating layer:", error);
@@ -391,6 +413,7 @@ export async function deleteLayerAction(
     });
 
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true };
   } catch (error) {
     console.error("Error deleting layer:", error);
@@ -456,6 +479,7 @@ export async function addPostalCodesToLayerAction(
     });
 
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true };
   } catch (error) {
     console.error("Error adding postal codes to layer:", error);
@@ -520,6 +544,7 @@ export async function removePostalCodesFromLayerAction(
     });
 
     revalidatePath("/postal-codes");
+    revalidateTag("undo-redo-status");
     return { success: true };
   } catch (error) {
     console.error("Error removing postal codes from layer:", error);

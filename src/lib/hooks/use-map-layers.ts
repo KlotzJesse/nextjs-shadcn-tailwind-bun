@@ -11,7 +11,7 @@ import type {
   Map as MapLibreMap,
 } from "maplibre-gl";
 import { useEffect, useLayoutEffect, useMemo } from "react";
-import type { Layer } from "@/lib/hooks/use-areas";
+import type { Layer } from "../types/area-types";
 
 interface UseMapLayersProps {
   map: MapLibreMap | null;

@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLayerMerge } from "@/lib/hooks/use-layer-merge";
-import { Layer } from "@/lib/hooks/use-areas";
+import { Layer } from "@/lib/types/area-types";
 import { IconGitMerge } from "@tabler/icons-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";

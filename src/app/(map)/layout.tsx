@@ -1,7 +1,7 @@
 import { FeatureErrorBoundary } from "@/components/ui/error-boundaries";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAreasAction } from "@/app/actions/area-actions";
+import { getAreas } from "@/lib/db/data-functions";
 import { connection } from "next/server";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
@@ -27,8 +27,7 @@ async function AppSidebarWithData() {
   await connection();
 
   // Fetch areas data on the server
-  const result = await getAreasAction();
-  const areas = result.success ? result.data || [] : [];
+  const areas = await getAreas();
 
   return <AppSidebar variant="inset" areas={areas} />;
 }

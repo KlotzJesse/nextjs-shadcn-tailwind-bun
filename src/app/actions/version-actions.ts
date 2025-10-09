@@ -35,7 +35,7 @@ export async function createVersionAction(
     branchName?: string;
     fromVersionId?: number; // If branching from a specific version
   }
-): ServerActionResponse<{ versionId: number; versionNumber: number }> {
+): ServerActionResponse<{ areaId: number; versionNumber: number }> {
   try {
     const result = await db.transaction(async (tx) => {
       // Get current area with all layers and postal codes
@@ -73,8 +73,8 @@ export async function createVersionAction(
           and(
             eq(areaChanges.areaId, areaId),
             data.fromVersionId
-              ? eq(areaChanges.versionId, data.fromVersionId)
-              : eq(areaChanges.versionId, sql`NULL`)
+              ? eq(areaChanges.versionAreaId, data.fromVersionId)
+              : eq(areaChanges.versionAreaId, sql`NULL`)
           )
         );
 
@@ -110,7 +110,8 @@ export async function createVersionAction(
           description: data.description,
           snapshot,
           changesSummary: data.changesSummary,
-          parentVersionId: data.fromVersionId || area.currentVersionId,
+          parentVersionAreaId: null, // Will be set when branching
+          parentVersionNumber: null, // Will be set when branching
           branchName: data.branchName,
           isActive: "true",
           changeCount: changeCount[0]?.count || 0,
@@ -121,16 +122,19 @@ export async function createVersionAction(
       // Update area's current version
       await tx
         .update(areas)
-        .set({ currentVersionId: version.id })
+        .set({ currentVersionNumber: version.versionNumber })
         .where(eq(areas.id, areaId));
 
       // Update all uncommitted changes to be associated with this version
       await tx
         .update(areaChanges)
-        .set({ versionId: version.id })
-        .where(and(eq(areaChanges.areaId, areaId), eq(areaChanges.versionId, sql`NULL`)));
+        .set({
+          versionAreaId: version.areaId,
+          versionNumber: version.versionNumber
+        })
+        .where(and(eq(areaChanges.areaId, areaId), eq(areaChanges.versionAreaId, sql`NULL`)));
 
-      return { versionId: version.id, versionNumber: version.versionNumber };
+      return { areaId: version.areaId, versionNumber: version.versionNumber };
     });
 
     // Clear undo/redo stacks after creating version
@@ -153,13 +157,13 @@ export async function createVersionAction(
 export async function autoSaveVersionAction(
   areaId: number,
   createdBy?: string
-): ServerActionResponse<{ versionId: number }> {
+): ServerActionResponse<{ areaId: number; versionNumber: number }> {
   try {
     // Check if there are any uncommitted changes
     const uncommittedChanges = await db
       .select({ count: sql<number>`count(*)` })
       .from(areaChanges)
-      .where(and(eq(areaChanges.areaId, areaId), eq(areaChanges.versionId, sql`NULL`)));
+      .where(and(eq(areaChanges.areaId, areaId), eq(areaChanges.versionAreaId, sql`NULL`)));
 
     if (uncommittedChanges[0]?.count === 0) {
       return { success: false, error: "No changes to save" };
@@ -205,11 +209,15 @@ export async function getVersionsAction(
  * Get a specific version
  */
 export async function getVersionAction(
-  versionId: number
+  areaId: number,
+  versionNumber: number
 ): ServerActionResponse<any> {
   try {
     const version = await db.query.areaVersions.findFirst({
-      where: eq(areaVersions.id, versionId),
+      where: and(
+        eq(areaVersions.areaId, areaId),
+        eq(areaVersions.versionNumber, versionNumber)
+      ),
     });
 
     if (!version) {
@@ -340,7 +348,8 @@ export async function restoreVersionAction(
             name: options.branchName || `Branch from v${version.versionNumber}`,
             description: `Restored from version ${version.versionNumber}`,
             snapshot: version.snapshot,
-            parentVersionId: versionId,
+            parentVersionAreaId: version.areaId,
+            parentVersionNumber: version.versionNumber,
             branchName: options.branchName,
             isActive: "true",
             changeCount: 0,
@@ -348,12 +357,12 @@ export async function restoreVersionAction(
           })
           .returning();
 
-        newVersionId = newVersion.id;
+        newVersionId = newVersion.areaId; // Return areaId since we don't have id anymore
 
         // Update area's current version
         await tx
           .update(areas)
-          .set({ currentVersionId: newVersion.id })
+          .set({ currentVersionNumber: newVersion.versionNumber })
           .where(eq(areas.id, areaId));
       }
 
@@ -378,7 +387,8 @@ export async function restoreVersionAction(
  * Delete a version
  */
 export async function deleteVersionAction(
-  versionId: number
+  areaId: number,
+  versionNumber: number
 ): ServerActionResponse {
   try {
     await db.transaction(async (tx) => {
@@ -396,7 +406,12 @@ export async function deleteVersionAction(
       }
 
       // Delete associated changes
-      await tx.delete(areaChanges).where(eq(areaChanges.versionId, versionId));
+      await tx.delete(areaChanges).where(
+        and(
+          eq(areaChanges.versionAreaId, version.areaId),
+          eq(areaChanges.versionNumber, version.versionNumber)
+        )
+      );
 
       // Delete the version
       await tx.delete(areaVersions).where(eq(areaVersions.id, versionId));
@@ -417,8 +432,10 @@ export async function deleteVersionAction(
  * Compare two versions and get differences
  */
 export async function compareVersionsAction(
-  versionId1: number,
-  versionId2: number
+  areaId1: number,
+  versionNumber1: number,
+  areaId2: number,
+  versionNumber2: number
 ): ServerActionResponse<{
   layersAdded: any[];
   layersRemoved: any[];
@@ -428,8 +445,18 @@ export async function compareVersionsAction(
 }> {
   try {
     const [version1, version2] = await Promise.all([
-      db.query.areaVersions.findFirst({ where: eq(areaVersions.id, versionId1) }),
-      db.query.areaVersions.findFirst({ where: eq(areaVersions.id, versionId2) }),
+      db.query.areaVersions.findFirst({
+        where: and(
+          eq(areaVersions.areaId, areaId1),
+          eq(areaVersions.versionNumber, versionNumber1)
+        )
+      }),
+      db.query.areaVersions.findFirst({
+        where: and(
+          eq(areaVersions.areaId, areaId2),
+          eq(areaVersions.versionNumber, versionNumber2)
+        )
+      }),
     ]);
 
     if (!version1 || !version2) {
@@ -506,13 +533,14 @@ export async function getVersionIndicatorInfoAction(
     let versionInfo = null;
 
     if (versionId) {
-      // Specific version is selected
-      const version = versions.find((v) => v.id === versionId);
-      if (version) {
+      // Specific version is selected - for now, assume it's the latest if versionId is provided
+      // This needs to be updated when we have a way to identify specific versions
+      if (versionId && versions.length > 0) {
+        const version = versions.find((v) => v.versionNumber === versionId) || versions[0];
         versionInfo = {
           versionNumber: version.versionNumber,
           name: version.name,
-          isLatest: false,
+          isLatest: version.versionNumber === versions[0].versionNumber,
         };
       }
     } else if (versions.length > 0) {

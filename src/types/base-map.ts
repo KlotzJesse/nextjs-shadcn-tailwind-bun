@@ -4,7 +4,7 @@ import type {
   MultiPolygon,
   Polygon,
 } from "geojson";
-import type { Layer } from "@/lib/hooks/use-areas";
+import type { Layer } from "@/lib/types/area-types";
 
 export interface BaseMapProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -28,6 +28,8 @@ export interface BaseMapProps {
   ) => Promise<void>;
   isViewingVersion?: boolean;
   versionId?: number | null;
+  versions?: any[];
+  changes?: any[];
 }
 
 export interface MapConfig {

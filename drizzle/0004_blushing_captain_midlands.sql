@@ -1,0 +1,2 @@
+ALTER TABLE "postal_codes" ALTER COLUMN "geometry" SET DATA TYPE geometry(MultiPolygon, 4326);--> statement-breakpoint
+ALTER TABLE "states" ALTER COLUMN "geometry" SET DATA TYPE geometry(MultiPolygon, 4326);

@@ -16,10 +16,7 @@ export const areasRelations = relations(areas, ({ many, one }) => ({
     fields: [areas.id],
     references: [areaUndoStacks.areaId],
   }),
-  currentVersion: one(areaVersions, {
-    fields: [areas.currentVersionId],
-    references: [areaVersions.id],
-  }),
+  // currentVersion relation removed due to composite primary key
 }));
 
 export const areaVersionsRelations = relations(areaVersions, ({ one, many }) => ({
@@ -28,10 +25,13 @@ export const areaVersionsRelations = relations(areaVersions, ({ one, many }) => 
     references: [areas.id],
   }),
   parentVersion: one(areaVersions, {
-    fields: [areaVersions.parentVersionId],
-    references: [areaVersions.id],
+    fields: [areaVersions.parentVersionAreaId, areaVersions.parentVersionNumber],
+    references: [areaVersions.areaId, areaVersions.versionNumber],
+    relationName: "parentChild",
   }),
-  childVersions: many(areaVersions),
+  childVersions: many(areaVersions, {
+    relationName: "parentChild",
+  }),
   changes: many(areaChanges),
 }));
 
@@ -59,8 +59,8 @@ export const areaChangesRelations = relations(areaChanges, ({ one }) => ({
     references: [areas.id],
   }),
   version: one(areaVersions, {
-    fields: [areaChanges.versionId],
-    references: [areaVersions.id],
+    fields: [areaChanges.versionAreaId, areaChanges.versionNumber],
+    references: [areaVersions.areaId, areaVersions.versionNumber],
   }),
 }));
 

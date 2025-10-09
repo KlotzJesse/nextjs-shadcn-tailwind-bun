@@ -76,6 +76,8 @@ const BaseMapComponent = ({
   removePostalCodesFromLayer,
   isViewingVersion = false,
   versionId,
+  versions,
+  changes,
 }: BaseMapProps) => {
   // Stable ref for map container
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -237,6 +239,8 @@ const BaseMapComponent = ({
                 }}
                 isViewingVersion={isViewingVersion}
                 versionId={versionId}
+                versions={versions}
+                changes={changes}
               />
             </Suspense>
           </DrawingToolsErrorBoundary>
