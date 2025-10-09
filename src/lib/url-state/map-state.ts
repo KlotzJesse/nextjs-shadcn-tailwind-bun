@@ -21,13 +21,16 @@ export function useMapState() {
   // --- Atomic map view state ---
   const [mapView, setMapView] = useMapView();
   // ---
-  const [selectionMode, setSelectionMode] = useQueryState("selectionMode");
   const [granularity, setGranularity] = useQueryState("granularity");
   const [radius, setRadius] = useQueryState("radius");
 
   // Area and layer management
-  const [areaId, setAreaId] = useQueryState("areaId");
-  const [activeLayerId, setActiveLayerId] = useQueryState("activeLayerId");
+  const [areaId, setAreaId] = useQueryState("areaId", {
+    shallow: false,
+  });
+  const [activeLayerId, setActiveLayerId] = useQueryState("activeLayerId", {
+    shallow: false,
+  });
   const [versionId, setVersionId] = useQueryState("versionId");
 
   // Parse area and layer IDs
@@ -64,8 +67,6 @@ export function useMapState() {
   });
 
   return {
-    // State
-    selectionMode: selectionMode || "cursor",
     granularity: granularity || "1digit",
     center: mapView.center,
     zoom: mapView.zoom,
@@ -73,8 +74,6 @@ export function useMapState() {
     areaId: parsedAreaId,
     activeLayerId: parsedActiveLayerId,
     versionId: parsedVersionId,
-    // Setters
-    setSelectionMode,
     setGranularity,
     setMapCenterZoom, // atomic
     setRadius: useStableCallback((radiusValue: number) =>
@@ -84,31 +83,4 @@ export function useMapState() {
     setActiveLayer,
     setVersion,
   };
-}
-
-// Individual hooks for specific state (deprecated for center/zoom)
-export function useSelectionMode() {
-  return useQueryState("selectionMode");
-}
-
-export function useGranularity() {
-  return useQueryState("granularity");
-}
-
-// Deprecated: use useMapState().center/zoom instead
-export function useMapCenter() {
-  const [mapView] = useMapView();
-  return [mapView.center, () => {}] as const;
-}
-export function useMapZoom() {
-  const [mapView] = useMapView();
-  return [mapView.zoom, () => {}] as const;
-}
-
-export function useRadius() {
-  const [radius, setRadius] = useQueryState("radius");
-  return [
-    radius ? parseInt(radius, 10) : 10,
-    (radiusValue: number) => setRadius(radiusValue.toString()),
-  ] as const;
 }

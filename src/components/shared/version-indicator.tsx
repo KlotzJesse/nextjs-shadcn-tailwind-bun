@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconEye, IconHistory } from "@tabler/icons-react";
-import { getVersionIndicatorInfo } from "@/lib/db/data-functions";
+import { getVersionIndicatorInfo, getAreaById } from "@/lib/db/data-functions";
 import { Result } from "pg";
 
 interface VersionIndicatorProps {
@@ -15,9 +15,16 @@ interface VersionInfo {
 }
 
 export async function VersionIndicator({ areaId }: VersionIndicatorProps) {
-  const versionInfo = await getVersionIndicatorInfo(areaId!, 1);
+  if (!areaId) {
+    return null;
+  }
+  const area = await getAreaById(areaId!);
+  const versionInfo = await getVersionIndicatorInfo(
+    areaId!,
+    area.currentVersionNumber
+  );
 
-  console.log("VERSION INFO:", versionInfo);
+  console.log("VERSION INFO:", versionInfo, areaId);
 
   // Don't show anything if no area is selected or no versions exist
   if (!areaId || !versionInfo.hasVersions || !versionInfo.versionInfo) {

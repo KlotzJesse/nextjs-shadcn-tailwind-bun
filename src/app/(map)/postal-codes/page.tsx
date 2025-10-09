@@ -135,7 +135,7 @@ export default async function PostalCodesPage({
   return (
     <>
       <Suspense fallback={<Skeleton className="w-full h-12" />}>
-        <SiteHeader />
+        <SiteHeader areaId={areaId} />
       </Suspense>
       <div className="h-full px-4 lg:px-6">
         <PostalCodesErrorBoundary>

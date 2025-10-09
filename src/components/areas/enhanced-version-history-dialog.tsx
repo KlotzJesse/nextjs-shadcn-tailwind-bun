@@ -62,7 +62,7 @@ export function EnhancedVersionHistoryDialog({
 
     startTransition(async () => {
       try {
-        const result = await restoreVersionAction(areaId, version.id, {
+        const result = await restoreVersionAction(areaId, version.versionNumber, {
           createBranch: true,
           branchName: `Restored from v${version.versionNumber}`,
         });
@@ -151,9 +151,9 @@ export function EnhancedVersionHistoryDialog({
                 <div className="space-y-3">
                   {versions.map((version) => (
                     <div
-                      key={version.id}
+                      key={version.versionNumber}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                        selectedVersion?.id === version.id
+                        selectedVersion?.versionNumber === version.versionNumber
                           ? "border-primary bg-accent"
                           : version.isActive === "true"
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
@@ -289,10 +289,10 @@ export function EnhancedVersionHistoryDialog({
                   </label>
                   <select
                     className="w-full p-2 border rounded-md"
-                    value={selectedVersion?.id || ""}
+                    value={selectedVersion?.versionNumber || ""}
                     onChange={(e) => {
                       const version = versions.find(
-                        (v) => v.id === Number(e.target.value)
+                        (v) => v.versionNumber === Number(e.target.value)
                       );
                       setSelectedVersion(version || null);
                       setComparison(null);
@@ -312,10 +312,10 @@ export function EnhancedVersionHistoryDialog({
                   </label>
                   <select
                     className="w-full p-2 border rounded-md"
-                    value={compareVersion?.id || ""}
+                    value={compareVersion?.versionNumber || ""}
                     onChange={(e) => {
                       const version = versions.find(
-                        (v) => v.id === Number(e.target.value)
+                        (v) => v.versionNumber === Number(e.target.value)
                       );
                       setCompareVersion(version || null);
                       setComparison(null);

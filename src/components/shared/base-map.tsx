@@ -206,6 +206,7 @@ const BaseMapComponent = ({
                 areaId={areaId ?? undefined}
                 activeLayerId={activeLayerId}
                 onLayerSelect={(layerId: number) => {
+                  console.log("Test");
                   mapState.setActiveLayer(layerId);
                 }}
                 addPostalCodesToLayer={addPostalCodesToLayer}

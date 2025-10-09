@@ -269,18 +269,21 @@ export async function switchToVersionAction(
  */
 export async function restoreVersionAction(
   areaId: number,
-  versionId: number,
+  versionNumber: number,
   options?: {
     createBranch?: boolean;
     branchName?: string;
     createdBy?: string;
   }
-): ServerActionResponse<{ newVersionId?: number }> {
+): ServerActionResponse<{ newVersionNumber?: number }> {
   try {
     const result = await db.transaction(async (tx) => {
       // Get the version to restore
       const version = await tx.query.areaVersions.findFirst({
-        where: eq(areaVersions.id, versionId),
+        where: and(
+          eq(areaVersions.areaId, areaId),
+          eq(areaVersions.versionNumber, versionNumber)
+        ),
       });
 
       if (!version) {
@@ -370,7 +373,7 @@ export async function restoreVersionAction(
           })
           .returning();
 
-        newVersionId = newVersion.areaId; // Return areaId since we don't have id anymore
+        newVersionNumber = newVersion.versionNumber;
 
         // Update area's current version
         await tx
@@ -379,7 +382,7 @@ export async function restoreVersionAction(
           .where(eq(areas.id, areaId));
       }
 
-      return { newVersionId };
+      return { newVersionNumber };
     });
 
     // Clear undo/redo stacks after restoration
@@ -408,7 +411,10 @@ export async function deleteVersionAction(
     await db.transaction(async (tx) => {
       // Check if this is the active version
       const version = await tx.query.areaVersions.findFirst({
-        where: eq(areaVersions.id, versionId),
+        where: and(
+          eq(areaVersions.areaId, areaId),
+          eq(areaVersions.versionNumber, versionNumber)
+        ),
       });
 
       if (!version) {
@@ -430,7 +436,12 @@ export async function deleteVersionAction(
         );
 
       // Delete the version
-      await tx.delete(areaVersions).where(eq(areaVersions.id, versionId));
+      await tx.delete(areaVersions).where(
+        and(
+          eq(areaVersions.areaId, areaId),
+          eq(areaVersions.versionNumber, versionNumber)
+        )
+      );
     });
 
     revalidatePath("/postal-codes");
