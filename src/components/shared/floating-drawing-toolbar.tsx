@@ -103,6 +103,8 @@ export function FloatingDrawingToolbar({
         return "circle";
       case "rectangle":
         return "rectangle";
+      case "angled-rectangle":
+        return "angled-rectangle"; // TerraDraw has a separate angled-rectangle mode
       case "polygon":
         return "polygon";
       default:
@@ -123,6 +125,8 @@ export function FloatingDrawingToolbar({
         return "circle";
       case "rectangle":
         return "rectangle";
+      case "angled-rectangle":
+        return "angled-rectangle"; // Map back to the angled-rectangle UI button
       case "polygon":
         return "polygon";
       default:

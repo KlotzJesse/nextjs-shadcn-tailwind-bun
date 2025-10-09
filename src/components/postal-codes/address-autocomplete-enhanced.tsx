@@ -213,9 +213,7 @@ export function AddressAutocompleteEnhanced({
         try {
           const boundaryResult = await searchPostalCodesByBoundaryAction({
             areaName:
-              result.city ||
-              result.state ||
-              result.display_name.split(",")[0],
+              result.city || result.state || result.display_name.split(",")[0],
             granularity: granularity,
             limit: 3000, // Increased to handle large states like Bayern (2320 postal codes)
           });
@@ -349,6 +347,7 @@ export function AddressAutocompleteEnhanced({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            variant="secondary"
             role="combobox"
             aria-expanded={open}
             className={`w-full justify-between ${triggerClassName}`}

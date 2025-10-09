@@ -92,6 +92,7 @@ import {
   getGranularityLabel,
   wouldGranularityChangeCauseDataLoss,
 } from "@/lib/utils/granularity-utils";
+import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 
 interface PostalCodesViewClientWithLayersProps {
   initialData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -397,78 +398,87 @@ export function PostalCodesViewClientWithLayers({
             />
           </AddressAutocompleteErrorBoundary>
         </div>
-        <div className="w-80">
-          <Popover open={postalCodeOpen} onOpenChange={setPostalCodeOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                role="combobox"
-                aria-expanded={postalCodeOpen}
-                className="w-full justify-between truncate"
-              >
-                <span className="truncate block w-full text-left">
-                  {selectedPostalCode ? selectedPostalCode : "PLZ auswählen..."}
-                </span>
-                <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-0">
-              <Command>
-                <CommandInput
-                  placeholder="PLZ suchen..."
-                  value={postalCodeQuery}
-                  onValueChange={(v) => {
-                    setPostalCodeQuery(v);
-                  }}
-                  autoFocus
-                  autoComplete="off"
-                />
-                <CommandList>
-                  {allPostalCodes
-                    .filter((code) =>
-                      code.toLowerCase().includes(postalCodeQuery.toLowerCase())
-                    )
-                    .slice(0, 10)
-                    .map((code) => (
-                      <CommandItem
-                        key={code}
-                        value={code}
-                        onSelect={async () => {
-                          if (activeLayerId && areaId) {
-                            await addPostalCodesToLayer(activeLayerId, [code]);
-                          } else {
-                            selectPostalCode(code);
-                          }
-                          setSelectedPostalCode(code);
-                          setPostalCodeQuery("");
-                          setPostalCodeOpen(false);
-                        }}
-                        className="cursor-pointer truncate"
-                      >
-                        <span className="truncate block w-full text-left">
-                          {code || "Unbekannt"}
-                        </span>
-                      </CommandItem>
-                    ))}
-                  {allPostalCodes.filter((code) =>
+
+        <Popover open={postalCodeOpen} onOpenChange={setPostalCodeOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="secondary"
+              role="combobox"
+              aria-expanded={postalCodeOpen}
+              className="w-[100px] justify-between truncate"
+            >
+              <span className="truncate block w-full text-left">
+                {selectedPostalCode ? selectedPostalCode : "PLZ auswählen..."}
+              </span>
+              <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[100px] p-0">
+            <Command>
+              <CommandInput
+                placeholder="PLZ suchen..."
+                value={postalCodeQuery}
+                onValueChange={(v) => {
+                  setPostalCodeQuery(v);
+                }}
+                autoFocus
+                autoComplete="off"
+              />
+              <CommandList>
+                {allPostalCodes
+                  .filter((code) =>
                     code.toLowerCase().includes(postalCodeQuery.toLowerCase())
-                  ).length === 0 && (
-                    <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
-                  )}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
+                  )
+                  .slice(0, 10)
+                  .map((code) => (
+                    <CommandItem
+                      key={code}
+                      value={code}
+                      onSelect={async () => {
+                        if (activeLayerId && areaId) {
+                          await addPostalCodesToLayer(activeLayerId, [code]);
+                        } else {
+                          selectPostalCode(code);
+                        }
+                        setSelectedPostalCode(code);
+                        setPostalCodeQuery("");
+                        setPostalCodeOpen(false);
+                      }}
+                      className="cursor-pointer truncate"
+                    >
+                      <span className="truncate block w-full text-left">
+                        {code || "Unbekannt"}
+                      </span>
+                    </CommandItem>
+                  ))}
+                {allPostalCodes.filter((code) =>
+                  code.toLowerCase().includes(postalCodeQuery.toLowerCase())
+                ).length === 0 && (
+                  <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
+                )}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
         {/* Import Button - Opens the import dialog */}
         <div className="flex-shrink-0">
-          <Button
-            onClick={() => setImportDialogOpen(true)}
-            size="default"
-            className="h-10 px-4"
-            title="PLZ-Regionen importieren"
-          >
-            <FileUpIcon className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                variant="secondary"
+                onClick={() => setImportDialogOpen(true)}
+                size="default"
+                className="h-10 px-4"
+                title="PLZ-Regionen importieren"
+              >
+                <FileUpIcon className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>PLZ importieren</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
