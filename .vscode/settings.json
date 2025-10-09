@@ -4,6 +4,7 @@
     "**/.DS_Store": true,
     "**/.git": true,
     "**/.hg": true,
+    "**/.next": true,
     "**/.retool_types/**": true,
     "**/.svn": true,
     "**/*tsconfig.json": true,
