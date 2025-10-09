@@ -33,19 +33,17 @@ interface EnhancedVersionHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   areaId: number;
-  initialVersions: SelectAreaVersions[];
-  initialChanges: SelectAreaChanges[];
+  versions: SelectAreaVersions[];
+  changes: SelectAreaChanges[];
 }
 
 export function EnhancedVersionHistoryDialog({
   open,
   onOpenChange,
   areaId,
-  initialVersions,
-  initialChanges,
+  versions,
+  changes,
 }: EnhancedVersionHistoryDialogProps) {
-  const [versions] = useState<SelectAreaVersions[]>(initialVersions);
-  const [changes] = useState<SelectAreaChanges[]>(initialChanges);
   const [selectedVersion, setSelectedVersion] =
     useState<SelectAreaVersions | null>(null);
   const [compareVersion, setCompareVersion] =

@@ -5,6 +5,7 @@ import type {
   Polygon,
 } from "geojson";
 import type { Layer } from "@/lib/types/area-types";
+import { SelectAreaVersions, SelectAreaChanges } from "@/lib/schema/schema";
 
 export interface BaseMapProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -12,24 +13,30 @@ export interface BaseMapProps {
   onSearch?: (query: string) => void;
   center?: [number, number];
   zoom?: number;
-  statesData?: FeatureCollection<
+  statesData: FeatureCollection<
     Polygon | MultiPolygon,
     GeoJsonProperties
   > | null;
   granularity?: string;
   onGranularityChange?: (granularity: string) => void;
-  layers?: Layer[];
-  activeLayerId?: number | null;
-  areaId?: number | null;
+  layers: Layer[];
+  activeLayerId: number | null;
+  areaId: number | null;
   addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>;
   removePostalCodesFromLayer?: (
     layerId: number,
     codes: string[]
   ) => Promise<void>;
-  isViewingVersion?: boolean;
-  versionId?: number | null;
-  versions?: any[];
-  changes?: any[];
+  isViewingVersion: boolean;
+  versionId: number | null;
+  versions: SelectAreaVersions[];
+  changes: SelectAreaChanges[];
+  initialUndoRedoStatus: {
+    canUndo: boolean;
+    canRedo: boolean;
+    undoCount: number;
+    redoCount: number;
+  };
 }
 
 export interface MapConfig {

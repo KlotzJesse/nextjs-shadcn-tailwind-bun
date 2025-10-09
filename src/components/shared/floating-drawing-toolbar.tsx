@@ -28,7 +28,7 @@ interface FloatingDrawingToolbarProps {
   currentMode: TerraDrawMode | null;
   areaId: number | null | undefined;
   onModeChange: (mode: TerraDrawMode | null) => void;
-  initialUndoRedoStatus?: {
+  initialUndoRedoStatus: {
     canUndo: boolean;
     canRedo: boolean;
     undoCount: number;
@@ -171,7 +171,11 @@ export function FloatingDrawingToolbar({
           </div>
         </div>
         <div className="pointer-events-auto">
-          <UndoRedoToolbar areaId={areaId!} variant="floating" initialStatus={initialUndoRedoStatus} />
+          <UndoRedoToolbar
+            areaId={areaId!}
+            variant="floating"
+            initialStatus={initialUndoRedoStatus}
+          />
         </div>
       </div>
     </div>

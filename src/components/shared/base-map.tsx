@@ -211,10 +211,6 @@ const BaseMapComponent = ({
                 addPostalCodesToLayer={addPostalCodesToLayer}
                 removePostalCodesFromLayer={removePostalCodesFromLayer}
                 layers={layers || []}
-                onLayerUpdate={async () => {
-                  // This will be handled by the parent component
-                  // through the layers prop updates
-                }}
                 isViewingVersion={isViewingVersion}
                 versionId={versionId}
                 versions={versions}

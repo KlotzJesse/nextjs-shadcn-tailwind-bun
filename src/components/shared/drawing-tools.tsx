@@ -83,6 +83,7 @@ import { EnhancedVersionHistoryDialog } from "@/components/areas/enhanced-versio
 import { CreateVersionDialog } from "@/components/areas/create-version-dialog";
 import { LayerMergeDialog } from "@/components/areas/layer-merge-dialog";
 import { GranularitySelector } from "@/components/shared/granularity-selector";
+import { SelectAreaVersions, SelectAreaChanges } from "@/lib/schema/schema";
 
 export interface DrawingToolsProps {
   currentMode: TerraDrawMode | null;
@@ -114,8 +115,8 @@ export interface DrawingToolsProps {
   isViewingVersion?: boolean;
   versionId?: number | null;
   // Version and change data for dialogs
-  versions?: any[];
-  changes?: any[];
+  versions: SelectAreaVersions[];
+  changes: SelectAreaChanges[];
 }
 
 const DEFAULT_COLORS = [
@@ -336,26 +337,6 @@ function DrawingToolsImpl({
     } else {
       throw new Error(result.error);
     }
-  };
-
-  const toggleLayerVisibility = async (layerId: number) => {
-    const layer = layers.find((l) => l.id === layerId);
-    if (!layer) return;
-
-    // When viewing a version, this creates a "branch" - the change will be part of the next version
-    const newVisibility = layer.isVisible === "true" ? "false" : "true";
-
-    if (isViewingVersion) {
-      // For version viewing, we need to update the optimistic state without hitting the database
-      // The parent component should handle this optimistic update
-      toast.info("Änderung wird in neuer Version gespeichert", {
-        duration: 3000,
-      });
-      // TODO: Implement optimistic layer state update for version viewing
-      return;
-    }
-
-    await updateLayer(layerId, { isVisible: newVisibility });
   };
 
   const updateLayerColor = async (layerId: number, color: string) => {
@@ -723,19 +704,24 @@ function DrawingToolsImpl({
                               className="w-3 h-3 rounded-sm flex-shrink-0 border border-border"
                               style={{ backgroundColor: layer.color }}
                             />
-                            
+
                             {/* Name - editable on double-click */}
                             {editingLayerId === layer.id ? (
                               <Input
                                 value={editingLayerName}
-                                onChange={(e) => setEditingLayerName(e.target.value)}
+                                onChange={(e) =>
+                                  setEditingLayerName(e.target.value)
+                                }
                                 className="h-6 text-sm flex-1"
                                 autoFocus
                                 onClick={(e) => e.stopPropagation()}
                                 onKeyDown={(e) => {
                                   e.stopPropagation();
                                   if (e.key === "Enter") {
-                                    handleRenameLayer(layer.id, editingLayerName);
+                                    handleRenameLayer(
+                                      layer.id,
+                                      editingLayerName
+                                    );
                                   } else if (e.key === "Escape") {
                                     setEditingLayerId(null);
                                     setEditingLayerName("");
@@ -743,7 +729,10 @@ function DrawingToolsImpl({
                                 }}
                                 onBlur={() => {
                                   if (editingLayerName.trim()) {
-                                    handleRenameLayer(layer.id, editingLayerName);
+                                    handleRenameLayer(
+                                      layer.id,
+                                      editingLayerName
+                                    );
                                   } else {
                                     setEditingLayerId(null);
                                     setEditingLayerName("");
@@ -763,7 +752,7 @@ function DrawingToolsImpl({
                                 {layer.name}
                               </span>
                             )}
-                            
+
                             {/* Postal code count */}
                             <Badge variant="secondary" className="text-xs">
                               {layer.postalCodes?.length || 0}
@@ -787,7 +776,9 @@ function DrawingToolsImpl({
                               </PopoverTrigger>
                               <PopoverContent
                                 className="w-auto p-3"
-                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                onClick={(e: React.MouseEvent) =>
+                                  e.stopPropagation()
+                                }
                               >
                                 <div className="grid grid-cols-4 gap-2">
                                   {DEFAULT_COLORS.map((color) => (
@@ -796,32 +787,19 @@ function DrawingToolsImpl({
                                       className="w-8 h-8 rounded-md border-2 hover:scale-110 transition-transform"
                                       style={{
                                         backgroundColor: color,
-                                        borderColor: layer.color === color ? 'currentColor' : 'transparent'
+                                        borderColor:
+                                          layer.color === color
+                                            ? "currentColor"
+                                            : "transparent",
                                       }}
-                                      onClick={() => handleColorChange(layer.id, color)}
+                                      onClick={() =>
+                                        handleColorChange(layer.id, color)
+                                      }
                                     />
                                   ))}
                                 </div>
                               </PopoverContent>
                             </Popover>
-
-                            {/* Visibility toggle */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleLayerVisibility(layer.id);
-                              }}
-                              title={layer.isVisible === "true" ? "Ausblenden" : "Einblenden"}
-                            >
-                              {layer.isVisible === "true" ? (
-                                <IconEye className="h-3.5 w-3.5" />
-                              ) : (
-                                <IconEyeOff className="h-3.5 w-3.5 opacity-50" />
-                              )}
-                            </Button>
 
                             {/* Delete */}
                             <Button
@@ -1064,8 +1042,8 @@ function DrawingToolsImpl({
               open={showVersionHistory}
               onOpenChange={setShowVersionHistory}
               areaId={areaId}
-              initialVersions={versions}
-              initialChanges={changes}
+              versions={versions}
+              changes={changes}
             />
             <CreateVersionDialog
               open={showCreateVersion}

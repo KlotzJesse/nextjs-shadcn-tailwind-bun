@@ -58,12 +58,10 @@ export default async function ServerPostalCodesView({
           statesData={statesData}
           defaultGranularity={defaultGranularity}
           areaId={areaId}
-          activeLayerId={activeLayerId || null}
+          activeLayerId={activeLayerId || layers[0]?.id || null}
           initialAreas={areas}
           initialArea={area}
           initialLayers={layers}
-          initialVersions={versions}
-          initialChanges={changes}
           initialUndoRedoStatus={undoRedoStatus}
           isViewingVersion={false}
           versionId={versionId || null}

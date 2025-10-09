@@ -11,6 +11,7 @@ import {
   MultiPolygon,
   Polygon,
 } from "geojson";
+import { SelectAreaChanges, SelectAreaVersions } from "@/lib/schema/schema";
 
 interface PostalCodesMapProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
@@ -27,15 +28,15 @@ interface PostalCodesMapProps {
     codes: string[]
   ) => Promise<void>;
   isViewingVersion?: boolean;
-  versionId?: number | null;
-  versions?: any[];
-  initialUndoRedoStatus?: {
+  versionId: number | null;
+  versions: SelectAreaVersions[];
+  initialUndoRedoStatus: {
     canUndo: boolean;
     canRedo: boolean;
     undoCount: number;
     redoCount: number;
   };
-  changes?: any[];
+  changes: SelectAreaChanges[];
 }
 
 export function PostalCodesMap({
@@ -74,6 +75,8 @@ export function PostalCodesMap({
       removePostalCodesFromLayer={removePostalCodesFromLayer}
       isViewingVersion={isViewingVersion}
       versionId={versionId}
+      versions={versions}
+      changes={changes}
       initialUndoRedoStatus={initialUndoRedoStatus}
     />
   );

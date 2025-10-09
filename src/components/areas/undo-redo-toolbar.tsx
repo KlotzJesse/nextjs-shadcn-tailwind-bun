@@ -31,8 +31,11 @@ export function UndoRedoToolbar({
   initialStatus,
   onStatusUpdate,
 }: UndoRedoToolbarProps) {
-  const { canUndo, canRedo, undoCount, redoCount, undo, redo, isLoading } =
-    useUndoRedo(areaId, initialStatus, onStatusUpdate);
+  const { undo, redo, isLoading } = useUndoRedo(
+    areaId,
+    initialStatus,
+    onStatusUpdate
+  );
 
   if (!areaId) return null;
 
@@ -53,14 +56,14 @@ export function UndoRedoToolbar({
             <Button
               variant={"outline"}
               onClick={undo}
-              disabled={!canUndo || isLoading}
+              disabled={!initialStatus?.canUndo || isLoading}
               className="gap-2"
             >
               <IconArrowBackUp className="h-4 w-4" />
               Rückgängig
-              {undoCount > 0 && (
+              {initialStatus!.undoCount > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  ({undoCount})
+                  ({initialStatus?.undoCount})
                 </span>
               )}
             </Button>
@@ -75,20 +78,23 @@ export function UndoRedoToolbar({
             <Button
               variant={"outline"}
               onClick={redo}
-              disabled={!canRedo || isLoading}
+              disabled={!initialStatus?.canRedo || isLoading}
               className="gap-2"
             >
               <IconArrowForwardUp className="h-4 w-4" />
               Wiederholen
-              {redoCount > 0 && (
+              {initialStatus!.redoCount > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  ({redoCount})
+                  ({initialStatus?.redoCount})
                 </span>
               )}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Letzte rückgängig gemachte Änderung wiederholen (Strg+Umschalt+Z oder Strg+Y)</p>
+            <p>
+              Letzte rückgängig gemachte Änderung wiederholen (Strg+Umschalt+Z
+              oder Strg+Y)
+            </p>
           </TooltipContent>
         </Tooltip>
 

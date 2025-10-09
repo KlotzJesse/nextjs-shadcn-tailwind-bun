@@ -23,7 +23,7 @@ import {
   radiusSearchAction,
   drivingRadiusSearchAction,
 } from "@/app/actions/area-actions";
-import { areas, areaLayers } from "@/lib/schema/schema";
+import { areas, areaLayers, SelectAreaChanges } from "@/lib/schema/schema";
 import type { InferSelectModel } from "drizzle-orm";
 import {
   FeatureCollection,
@@ -41,7 +41,6 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useTransition, useOptimistic } from "react";
 import { toast } from "sonner";
-import { UndoRedoToolbar } from "@/components/areas/undo-redo-toolbar";
 import { EnhancedVersionHistoryDialog } from "@/components/areas/enhanced-version-history-dialog";
 
 import {
@@ -98,16 +97,14 @@ interface PostalCodesViewClientWithLayersProps {
   initialAreas: Area[];
   initialArea: Area | null;
   initialLayers: Layer[];
-  initialVersions: any[];
-  initialChanges: any[];
   initialUndoRedoStatus: {
     canUndo: boolean;
     canRedo: boolean;
     undoCount: number;
     redoCount: number;
   };
-  versions: any[];
-  changes: any[];
+  versions: SelectAreaVersions[];
+  changes: SelectAreaChanges[];
   isViewingVersion?: boolean;
   versionId?: number | null;
 }
@@ -117,7 +114,7 @@ export function PostalCodesViewClientWithLayers({
   statesData,
   defaultGranularity,
   areaId,
-  activeLayerId: initialActiveLayerId,
+  activeLayerId,
   initialAreas,
   initialArea,
   initialLayers,
@@ -170,8 +167,6 @@ export function PostalCodesViewClientWithLayers({
   );
 
   const [isPending, startTransition] = useTransition();
-  // Use URL state for active layer instead of local state
-  const activeLayerId = mapState.activeLayerId;
 
   // When viewing a version, we need special handling for layer updates
   const isWorkingWithVersion = isViewingVersion && versionId;
@@ -302,14 +297,6 @@ export function PostalCodesViewClientWithLayers({
   );
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showEnhancedHistory, setShowEnhancedHistory] = useState(false);
-
-  // Set first layer as active if none selected
-  useEffect(() => {
-    if (!activeLayerId && optimisticLayers.length > 0) {
-      const firstLayerId = optimisticLayers[0].id;
-      setActiveLayer(firstLayerId);
-    }
-  }, [activeLayerId, optimisticLayers.length, setActiveLayer]);
 
   const handleGranularityChange = async (newGranularity: string) => {
     if (newGranularity === defaultGranularity) return;
@@ -513,17 +500,6 @@ export function PostalCodesViewClientWithLayers({
         granularity={defaultGranularity}
         onImport={handleImport}
       />
-
-      {/* Enhanced Version History Dialog */}
-      {areaId && (
-        <EnhancedVersionHistoryDialog
-          open={showEnhancedHistory}
-          onOpenChange={setShowEnhancedHistory}
-          areaId={areaId}
-          initialVersions={initialVersions}
-          initialChanges={initialChanges}
-        />
-      )}
     </div>
   );
 }

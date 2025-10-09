@@ -14,38 +14,16 @@ interface UndoRedoStatus {
   redoCount: number;
 }
 
-export function useUndoRedo(areaId: number | null, initialStatus?: UndoRedoStatus, onStatusUpdate?: () => void) {
-  const [status, setStatus] = useState<UndoRedoStatus>(
-    initialStatus || {
-      canUndo: false,
-      canRedo: false,
-      undoCount: 0,
-      redoCount: 0,
-    }
-  );
+export function useUndoRedo(
+  areaId: number | null,
+  initialStatus?: UndoRedoStatus,
+  onStatusUpdate?: () => void
+) {
   const [isLoading, setIsLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Function to update status (can be called from parent components)
-  const updateStatus = useCallback((newStatus: UndoRedoStatus) => {
-    setStatus(newStatus);
-  }, []);
-
-  // Listen for storage events to refresh when changes are made in other tabs/windows
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'undo-redo-refresh' && areaId) {
-        setRefreshTrigger(prev => prev + 1);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [areaId]);
-
-
   const undo = useCallback(async () => {
-    if (!areaId || !status.canUndo || isLoading) return;
+    if (!areaId || !initialStatus?.canUndo || isLoading) return;
 
     setIsLoading(true);
     try {
@@ -64,10 +42,10 @@ export function useUndoRedo(areaId: number | null, initialStatus?: UndoRedoStatu
     } finally {
       setIsLoading(false);
     }
-  }, [areaId, status.canUndo, isLoading, onStatusUpdate]);
+  }, [areaId, initialStatus?.canUndo, isLoading, onStatusUpdate]);
 
   const redo = useCallback(async () => {
-    if (!areaId || !status.canRedo || isLoading) return;
+    if (!areaId || !initialStatus?.canRedo || isLoading) return;
 
     setIsLoading(true);
     try {
@@ -86,7 +64,7 @@ export function useUndoRedo(areaId: number | null, initialStatus?: UndoRedoStatu
     } finally {
       setIsLoading(false);
     }
-  }, [areaId, status.canRedo, isLoading, onStatusUpdate]);
+  }, [areaId, initialStatus?.canRedo, isLoading, onStatusUpdate]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -111,13 +89,12 @@ export function useUndoRedo(areaId: number | null, initialStatus?: UndoRedoStatu
   }, [undo, redo]);
 
   return {
-    canUndo: status.canUndo,
-    canRedo: status.canRedo,
-    undoCount: status.undoCount,
-    redoCount: status.redoCount,
+    canUndo: initialStatus?.canUndo,
+    canRedo: initialStatus?.canRedo,
+    undoCount: initialStatus?.undoCount,
+    redoCount: initialStatus?.redoCount,
     undo,
     redo,
     isLoading,
-    updateStatus,
   };
 }
