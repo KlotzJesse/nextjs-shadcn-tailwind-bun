@@ -41,6 +41,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateAreaAction, deleteAreaAction } from "@/app/actions/area-actions";
 import { toast } from "sonner";
+import { Route } from "next";
 
 interface NavAreasProps {
   areas: Area[];
@@ -248,7 +249,7 @@ export function NavAreas({
                         onDoubleClick={(e) => handleAreaDoubleClick(area, e)}
                       >
                         <Link
-                          href={getAreaUrl(area)}
+                          href={getAreaUrl(area) as Route}
                           onClick={() => handleAreaClick(area)}
                         >
                           <IconFolder className="h-4 w-4" />
@@ -306,8 +307,8 @@ export function NavAreas({
           <AlertDialogHeader>
             <AlertDialogTitle>Gebiet löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Sind Sie sicher, dass Sie das Gebiet &quot;{areaToDelete?.name}&quot;
-              löschen möchten?
+              Sind Sie sicher, dass Sie das Gebiet &quot;{areaToDelete?.name}
+              &quot; löschen möchten?
               <br />
               <br />
               <strong>

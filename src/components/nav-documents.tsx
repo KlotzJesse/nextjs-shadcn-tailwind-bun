@@ -25,6 +25,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
+import { Route } from "next";
 
 export function NavDocuments({
   items,
@@ -44,7 +45,7 @@ export function NavDocuments({
         {items.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
-              <Link href={item.url}>
+              <Link href={item.url as Route}>
                 <item.icon />
                 <span>{item.name}</span>
               </Link>
