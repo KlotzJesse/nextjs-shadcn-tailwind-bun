@@ -1,6 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TerraDrawMode } from "@/lib/hooks/use-terradraw";
 import {
   Circle,
@@ -156,16 +161,21 @@ export function FloatingDrawingToolbar({
                 terraDrawModeToDrawingMode(currentMode) === mode.id ||
                 (currentMode === null && mode.id === "cursor");
               return (
-                <Button
-                  key={mode.id}
-                  variant={isActive ? "default" : "outline"}
-                  size="sm"
-                  className="h-10 w-10 p-0 flex flex-col items-center gap-0.5"
-                  onClick={() => handleModeClick(mode.id)}
-                  title={mode.description}
-                >
-                  <Icon className="h-4 w-4" />
-                </Button>
+                <Tooltip key={mode.id}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      className="h-10 w-10 p-0 flex flex-col items-center gap-0.5"
+                      onClick={() => handleModeClick(mode.id)}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{mode.description}</p>
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </div>
