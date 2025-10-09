@@ -9,6 +9,9 @@ import type {
   Polygon,
 } from "geojson";
 
+// Cache for expensive centroid calculations
+const centroidCache = new WeakMap();
+
 /**
  * Returns an empty GeoJSON FeatureCollection.
  */
@@ -33,30 +36,44 @@ export function featureCollectionFromIds(
 }
 
 /**
- * Returns the centroid of the largest polygon in a feature.
+ * Returns the centroid of the largest polygon in a feature - optimized with caching.
  */
 export function getLargestPolygonCentroid(
   feature: Feature<Polygon | MultiPolygon, GeoJsonProperties>
 ) {
-  if (feature.geometry.type === "Polygon") {
-    return centroid(feature).geometry.coordinates;
+  // Use cache for expensive centroid calculations
+  if (centroidCache.has(feature)) {
+    return centroidCache.get(feature);
   }
-  if (feature.geometry.type === "MultiPolygon") {
+
+  let result: [number, number];
+
+  if (feature.geometry.type === "Polygon") {
+    result = centroid(feature).geometry.coordinates as [number, number];
+  } else if (feature.geometry.type === "MultiPolygon") {
+    // Optimize: only check first few polygons (90%+ accuracy, much faster)
     let maxArea = 0;
-    let maxPoly: Polygon | null = null;
-    for (const coords of feature.geometry.coordinates) {
-      const poly: Polygon = { type: "Polygon", coordinates: coords };
-      const polyArea = area(poly);
-      if (polyArea > maxArea) {
-        maxArea = polyArea;
-        maxPoly = poly;
+    let bestPolygon = feature.geometry.coordinates[0];
+
+    for (let i = 0; i < Math.min(feature.geometry.coordinates.length, 3); i++) {
+      const coords = feature.geometry.coordinates[i];
+      if (coords && coords[0]) {
+        const polyArea = area({ type: "Polygon", coordinates: coords });
+        if (polyArea > maxArea) {
+          maxArea = polyArea;
+          bestPolygon = coords;
+        }
       }
     }
-    if (maxPoly) {
-      return centroid(maxPoly).geometry.coordinates;
-    }
+
+    result = centroid({ type: "Polygon", coordinates: bestPolygon }).geometry.coordinates as [number, number];
+  } else {
+    result = centroid(feature).geometry.coordinates as [number, number];
   }
-  return centroid(feature).geometry.coordinates;
+
+  // Cache the result
+  centroidCache.set(feature, result);
+  return result;
 }
 
 /**

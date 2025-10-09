@@ -519,39 +519,59 @@ export function useMapLayers({
     };
   }, [map, layerId, ids]);
 
-  // Effect for rendering area layers with custom colors
-  useEffect(() => {
-    if (!map || !isMapLoaded || !layers || layers.length === 0) {
-      return;
-    }
+  // Pre-compute layer data mapping for O(1) lookups
+  const layerDataCache = useMemo(() => {
+    if (!data.features || !layers) return new Map();
 
-    // Create a feature collection for each layer with its postal codes
+    const cache = new Map<number, FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>>();
     layers.forEach((layer) => {
-      const layerSourceId = `area-layer-${layer.id}-source`;
-      const layerFillId = `area-layer-${layer.id}-fill`;
-      const layerBorderId = `area-layer-${layer.id}-border`;
-
-      // Get postal codes for this layer
       const postalCodes = layer.postalCodes?.map((pc) => pc.postalCode) || [];
+      if (postalCodes.length === 0) {
+        cache.set(layer.id, { type: "FeatureCollection", features: [] });
+        return;
+      }
 
-      // Filter features from the main data that match this layer's postal codes
+      // Create lookup set for O(1) postal code matching
+      const postalCodeSet = new Set(postalCodes.map(code => code.toString()));
+
+      // Filter features once per layer change, not per switch
       const layerFeatures = data.features.filter((feature) => {
         const code =
           feature.properties?.code ||
           feature.properties?.plz ||
           feature.properties?.postalCode;
-        return code && postalCodes.includes(code.toString());
+        return code && postalCodeSet.has(code.toString());
       });
 
-      const layerFeatureCollection: FeatureCollection<
-        Polygon | MultiPolygon,
-        GeoJsonProperties
-      > = {
+      cache.set(layer.id, {
         type: "FeatureCollection",
         features: layerFeatures,
-      };
+      });
+    });
+    return cache;
+  }, [data.features, layers]);
 
-      // Add or update source
+  // Initialize area layers once (only when layers change, not on activeLayerId change)
+  useEffect(() => {
+    if (!map || !isMapLoaded || !layers || layers.length === 0 || !layerDataCache.size) {
+      return;
+    }
+
+    layers.forEach((layer) => {
+      const layerSourceId = `area-layer-${layer.id}-source`;
+      const layerFillId = `area-layer-${layer.id}-fill`;
+      const layerBorderId = `area-layer-${layer.id}-border`;
+
+      const layerFeatureCollection = layerDataCache.get(layer.id);
+      if (!layerFeatureCollection || layerFeatureCollection.features.length === 0) {
+        // Remove empty layers
+        if (map.getLayer(layerFillId)) map.removeLayer(layerFillId);
+        if (map.getLayer(layerBorderId)) map.removeLayer(layerBorderId);
+        if (map.getSource(layerSourceId)) map.removeSource(layerSourceId);
+        return;
+      }
+
+      // Add or update source once
       if (!map.getSource(layerSourceId)) {
         map.addSource(layerSourceId, {
           type: "geojson",
@@ -564,19 +584,6 @@ export function useMapLayers({
         }
       }
 
-      // Parse hex color to RGB for opacity
-      const hexToRgb = (hex: string) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result
-          ? {
-              r: parseInt(result[1], 16),
-              g: parseInt(result[2], 16),
-              b: parseInt(result[3], 16),
-            }
-          : { r: 59, g: 130, b: 246 }; // Default blue
-      };
-
-      const rgb = hexToRgb(layer.color);
       const opacity = layer.opacity / 100;
       const isVisible = layer.isVisible === "true";
       const isActive = activeLayerId === layer.id;
@@ -596,20 +603,7 @@ export function useMapLayers({
               visibility: isVisible ? "visible" : "none",
             },
           } as LayerSpecification,
-          ids.hoverLayerId // Place area layers below hover layer
-        );
-      } else {
-        // Update existing layer
-        map.setPaintProperty(layerFillId, "fill-color", layer.color);
-        map.setPaintProperty(
-          layerFillId,
-          "fill-opacity",
-          isVisible ? opacity * 0.6 : 0
-        );
-        map.setLayoutProperty(
-          layerFillId,
-          "visibility",
-          isVisible ? "visible" : "none"
+          ids.hoverLayerId
         );
       }
 
@@ -631,21 +625,7 @@ export function useMapLayers({
               visibility: isVisible ? "visible" : "none",
             },
           } as LayerSpecification,
-          ids.hoverLayerId // Place area layers below hover layer
-        );
-      } else {
-        // Update existing layer
-        map.setPaintProperty(layerBorderId, "line-color", layer.color);
-        map.setPaintProperty(layerBorderId, "line-width", isActive ? 2.5 : 1.5);
-        map.setPaintProperty(
-          layerBorderId,
-          "line-opacity",
-          isVisible ? (isActive ? 0.9 : 0.7) : 0
-        );
-        map.setLayoutProperty(
-          layerBorderId,
-          "visibility",
-          isVisible ? "visible" : "none"
+          ids.hoverLayerId
         );
       }
     });
@@ -654,7 +634,6 @@ export function useMapLayers({
     return () => {
       if (!map) return;
 
-      // Get all current area layer IDs
       const currentLayerIds = new Set(layers.map((l) => l.id));
 
       // Find and remove orphaned area layers
@@ -692,7 +671,34 @@ export function useMapLayers({
         }
       });
     };
-  }, [map, isMapLoaded, layers, activeLayerId, data, ids.hoverLayerId]);
+  }, [map, isMapLoaded, layers, layerDataCache, ids.hoverLayerId]);
+
+  // Optimized layer switching - only update visibility and active state
+  useEffect(() => {
+    if (!map || !layersLoaded || !layers) return;
+
+    layers.forEach((layer) => {
+      const layerFillId = `area-layer-${layer.id}-fill`;
+      const layerBorderId = `area-layer-${layer.id}-border`;
+
+      const isVisible = layer.isVisible === "true";
+      const isActive = activeLayerId === layer.id;
+
+      // Only update visibility and active state - no expensive operations
+      if (map.getLayer(layerFillId)) {
+        map.setLayoutProperty(layerFillId, "visibility",
+          isVisible ? "visible" : "none");
+      }
+
+      if (map.getLayer(layerBorderId)) {
+        map.setPaintProperty(layerBorderId, "line-width", isActive ? 2.5 : 1.5);
+        map.setPaintProperty(layerBorderId, "line-opacity",
+          isVisible ? (isActive ? 0.9 : 0.7) : 0);
+        map.setLayoutProperty(layerBorderId, "visibility",
+          isVisible ? "visible" : "none");
+      }
+    });
+  }, [map, layersLoaded, activeLayerId, layers]);
 
   // Update selected regions color when active layer changes
   useEffect(() => {

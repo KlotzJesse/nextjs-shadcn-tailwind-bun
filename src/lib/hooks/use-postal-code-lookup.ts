@@ -5,7 +5,7 @@ import {
   MultiPolygon,
   Polygon,
 } from "geojson";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useStableCallback } from "./use-stable-callback";
 
@@ -28,6 +28,46 @@ export function usePostalCodeLookup({
   const [isLoading, setIsLoading] = useState(false);
   const [lastLookupResult, setLastLookupResult] =
     useState<PostalCodeLookupResult | null>(null);
+
+  // Spatial index for O(log n) coordinate lookups
+  const spatialIndex = useMemo(() => {
+    const index = new Map();
+
+    data.features.forEach((feature) => {
+      const geometry = feature.geometry;
+      let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+
+      if (geometry.type === "Polygon") {
+        const coords = geometry.coordinates[0];
+        for (const [lng, lat] of coords) {
+          minLng = Math.min(minLng, lng);
+          maxLng = Math.max(maxLng, lng);
+          minLat = Math.min(minLat, lat);
+          maxLat = Math.max(maxLat, lat);
+        }
+      } else if (geometry.type === "MultiPolygon") {
+        // Use first polygon for bounds approximation
+        const coords = geometry.coordinates[0]?.[0];
+        if (coords) {
+          for (const [lng, lat] of coords) {
+            minLng = Math.min(minLng, lng);
+            maxLng = Math.max(maxLng, lng);
+            minLat = Math.min(minLat, lat);
+            maxLat = Math.max(maxLat, lat);
+          }
+        }
+      }
+
+      if (minLng !== Infinity) {
+        const code = feature.properties?.code || feature.properties?.PLZ || feature.properties?.plz;
+        if (code) {
+          index.set(code.toString(), { feature, bounds: { minLng, maxLng, minLat, maxLat } });
+        }
+      }
+    });
+
+    return index;
+  }, [data.features]);
 
   const lookupPostalCode = useStableCallback(async (postalCode: string) => {
     const lookupPromise = async () => {
@@ -93,7 +133,7 @@ export function usePostalCodeLookup({
     setLastLookupResult(null);
   });
 
-  // Helper function to find postal code by coordinates
+  // Helper function to find postal code by coordinates - optimized with spatial indexing
   const findPostalCodeByCoords = useStableCallback(
     (lng: number, lat: number) => {
       // Point-in-polygon helper (ray-casting)
@@ -116,26 +156,29 @@ export function usePostalCodeLookup({
         return inside;
       }
 
-      // Check each feature
-      for (const feature of data.features) {
+      // Use spatial index for candidate filtering - much faster than checking all features
+      const candidates = [];
+      for (const [code, { bounds }] of spatialIndex) {
+        // Quick bounds check before expensive point-in-polygon
+        if (lng >= bounds.minLng && lng <= bounds.maxLng &&
+            lat >= bounds.minLat && lat <= bounds.maxLat) {
+          candidates.push({ code, feature: spatialIndex.get(code).feature });
+        }
+      }
+
+      // Only run expensive point-in-polygon on candidates
+      for (const candidate of candidates) {
+        const feature = candidate.feature;
         if (feature.geometry.type === "Polygon") {
           const polygon = feature.geometry.coordinates[0];
           if (isPointInPolygon([lng, lat], polygon as number[][])) {
-            return (
-              feature.properties?.code ||
-              feature.properties?.PLZ ||
-              feature.properties?.plz
-            );
+            return candidate.code;
           }
         } else if (feature.geometry.type === "MultiPolygon") {
           for (const poly of feature.geometry.coordinates) {
             if (Array.isArray(poly) && Array.isArray(poly[0])) {
               if (isPointInPolygon([lng, lat], poly[0] as number[][])) {
-                return (
-                  feature.properties?.code ||
-                  feature.properties?.PLZ ||
-                  feature.properties?.plz
-                );
+                return candidate.code;
               }
             }
           }

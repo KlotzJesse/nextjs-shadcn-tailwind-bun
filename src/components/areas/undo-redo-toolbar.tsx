@@ -57,7 +57,7 @@ export function UndoRedoToolbar({
               variant={"outline"}
               onClick={undo}
               disabled={!initialStatus?.canUndo || isLoading}
-              className="gap-2"
+              className="h-10 p-0 gap-2"
             >
               <IconArrowBackUp className="h-4 w-4" />
               Rückgängig
@@ -79,7 +79,7 @@ export function UndoRedoToolbar({
               variant={"outline"}
               onClick={redo}
               disabled={!initialStatus?.canRedo || isLoading}
-              className="gap-2"
+              className="h-10 p-0 gap-2"
             >
               <IconArrowForwardUp className="h-4 w-4" />
               Wiederholen

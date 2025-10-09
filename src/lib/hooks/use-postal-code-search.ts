@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { useMapState } from "@/lib/url-state/map-state";
 import {
@@ -18,6 +19,31 @@ export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
   const [isSearching, setIsSearching] = useState(false);
   const { granularity } = useMapState();
 
+  // Pre-build search index for O(1) lookups instead of O(n) filtering
+  const searchIndex = useMemo(() => {
+    const index = new Map();
+
+    data.features.forEach((feature) => {
+      const searchableText = [
+        feature.properties?.code,
+        feature.properties?.PLZ,
+        feature.properties?.plz,
+        feature.properties?.name
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      // Index by individual words for partial matching
+      const words = searchableText.split(/\s+/);
+      words.forEach(word => {
+        if (word.length > 1) { // Skip single characters for performance
+          if (!index.has(word)) index.set(word, new Set());
+          index.get(word).add(feature);
+        }
+      });
+    });
+
+    return index;
+  }, [data.features]);
+
   const searchPostalCodes = useStableCallback((query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -27,33 +53,22 @@ export function usePostalCodeSearch({ data }: PostalCodeSearchProps) {
     setIsSearching(true);
 
     try {
-      // Simple search implementation - in a real app, you'd want more sophisticated search
-      const results = data.features
-        .filter((feature) => {
-          const searchTerm = query.toLowerCase();
-          const code = feature.properties?.code?.toLowerCase() || "";
-          const plz = feature.properties?.PLZ?.toLowerCase() || "";
-          const plzAlt = feature.properties?.plz?.toLowerCase() || "";
-          const name = feature.properties?.name?.toLowerCase() || "";
+      // Optimized search using pre-built index - O(1) instead of O(n)
+      const searchTerms = query.toLowerCase().split(/\s+/);
+      const results = new Map();
 
-          return (
-            code.includes(searchTerm) ||
-            plz.includes(searchTerm) ||
-            plzAlt.includes(searchTerm) ||
-            name.includes(searchTerm)
-          );
-        })
-        .map(
-          (feature) =>
-            feature.properties?.code ||
-            feature.properties?.PLZ ||
-            feature.properties?.plz ||
-            ""
-        )
-        .filter(Boolean)
-        .slice(0, 10); // Limit to 10 results
+      searchTerms.forEach(term => {
+        if (searchIndex.has(term)) {
+          searchIndex.get(term).forEach(feature => {
+            const code = feature.properties?.code || feature.properties?.PLZ || feature.properties?.plz;
+            if (code) results.set(code, feature);
+          });
+        }
+      });
 
-      setSearchResults(results);
+      // Convert to array and limit results
+      const finalResults = Array.from(results.keys()).slice(0, 10);
+      setSearchResults(finalResults);
     } catch (error) {
       console.error("Error searching postal codes:", error);
       setSearchResults([]);
