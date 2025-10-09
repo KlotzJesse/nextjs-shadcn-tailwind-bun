@@ -24,7 +24,7 @@ export async function GET(
     const version = await db.query.areaVersions.findFirst({
       where: and(
         eq(areaVersions.areaId, areaId),
-        eq(areaVersions.id, versionIdNum)
+        eq(areaVersions.versionNumber, versionIdNum)
       ),
     });
 

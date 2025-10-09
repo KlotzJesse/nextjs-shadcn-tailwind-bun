@@ -178,7 +178,7 @@ export async function getChangeHistory(
       // For now, we'll need to get the version first to get the composite key
       // This is a limitation of the current design - we might need to change this later
       const version = await db.query.areaVersions.findFirst({
-        where: eq(areaVersions.id, options.versionId),
+        where: and(eq(areaVersions.areaId, areaId), eq(areaVersions.versionNumber, options.versionId)),
       });
       if (version) {
         whereConditions = and(

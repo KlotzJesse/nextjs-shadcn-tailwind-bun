@@ -7,20 +7,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { IconFolder, IconMapPin, IconSearch, IconUpload } from "@tabler/icons-react";
+import {
+  IconFolder,
+  IconMapPin,
+  IconSearch,
+  IconUpload,
+} from "@tabler/icons-react";
 
 export function PostalCodesOverview() {
   return (
-    <div className="h-full p-6">
+    <div className="h-full p-6 pt-10">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
             Willkommen bei KRAUSS Gebietsmanagement
           </h1>
           <p className="text-muted-foreground text-lg">
-            Verwalten Sie Postleitzahlgebiete mit verschiedenen Granularitätsstufen
-            und erstellen Sie benutzerdefinierte Gebietsaufteilungen für Ihre
-            Geschäftsprozesse.
+            Verwalten Sie Postleitzahlgebiete mit verschiedenen
+            Granularitätsstufen und erstellen Sie benutzerdefinierte
+            Gebietsaufteilungen für Ihre Geschäftsprozesse.
           </p>
         </div>
 
@@ -32,8 +37,9 @@ export function PostalCodesOverview() {
                 Gebietsverwaltung
               </CardTitle>
               <CardDescription>
-                Erstellen und verwalten Sie benutzerdefinierte Gebietsaufteilungen
-                mit mehreren Layern für verschiedene Postleitzahlbereiche.
+                Erstellen und verwalten Sie benutzerdefinierte
+                Gebietsaufteilungen mit mehreren Layern für verschiedene
+                Postleitzahlbereiche.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -53,8 +59,8 @@ export function PostalCodesOverview() {
                 Postleitzahlen erkunden
               </CardTitle>
               <CardDescription>
-                Interaktive Karte zur Erforschung der deutschen Postleitzahlgebiete
-                mit verschiedenen Granularitätsstufen.
+                Interaktive Karte zur Erforschung der deutschen
+                Postleitzahlgebiete mit verschiedenen Granularitätsstufen.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -125,7 +131,9 @@ export function PostalCodesOverview() {
                 <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-2 text-lg font-bold">
                   3
                 </div>
-                <h3 className="font-semibold mb-1">Analysieren & Exportieren</h3>
+                <h3 className="font-semibold mb-1">
+                  Analysieren & Exportieren
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Nutzen Sie die Analysewerkzeuge und exportieren Sie Ihre
                   Gebietsdaten für weitere Verwendung.

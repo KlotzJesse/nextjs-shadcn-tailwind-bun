@@ -11,7 +11,12 @@ import type {
   Map as MapLibreMap,
 } from "maplibre-gl";
 import { useEffect, useLayoutEffect, useMemo } from "react";
-import type { Layer } from "../types/area-types";
+import { InferSelectModel } from "drizzle-orm";
+import { areaLayers } from "../schema/schema";
+
+type Layer = InferSelectModel<typeof areaLayers> & {
+  postalCodes?: { postalCode: string }[];
+};
 
 interface UseMapLayersProps {
   map: MapLibreMap | null;

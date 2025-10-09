@@ -23,7 +23,12 @@ import {
   radiusSearchAction,
   drivingRadiusSearchAction,
 } from "@/app/actions/area-actions";
-import { areas, areaLayers, SelectAreaChanges } from "@/lib/schema/schema";
+import {
+  areas,
+  areaLayers,
+  SelectAreaChanges,
+  SelectAreaVersions,
+} from "@/lib/schema/schema";
 import type { InferSelectModel } from "drizzle-orm";
 import {
   FeatureCollection,
@@ -118,8 +123,6 @@ export function PostalCodesViewClientWithLayers({
   initialAreas,
   initialArea,
   initialLayers,
-  initialVersions,
-  initialChanges,
   initialUndoRedoStatus,
   versions,
   changes,
@@ -484,7 +487,7 @@ export function PostalCodesViewClientWithLayers({
             addPostalCodesToLayer={addPostalCodesToLayer}
             removePostalCodesFromLayer={removePostalCodesFromLayer}
             isViewingVersion={isViewingVersion}
-            versionId={versionId}
+            versionId={versionId!}
             versions={versions}
             changes={changes}
             initialUndoRedoStatus={initialUndoRedoStatus}

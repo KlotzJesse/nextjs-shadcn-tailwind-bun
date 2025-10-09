@@ -2,7 +2,6 @@ import { PostalCodesErrorBoundary } from "@/components/ui/error-boundaries";
 import { PostalCodesViewSkeleton } from "@/components/ui/loading-skeletons";
 import { getPostalCodesDataForGranularity } from "@/lib/utils/postal-codes-data";
 import { getStatesData } from "@/lib/utils/states-data";
-import { PostalCodesViewServer } from "./postal-codes-view-server";
 import { Suspense } from "react";
 import {
   getAreas,
@@ -12,7 +11,6 @@ import {
   getChangeHistory,
   getUndoRedoStatus,
 } from "@/lib/db/data-functions";
-import { PostalCodesViewClientWithLayers } from "./postal-codes-view-client-layers";
 import { areas, areaLayers } from "@/lib/schema/schema";
 import type { InferSelectModel } from "drizzle-orm";
 import type {
@@ -21,12 +19,13 @@ import type {
   MultiPolygon,
   Polygon,
 } from "geojson";
+import { PostalCodesViewClientWithLayers } from "./postal-codes-view-client-layers";
 
 interface ServerPostalCodesViewProps {
   defaultGranularity: string;
-  areaId?: number | null;
-  activeLayerId?: number | null;
-  versionId?: number | null;
+  areaId: number;
+  activeLayerId: number;
+  versionId: number;
 }
 
 export default async function ServerPostalCodesView({

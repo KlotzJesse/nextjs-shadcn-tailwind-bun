@@ -4,8 +4,17 @@ import type {
   MultiPolygon,
   Polygon,
 } from "geojson";
-import type { Layer } from "@/lib/types/area-types";
-import { SelectAreaVersions, SelectAreaChanges } from "@/lib/schema/schema";
+
+import {
+  SelectAreaVersions,
+  SelectAreaChanges,
+  areaLayers,
+} from "@/lib/schema/schema";
+import { InferSelectModel } from "drizzle-orm";
+
+type Layer = InferSelectModel<typeof areaLayers> & {
+  postalCodes?: { postalCode: string }[];
+};
 
 export interface BaseMapProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;

@@ -4,14 +4,22 @@ const BaseMap = dynamic(() =>
 );
 
 import { useMapState } from "@/lib/url-state/map-state";
-import { Layer } from "@/lib/types/area-types";
 import {
   FeatureCollection,
   GeoJsonProperties,
   MultiPolygon,
   Polygon,
 } from "geojson";
-import { SelectAreaChanges, SelectAreaVersions } from "@/lib/schema/schema";
+import {
+  SelectAreaChanges,
+  SelectAreaVersions,
+  areaLayers,
+} from "@/lib/schema/schema";
+import { InferSelectModel } from "drizzle-orm";
+
+type Layer = InferSelectModel<typeof areaLayers> & {
+  postalCodes?: { postalCode: string }[];
+};
 
 interface PostalCodesMapProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;

@@ -3,8 +3,9 @@ import type { areas, areaLayers, areaLayerPostalCodes } from "../schema/schema";
 
 export type Area = InferSelectModel<typeof areas>;
 export type Layer = InferSelectModel<typeof areaLayers> & {
-  postalCodes?: PostalCodeEntry[];
+  postalCodes?: { postalCode: string }[];
 };
+
 export type AreaWithLayers = Area & {
   layers: Layer[];
 };

@@ -29,6 +29,20 @@ import {
 import { toast } from "sonner";
 import { SelectAreaVersions, SelectAreaChanges } from "@/lib/schema/schema";
 
+interface VersionSnapshot {
+  layers: Array<{
+    name: string;
+    postalCodes: string[];
+  }>;
+}
+
+interface ChangeData {
+  postalCodes?: string[];
+  layer?: {
+    name: string;
+  };
+}
+
 interface EnhancedVersionHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -198,7 +212,7 @@ export function EnhancedVersionHistoryDialog({
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span>{version.changeCount} changes</span>
                         <span>
-                          {version.snapshot?.layers?.length || 0} layer(s)
+                          {(version.snapshot as VersionSnapshot)?.layers?.length || 0} layer(s)
                         </span>
                         {version.createdBy && (
                           <span>by {version.createdBy}</span>
@@ -243,20 +257,20 @@ export function EnhancedVersionHistoryDialog({
                       <div className="text-sm">
                         {change.changeType === "add_postal_codes" && (
                           <span>
-                            Added {change.changeData?.postalCodes?.length || 0}{" "}
+                            Added {(change.changeData as ChangeData)?.postalCodes?.length || 0}{" "}
                             postal code(s)
                           </span>
                         )}
                         {change.changeType === "remove_postal_codes" && (
                           <span>
                             Removed{" "}
-                            {change.changeData?.postalCodes?.length || 0} postal
+                            {(change.changeData as ChangeData)?.postalCodes?.length || 0} postal
                             code(s)
                           </span>
                         )}
                         {change.changeType === "create_layer" && (
                           <span>
-                            Layer erstellt: {change.changeData?.layer?.name}
+                            Layer erstellt: {(change.changeData as ChangeData)?.layer?.name}
                           </span>
                         )}
                         {change.changeType === "update_layer" && (
@@ -264,7 +278,7 @@ export function EnhancedVersionHistoryDialog({
                         )}
                         {change.changeType === "delete_layer" && (
                           <span>
-                            Layer gelöscht: {change.previousData?.layer?.name}
+                            Layer gelöscht: {(change.previousData as ChangeData)?.layer?.name}
                           </span>
                         )}
                         {change.createdBy && (
@@ -300,7 +314,7 @@ export function EnhancedVersionHistoryDialog({
                   >
                     <option value="">Version auswählen</option>
                     {versions.map((v) => (
-                      <option key={v.id} value={v.id}>
+                      <option key={v.versionNumber} value={v.versionNumber}>
                         v{v.versionNumber} {v.name ? `- ${v.name}` : ""}
                       </option>
                     ))}
@@ -323,7 +337,7 @@ export function EnhancedVersionHistoryDialog({
                   >
                     <option value="">Version auswählen</option>
                     {versions.map((v) => (
-                      <option key={v.id} value={v.id}>
+                      <option key={v.versionNumber} value={v.versionNumber}>
                         v{v.versionNumber} {v.name ? `- ${v.name}` : ""}
                       </option>
                     ))}

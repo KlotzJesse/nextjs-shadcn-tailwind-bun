@@ -52,6 +52,10 @@ export async function recordChangeAction(
       columns: { currentVersionNumber: true },
     });
 
+    if (!area || !area.currentVersionNumber) {
+      return { success: false, error: "Area not found" };
+    }
+
     // Get the next sequence number for this area + version scope
     const lastChange = await db
       .select({ sequenceNumber: areaChanges.sequenceNumber })
@@ -59,14 +63,15 @@ export async function recordChangeAction(
       .where(
         and(
           eq(areaChanges.areaId, areaId),
-          eq(areaChanges.versionAreaId, area?.currentVersionNumber ? areaId : null),
-          eq(areaChanges.versionNumber, area?.currentVersionNumber || null)
+          eq(areaChanges.versionAreaId, area.currentVersionNumber),
+          eq(areaChanges.versionNumber, area.currentVersionNumber)
         )
       )
       .orderBy(desc(areaChanges.sequenceNumber))
       .limit(1);
 
-    const nextSequence = lastChange.length > 0 ? lastChange[0].sequenceNumber + 1 : 1;
+    const nextSequence =
+      lastChange.length > 0 ? lastChange[0].sequenceNumber + 1 : 1;
 
     // Insert the change
     const [newChange] = await db
@@ -159,7 +164,7 @@ async function updateUndoStackAfterChange(
  */
 export async function undoChangeAction(
   areaId: number
-): ServerActionResponse<ChangeKey> {
+): ServerActionResponse<ChangeKey | { success: boolean; data: string }> {
   try {
     const result = await db.transaction(async (tx) => {
       // Get undo stack
@@ -175,6 +180,14 @@ export async function undoChangeAction(
       const redoStack = (stack.redoStack as ChangeKey[]) || [];
       const changeKey = undoStack[undoStack.length - 1];
 
+      if (
+        !changeKey ||
+        !changeKey.sequenceNumber ||
+        !changeKey.versionNumber ||
+        !changeKey.versionAreaId
+      ) {
+        return { success: false, data: "No changes to undo" };
+      }
       // Get the change to undo
       const change = await tx.query.areaChanges.findFirst({
         where: and(
@@ -186,7 +199,7 @@ export async function undoChangeAction(
       });
 
       if (!change) {
-        throw new Error("Change not found");
+        return { success: false, data: "No changes to undo" };
       }
 
       // Apply the undo operation
@@ -235,7 +248,7 @@ export async function undoChangeAction(
  */
 export async function redoChangeAction(
   areaId: number
-): ServerActionResponse<ChangeKey> {
+): ServerActionResponse<ChangeKey | { success: boolean; data: string }> {
   try {
     const result = await db.transaction(async (tx) => {
       // Get undo stack
@@ -250,6 +263,15 @@ export async function redoChangeAction(
       const undoStack = (stack.undoStack as ChangeKey[]) || [];
       const redoStack = stack.redoStack as ChangeKey[];
       const changeKey = redoStack[redoStack.length - 1];
+
+      if (
+        !changeKey ||
+        !changeKey.sequenceNumber ||
+        !changeKey.versionNumber ||
+        !changeKey.versionAreaId
+      ) {
+        return { success: false, data: "No changes to redo" };
+      }
 
       // Get the change to redo
       const change = await tx.query.areaChanges.findFirst({
@@ -360,7 +382,10 @@ async function applyUndoOperation(tx: any, change: any): Promise<void> {
           .where(
             and(
               eq(areaLayerPostalCodes.layerId, entityId),
-              inArray(areaLayerPostalCodes.postalCode, change.changeData.postalCodes)
+              inArray(
+                areaLayerPostalCodes.postalCode,
+                change.changeData.postalCodes
+              )
             )
           );
       }
@@ -490,7 +515,10 @@ export async function getChangeHistoryAction(
       // For now, we'll need to get the version first to get the composite key
       // This is a limitation of the current design - we might need to change this later
       const version = await db.query.areaVersions.findFirst({
-        where: eq(areaVersions.id, options.versionId),
+        where: and(
+          eq(areaVersions.areaId, areaId),
+          eq(areaVersions.versionNumber, options.versionId)
+        ),
       });
       if (version) {
         whereConditions = and(

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/site-header";
+import { PostalCodesOverview } from "@/components/postal-codes/postal-codes-overview";
 
 const ServerPostalCodesView = dynamic(
   () => import("@/components/postal-codes/server-postal-codes-view"),
@@ -15,7 +16,7 @@ const ServerPostalCodesView = dynamic(
 
 export const experimental_ppr = true;
 
-export default function HomePage({
+export default async function HomePage({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
@@ -24,6 +25,10 @@ export default function HomePage({
   const versionId = (await searchParams).versionId;
   const activeLayerId = (await searchParams).activeLayerId;
 
+  if (!areaId) {
+    return <PostalCodesOverview />;
+  }
+
   console.log({ areaId, versionId, activeLayerId });
   return (
     <div className="h-full px-4 lg:px-6">
@@ -31,9 +36,9 @@ export default function HomePage({
         <Suspense fallback={<PostalCodesViewSkeleton />}>
           <ServerPostalCodesView
             defaultGranularity="1digit"
-            areaId={areaId}
-            activeLayerId={versionId}
-            versionId={activeLayerId}
+            areaId={parseInt(areaId as string)}
+            activeLayerId={parseInt(versionId as string)}
+            versionId={parseInt(activeLayerId as string)}
           />
         </Suspense>
       </FeatureErrorBoundary>

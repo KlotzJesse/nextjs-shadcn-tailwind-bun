@@ -59,7 +59,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { type Area, type Layer } from "@/lib/types/area-types";
+import { type Area } from "@/lib/types/area-types";
 import {
   createLayerAction,
   updateLayerAction,
@@ -83,7 +83,16 @@ import { EnhancedVersionHistoryDialog } from "@/components/areas/enhanced-versio
 import { CreateVersionDialog } from "@/components/areas/create-version-dialog";
 import { LayerMergeDialog } from "@/components/areas/layer-merge-dialog";
 import { GranularitySelector } from "@/components/shared/granularity-selector";
-import { SelectAreaVersions, SelectAreaChanges } from "@/lib/schema/schema";
+import {
+  SelectAreaVersions,
+  SelectAreaChanges,
+  areaLayers,
+} from "@/lib/schema/schema";
+import { InferSelectModel } from "drizzle-orm";
+
+type Layer = InferSelectModel<typeof areaLayers> & {
+  postalCodes?: { postalCode: string }[];
+};
 
 export interface DrawingToolsProps {
   currentMode: TerraDrawMode | null;

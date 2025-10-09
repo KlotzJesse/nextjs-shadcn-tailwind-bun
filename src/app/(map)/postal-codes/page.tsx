@@ -6,9 +6,10 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { areas, areaVersions } from "@/lib/schema/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { SiteHeader } from "@/components/site-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PostalCodesOverview } from "@/components/postal-codes/postal-codes-overview";
 
 const ServerPostalCodesView = nextDynamic(
   () => import("@/components/postal-codes/server-postal-codes-view"),
@@ -52,7 +53,10 @@ export async function generateMetadata({
 
           if (!isNaN(versionId)) {
             const version = await db.query.areaVersions.findFirst({
-              where: eq(areaVersions.id, versionId),
+              where: and(
+                eq(areaVersions.areaId, areaId),
+                eq(areaVersions.versionNumber, versionId)
+              ),
             });
 
             if (version && version.snapshot) {
@@ -95,6 +99,11 @@ export default async function PostalCodesPage({
 
   // Extract area and layer IDs from search params
   const areaId = search.areaId ? parseInt(search.areaId as string, 10) : null;
+
+  if (!areaId) {
+    return <PostalCodesOverview />;
+  }
+
   const activeLayerId = search.activeLayerId
     ? parseInt(search.activeLayerId as string, 10)
     : null;
@@ -110,7 +119,10 @@ export default async function PostalCodesPage({
       // Check if viewing a version
       if (versionId && versionId > 0) {
         const version = await db.query.areaVersions.findFirst({
-          where: eq(areaVersions.id, versionId),
+          where: and(
+            eq(areaVersions.areaId, areaId),
+            eq(areaVersions.versionNumber, versionId)
+          ),
         });
 
         if (version && version.snapshot) {
@@ -143,8 +155,8 @@ export default async function PostalCodesPage({
             <ServerPostalCodesView
               defaultGranularity={granularity}
               areaId={areaId}
-              activeLayerId={activeLayerId}
-              versionId={versionId}
+              activeLayerId={activeLayerId!}
+              versionId={versionId!}
             />
           </Suspense>
         </PostalCodesErrorBoundary>

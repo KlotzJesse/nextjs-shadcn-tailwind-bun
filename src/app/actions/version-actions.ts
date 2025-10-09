@@ -373,7 +373,7 @@ export async function restoreVersionAction(
           })
           .returning();
 
-        newVersionNumber = newVersion.versionNumber;
+        newVersionId = newVersion.versionNumber;
 
         // Update area's current version
         await tx
@@ -382,7 +382,7 @@ export async function restoreVersionAction(
           .where(eq(areas.id, areaId));
       }
 
-      return { newVersionNumber };
+      return { newVersionNumber: newVersionId };
     });
 
     // Clear undo/redo stacks after restoration
@@ -436,12 +436,14 @@ export async function deleteVersionAction(
         );
 
       // Delete the version
-      await tx.delete(areaVersions).where(
-        and(
-          eq(areaVersions.areaId, areaId),
-          eq(areaVersions.versionNumber, versionNumber)
-        )
-      );
+      await tx
+        .delete(areaVersions)
+        .where(
+          and(
+            eq(areaVersions.areaId, areaId),
+            eq(areaVersions.versionNumber, versionNumber)
+          )
+        );
     });
 
     revalidatePath("/postal-codes");
