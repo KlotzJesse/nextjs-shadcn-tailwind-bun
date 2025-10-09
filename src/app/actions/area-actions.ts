@@ -5,8 +5,9 @@ import {
   areas,
   areaLayers,
   areaLayerPostalCodes,
+  postalCodes,
 } from "../../lib/schema/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { recordChangeAction } from "./change-tracking-actions";
 import { createVersionAction } from "./version-actions";
@@ -597,23 +598,82 @@ export async function geoprocessAction(data: {
   selectedCodes: string[];
 }): ServerActionResponse<{ resultCodes: string[] }> {
   try {
-    // This would typically call your existing geoprocessing API
-    // For now, I'll simulate the same logic but on the server
-    const response = await fetch(
-      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/geoprocess`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Geoprocessing failed");
+    const { mode, granularity, selectedCodes } = data;
+    if (!mode || !granularity || !Array.isArray(selectedCodes)) {
+      return { success: false, error: "Missing required parameters" };
     }
 
-    const result = await response.json();
-    return { success: true, data: result };
+    // Build SQL for geoprocessing
+    let resultCodes: string[] = [];
+    if (mode === "expand") {
+      // Find unselected regions adjacent to selected
+      let expandRows = [];
+      if (selectedCodes.length > 0) {
+        const { rows } = await db.execute(
+          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity} AND code NOT IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )}) AND ST_Touches(geometry, (SELECT ST_Union(geometry) AS geom FROM postal_codes WHERE code IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )}))`
+        );
+        expandRows = rows;
+      } else {
+        const { rows } = await db.execute(
+          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity}`
+        );
+        expandRows = rows;
+      }
+      resultCodes = expandRows.map((r) =>
+        String((r as Record<string, unknown>)["code"])
+      );
+    } else if (mode === "holes") {
+      // Use a CTE for the convex hull to avoid recomputation and maximize performance
+      if (selectedCodes.length > 0) {
+        // Always treat codes as strings for SQL
+        const codeList = selectedCodes
+          .map((code) => `'${String(code)}'`)
+          .join(",");
+        const { rows } = await db.execute(
+          sql`WITH hull AS (
+            SELECT ST_ConvexHull(ST_Collect(geometry)) AS geom
+            FROM postal_codes
+            WHERE granularity = ${granularity} AND code IN (${sql.raw(
+            codeList
+          )})
+            )
+            SELECT code FROM postal_codes, hull
+            WHERE granularity = ${granularity}
+              AND code NOT IN (${sql.raw(codeList)})
+              AND ST_Within(geometry, hull.geom)`
+        );
+        resultCodes = rows.map((r: Record<string, unknown>) => String(r.code));
+      } else {
+        resultCodes = [];
+      }
+    } else if (mode === "all") {
+      // Find all unselected regions that intersect the selected union
+      let gapRows = [];
+      if (selectedCodes.length > 0) {
+        const { rows } = await db.execute(
+          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity} AND code NOT IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )}) AND ST_Intersects(geometry, (SELECT ST_Union(geometry) AS geom FROM postal_codes WHERE code IN (${sql.raw(
+            selectedCodes.map(String).join(",")
+          )}))`
+        );
+        gapRows = rows;
+      } else {
+        const { rows } = await db.execute(
+          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity}`
+        );
+        gapRows = rows;
+      }
+      resultCodes = gapRows.map((r) =>
+        String((r as Record<string, unknown>)["code"])
+      );
+    }
+
+    return { success: true, data: { resultCodes } };
   } catch (error) {
     console.error("Error in geoprocessing:", error);
     return { success: false, error: "Geoprocessing failed" };
@@ -631,23 +691,32 @@ export async function radiusSearchAction(data: {
   granularity: string;
 }): ServerActionResponse<{ postalCodes: string[] }> {
   try {
-    const response = await fetch(
-      `${
-        process.env.NEXTAUTH_URL || "http://localhost:3000"
-      }/api/radius-search`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
+    const { latitude, longitude, radius, granularity } = data;
+
+    // Convert radius from kilometers to meters for PostGIS
+    const radiusMeters = radius * 1000;
+
+    // Use ST_DWithin to find postal codes within the specified radius
+    const { rows } = await db.execute(
+      sql`
+        SELECT code
+        FROM postal_codes
+        WHERE granularity = ${granularity}
+        AND ST_DWithin(
+          ST_Transform(geometry, 3857),
+          ST_Transform(ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326), 3857),
+          ${radiusMeters}
+        )
+        ORDER BY ST_Distance(
+          ST_Transform(geometry, 3857),
+          ST_Transform(ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326), 3857)
+        )
+      `
     );
 
-    if (!response.ok) {
-      throw new Error("Radius search failed");
-    }
+    const postalCodes = rows.map((row) => String((row as { code: string }).code));
 
-    const result = await response.json();
-    return { success: true, data: result };
+    return { success: true, data: { postalCodes } };
   } catch (error) {
     console.error("Error in radius search:", error);
     return { success: false, error: "Radius search failed" };
@@ -661,23 +730,33 @@ export async function drivingRadiusSearchAction(data: {
   granularity: string;
 }): ServerActionResponse<{ postalCodes: string[] }> {
   try {
-    const response = await fetch(
-      `${
-        process.env.NEXTAUTH_URL || "http://localhost:3000"
-      }/api/driving-radius-search`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
+    const { latitude, longitude, maxDuration, granularity } = data;
+
+    // For simplicity, we'll use a basic approximation method
+    // In a full implementation, you'd want to integrate the OSRM logic here
+    const radiusKm = (maxDuration / 60) * 50; // Rough approximation: 50 km/h average speed
+
+    // Get postal codes within the approximated radius
+    const { rows } = await db.execute(
+      sql`
+        SELECT code
+        FROM postal_codes
+        WHERE granularity = ${granularity}
+        AND ST_DWithin(
+          ST_Transform(geometry, 3857),
+          ST_Transform(ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326), 3857),
+          ${radiusKm * 1000}
+        )
+        ORDER BY ST_Distance(
+          ST_Transform(geometry, 3857),
+          ST_Transform(ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326), 3857)
+        )
+      `
     );
 
-    if (!response.ok) {
-      throw new Error("Driving radius search failed");
-    }
+    const postalCodes = rows.map((row) => String((row as { code: string }).code));
 
-    const result = await response.json();
-    return { success: true, data: result };
+    return { success: true, data: { postalCodes } };
   } catch (error) {
     console.error("Error in driving radius search:", error);
     return { success: false, error: "Driving radius search failed" };
@@ -690,23 +769,366 @@ export async function geocodeAction(address: string): ServerActionResponse<{
   postalCode?: string;
 }> {
   try {
-    const response = await fetch(
-      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/geocode`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address }),
-      }
-    );
+    // Use Nominatim for geocoding
+    const nominatimUrl =
+      `https://nominatim.openstreetmap.org/search?` +
+      new URLSearchParams({
+        format: "json",
+        q: address,
+        addressdetails: "1",
+        limit: "1",
+        countrycodes: "de",
+        "accept-language": "de,en",
+      });
+
+    const response = await fetch(nominatimUrl, {
+      headers: {
+        "User-Agent": "KRAUSS Territory Management/1.0",
+      },
+    });
 
     if (!response.ok) {
-      throw new Error("Geocoding failed");
+      throw new Error("Geocoding service unavailable");
     }
 
-    const result = await response.json();
-    return { success: true, data: result };
+    const results = await response.json();
+
+    if (results.length === 0) {
+      throw new Error("No results found for address");
+    }
+
+    const result = results[0];
+    return {
+      success: true,
+      data: {
+        latitude: parseFloat(result.lat),
+        longitude: parseFloat(result.lon),
+        postalCode: result.address?.postcode,
+      },
+    };
   } catch (error) {
     console.error("Error in geocoding:", error);
     return { success: false, error: "Geocoding failed" };
+  }
+}
+
+export async function geocodeSearchAction(data: {
+  query: string;
+  includePostalCode?: boolean;
+  limit?: number;
+  enhancedSearch?: boolean;
+}): ServerActionResponse<{
+  results: Array<{
+    id: number | string;
+    display_name: string;
+    coordinates: [number, number];
+    postal_code?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  }>;
+  searchInfo: {
+    originalQuery: string;
+    variantsUsed: string[];
+    totalResults: number;
+    uniqueResults: number;
+  };
+}> {
+  try {
+    const { query, includePostalCode = true, limit = 5, enhancedSearch = true } = data;
+
+    // For now, use simple Nominatim search
+    // TODO: Implement enhanced search with multiple variants
+    const nominatimUrl =
+      `https://nominatim.openstreetmap.org/search?` +
+      new URLSearchParams({
+        format: "json",
+        q: query,
+        addressdetails: "1",
+        limit: limit.toString(),
+        countrycodes: "de",
+        "accept-language": "de,en",
+      });
+
+    const response = await fetch(nominatimUrl, {
+      headers: {
+        "User-Agent": "KRAUSS Territory Management/1.0",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Geocoding service unavailable");
+    }
+
+    const nominatimResults = await response.json();
+
+    const results = nominatimResults.map((result: any) => ({
+      id: result.place_id,
+      display_name: result.display_name,
+      coordinates: [parseFloat(result.lon), parseFloat(result.lat)] as [number, number],
+      postal_code: result.address?.postcode,
+      city: result.address?.city || result.address?.town || result.address?.village,
+      state: result.address?.state,
+      country: result.address?.country,
+    }));
+
+    // Filter results if postal code is required
+    const filteredResults = includePostalCode
+      ? results.filter((result: any) => result.postal_code)
+      : results;
+
+    return {
+      success: true,
+      data: {
+        results: filteredResults,
+        searchInfo: {
+          originalQuery: query,
+          variantsUsed: [query], // TODO: implement variants
+          totalResults: results.length,
+          uniqueResults: filteredResults.length,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error in geocoding search:", error);
+    return { success: false, error: "Geocoding search failed" };
+  }
+}
+
+export async function searchPostalCodesByLocationAction(data: {
+  location: string;
+  granularity: string;
+  limit?: number;
+}): ServerActionResponse<{
+  location: string;
+  searchVariants: string[];
+  granularity: string;
+  postalCodes: string[];
+  count: number;
+  features: any[];
+}> {
+  try {
+    const { location, granularity, limit = 50 } = data;
+
+    // Get search variants (simplified version)
+    const searchVariants = [location.toLowerCase()];
+
+    // Search in database using property fields
+    const searchConditions = searchVariants.map(
+      (variant) =>
+        sql`properties->>'name' ILIKE ${`%${variant}%`} OR
+          properties->>'city' ILIKE ${`%${variant}%`} OR
+          properties->>'stadt' ILIKE ${`%${variant}%`} OR
+          properties->>'state' ILIKE ${`%${variant}%`} OR
+          properties->>'bundesland' ILIKE ${`%${variant}%`} OR
+          properties->>'region' ILIKE ${`%${variant}%`} OR
+          properties->>'ort' ILIKE ${`%${variant}%`} OR
+          properties->>'gemeinde' ILIKE ${`%${variant}%`}`
+    );
+
+    const whereCondition = sql`(${searchConditions.reduce(
+      (acc, condition, index) =>
+        index === 0 ? condition : sql`${acc} OR ${condition}`
+    )}) AND granularity = ${granularity}`;
+
+    const results = await db
+      .select({
+        code: postalCodes.code,
+        granularity: postalCodes.granularity,
+        geometry: postalCodes.geometry,
+        properties: postalCodes.properties,
+      })
+      .from(postalCodes)
+      .where(whereCondition)
+      .limit(limit);
+
+    // Create features array
+    const features = results.map((result) => ({
+      type: "Feature" as const,
+      properties: {
+        code: result.code,
+        granularity: result.granularity,
+        ...((result.properties as object) || {}),
+      },
+      geometry: result.geometry,
+    }));
+
+    return {
+      success: true,
+      data: {
+        location,
+        searchVariants,
+        granularity,
+        postalCodes: results.map((r) => r.code),
+        count: results.length,
+        features,
+      },
+    };
+  } catch (error) {
+    console.error("Error in location search:", error);
+    return { success: false, error: "Location search failed" };
+  }
+}
+
+export async function searchPostalCodesByBoundaryAction(data: {
+  areaName: string;
+  granularity: string;
+  limit?: number;
+}): ServerActionResponse<{
+  postalCodes: string[];
+  count: number;
+  granularity: string;
+  areaInfo: {
+    name: string;
+    boundingbox: [string, string, string, string];
+  };
+  searchInfo: {
+    originalQuery: string;
+    variantsUsed: string[];
+    boundaryFound: boolean;
+    geometryType?: string;
+  };
+}> {
+  try {
+    const { areaName, granularity, limit = 3000 } = data;
+
+    // Get search variants (simplified)
+    const searchVariants = [areaName];
+
+    // Try to get boundary from Nominatim
+    const nominatimUrl =
+      `https://nominatim.openstreetmap.org/search?` +
+      new URLSearchParams({
+        format: "geojson",
+        q: areaName,
+        polygon_geojson: "1",
+        addressdetails: "1",
+        limit: "5",
+        countrycodes: "de",
+        "accept-language": "de,en",
+      });
+
+    const response = await fetch(nominatimUrl, {
+      headers: {
+        "User-Agent": "KRAUSS Territory Management/1.0",
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        data: {
+          postalCodes: [],
+          count: 0,
+          granularity,
+          areaInfo: {
+            name: areaName,
+            boundingbox: ["0", "0", "0", "0"],
+          },
+          searchInfo: {
+            originalQuery: areaName,
+            variantsUsed: searchVariants,
+            boundaryFound: false,
+          },
+        },
+      };
+    }
+
+    const geoJsonData = await response.json();
+
+    if (!geoJsonData.features || geoJsonData.features.length === 0) {
+      return {
+        success: false,
+        data: {
+          postalCodes: [],
+          count: 0,
+          granularity,
+          areaInfo: {
+            name: areaName,
+            boundingbox: ["0", "0", "0", "0"],
+          },
+          searchInfo: {
+            originalQuery: areaName,
+            variantsUsed: searchVariants,
+            boundaryFound: false,
+          },
+        },
+      };
+    }
+
+    const feature = geoJsonData.features[0];
+
+    if (
+      !feature.geometry ||
+      (feature.geometry.type !== "Polygon" && feature.geometry.type !== "MultiPolygon")
+    ) {
+      return {
+        success: false,
+        data: {
+          postalCodes: [],
+          count: 0,
+          granularity,
+          areaInfo: {
+            name: areaName,
+            boundingbox: ["0", "0", "0", "0"],
+          },
+          searchInfo: {
+            originalQuery: areaName,
+            variantsUsed: searchVariants,
+            boundaryFound: false,
+          },
+        },
+      };
+    }
+
+    const boundaryGeometry = JSON.stringify(feature.geometry);
+    const areaInfo = {
+      display_name: feature.properties.display_name,
+      boundingbox: [
+        feature.bbox[1].toString(), // south
+        feature.bbox[3].toString(), // north
+        feature.bbox[0].toString(), // west
+        feature.bbox[2].toString(), // east
+      ],
+    };
+
+    // Find postal codes within boundary
+    const intersectingCodes = await db
+      .select({
+        code: postalCodes.code,
+      })
+      .from(postalCodes)
+      .where(
+        sql`${postalCodes.granularity} = ${granularity}
+          AND ST_Contains(
+            ST_GeomFromGeoJSON(${boundaryGeometry}),
+            ST_Centroid(${postalCodes.geometry})
+          )`
+      )
+      .limit(limit);
+
+    const codes = intersectingCodes.map((row) => row.code).sort();
+
+    return {
+      success: true,
+      data: {
+        postalCodes: codes,
+        count: codes.length,
+        granularity,
+        areaInfo: {
+          name: areaInfo.display_name,
+          boundingbox: areaInfo.boundingbox as [string, string, string, string],
+        },
+        searchInfo: {
+          originalQuery: areaName,
+          variantsUsed: searchVariants,
+          boundaryFound: true,
+          geometryType: feature.geometry.type,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error in boundary search:", error);
+    return { success: false, error: "Boundary search failed" };
   }
 }

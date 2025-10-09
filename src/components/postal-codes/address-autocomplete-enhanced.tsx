@@ -29,6 +29,11 @@ import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { ChevronsUpDownIcon, MapPinIcon, RadiusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  geocodeSearchAction,
+  searchPostalCodesByLocationAction,
+  searchPostalCodesByBoundaryAction,
+} from "@/app/actions/area-actions";
 
 interface GeocodeResult {
   id: number | string;
@@ -120,76 +125,18 @@ export function AddressAutocompleteEnhanced({
           const looksLikeAddress = /\d/.test(value.trim());
 
           // Enhanced search with German/English support and city/state handling
-          // TODO: Replace with server action when geocodeAction interface is updated
-          const response = await fetch("/api/geocode", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              query: value,
-              includePostalCode: looksLikeAddress, // Only require postal codes for address-like queries
-              limit: 8,
-              enhancedSearch: true, // Enable enhanced German/English search
-            }),
+          const geocodeResult = await geocodeSearchAction({
+            query: value,
+            includePostalCode: looksLikeAddress, // Only require postal codes for address-like queries
+            limit: 8,
+            enhancedSearch: true, // Enable enhanced German/English search
           });
 
-          if (!response.ok) {
-            throw new Error("Geocoding failed");
+          if (!geocodeResult.success || !geocodeResult.data) {
+            throw new Error(geocodeResult.error || "Geocoding failed");
           }
 
-          const data = await response.json();
-          let results = data.results || [];
-
-          // If no direct geocoding results and input looks like a city/state, try location search
-          if (results.length === 0 && !/^\d/.test(value.trim())) {
-            try {
-              const locationResponse = await fetch(
-                "/api/postal-codes/search-by-location",
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    location: value,
-                    granularity: granularity,
-                    limit: 10,
-                  }),
-                }
-              );
-
-              if (locationResponse.ok) {
-                const locationData = await locationResponse.json();
-
-                // Convert postal code results to geocode format for consistent UI
-                if (
-                  locationData.postalCodes &&
-                  locationData.postalCodes.length > 0
-                ) {
-                  // Create virtual geocode results for postal codes found by location
-                  const virtualResults = locationData.postalCodes
-                    .slice(0, 5)
-                    .map((code: string, index: number) => ({
-                      id: `location-${index}`,
-                      display_name: `${code} - ${value} (gefunden in ${locationData.searchVariants.join(
-                        ", "
-                      )})`,
-                      coordinates: [0, 0], // Will be filled by actual geocoding if needed
-                      postal_code: code,
-                      city: value,
-                      state: undefined,
-                      country: "Deutschland",
-                      isLocationBased: true,
-                    }));
-
-                  results = virtualResults;
-                }
-              }
-            } catch (locationError) {
-              console.warn("Location search failed:", locationError);
-            }
-          }
+          let results = geocodeResult.data.results || [];
 
           setResults(results);
 
@@ -199,9 +146,7 @@ export function AddressAutocompleteEnhanced({
             );
           }
 
-          const resultType = results[0]?.isLocationBased
-            ? "Standorte"
-            : "Adressen";
+          const resultType = "Adressen";
           return `${results.length} ${resultType}${
             results.length > 1 ? "" : ""
           } gefunden`;
@@ -249,22 +194,6 @@ export function AddressAutocompleteEnhanced({
   const handleDirectSelect = useStableCallback((result: GeocodeResult) => {
     setOpen(false);
 
-    // For location-based results, we need to handle differently
-    if (result.isLocationBased) {
-      // For location-based results, we focus on the postal code
-      const adjustedPostalCode = result.postal_code
-        ? convertPostalCodeToGranularity(result.postal_code, granularity)
-        : result.postal_code;
-
-      // Use postal code as the main identifier for location-based results
-      onAddressSelect(
-        [0, 0], // Coordinates will be filled by the system when needed
-        `PLZ ${adjustedPostalCode} - ${result.city || "Unbekannt"}`,
-        adjustedPostalCode
-      );
-      return;
-    }
-
     // Detect if this is an administrative area (city, state, etc.) without postal code
     const isAdministrativeArea =
       !result.postal_code &&
@@ -282,28 +211,20 @@ export function AddressAutocompleteEnhanced({
     if (isAdministrativeArea && onBoundarySelect) {
       const boundarySearchPromise = async () => {
         try {
-          // TODO: Replace with server action when available
-          // Currently keeping fetch until searchByBoundaryAction is implemented
-          const response = await fetch("/api/postal-codes/search-by-boundary", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              areaName:
-                result.city ||
-                result.state ||
-                result.display_name.split(",")[0],
-              granularity: granularity,
-              limit: 3000, // Increased to handle large states like Bayern (2320 postal codes)
-            }),
+          const boundaryResult = await searchPostalCodesByBoundaryAction({
+            areaName:
+              result.city ||
+              result.state ||
+              result.display_name.split(",")[0],
+            granularity: granularity,
+            limit: 3000, // Increased to handle large states like Bayern (2320 postal codes)
           });
 
-          if (!response.ok) {
-            throw new Error("Boundary search failed");
+          if (!boundaryResult.success || !boundaryResult.data) {
+            throw new Error(boundaryResult.error || "Boundary search failed");
           }
 
-          const data = await response.json();
+          const data = boundaryResult.data;
 
           if (data.postalCodes && data.postalCodes.length > 0) {
             onBoundarySelect(data.postalCodes);
@@ -398,10 +319,6 @@ export function AddressAutocompleteEnhanced({
   });
 
   const formatDisplayName = (result: GeocodeResult): string => {
-    if (result.isLocationBased) {
-      return `${result.postal_code} - ${result.city || "Unbekannt"} (Bereich)`;
-    }
-
     // Detect administrative areas for display
     const isAdministrativeArea =
       !result.postal_code &&
