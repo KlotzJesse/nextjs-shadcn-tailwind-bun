@@ -1,7 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
+
 import {
   Card,
   CardAction,
@@ -9,73 +11,78 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Separator } from "@/components/ui/separator";
+
 import { Skeleton } from "@/components/ui/skeleton";
-import { TerraDrawMode } from "@/lib/hooks/use-terradraw";
-import { useMapState } from "@/lib/url-state/map-state";
+
+import type { TerraDrawMode } from "@/lib/hooks/use-terradraw";
+
 import {
   copyPostalCodesCSV,
   exportLayersXLSX,
   exportLayersPDF,
 } from "@/lib/utils/export-utils";
-import {
+
+import type {
   FeatureCollection,
   GeoJsonProperties,
   MultiPolygon,
   Polygon,
 } from "geojson";
+
 import {
-  Circle,
   Copy,
   Diamond,
-  EyeOff,
   FileSpreadsheet,
-  Lasso,
   Loader2Icon,
-  MousePointer,
-  Square,
-  Triangle,
   X,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+
 import { Suspense, useState, useEffect } from "react";
+
 import { toast } from "sonner";
+
 import { Input } from "@/components/ui/input";
+
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Slider } from "@/components/ui/slider";
+
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { type Area } from "@/lib/types/area-types";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import {
   createLayerAction,
   updateLayerAction,
   deleteLayerAction,
-  addPostalCodesToLayerAction,
-  removePostalCodesFromLayerAction,
 } from "@/app/actions/area-actions";
+
 import {
-  IconEye,
-  IconEyeOff,
   IconPlus,
   IconPalette,
   IconAlertTriangle,
@@ -84,17 +91,24 @@ import {
   IconGitMerge,
   IconHistory,
 } from "@tabler/icons-react";
+
 import { ConflictResolutionDialog } from "@/components/areas/conflict-resolution-dialog";
+
 import { EnhancedVersionHistoryDialog } from "@/components/areas/enhanced-version-history-dialog";
+
 import { CreateVersionDialog } from "@/components/areas/create-version-dialog";
+
 import { LayerMergeDialog } from "@/components/areas/layer-merge-dialog";
+
 import { GranularitySelector } from "@/components/shared/granularity-selector";
-import {
+
+import type {
   SelectAreaVersions,
   SelectAreaChanges,
   areaLayers,
 } from "@/lib/schema/schema";
-import { InferSelectModel } from "drizzle-orm";
+
+import type { InferSelectModel } from "drizzle-orm";
 
 type Layer = InferSelectModel<typeof areaLayers> & {
   postalCodes?: { postalCode: string }[];
@@ -102,120 +116,108 @@ type Layer = InferSelectModel<typeof areaLayers> & {
 
 export interface DrawingToolsProps {
   currentMode: TerraDrawMode | null;
+
   onModeChange: (mode: TerraDrawMode | null) => void;
+
   onClearAll: () => void;
+
   onToggleVisibility: () => void;
+
   granularity?: string;
+
   onGranularityChange?: (granularity: string) => void;
+
   postalCodesData?: FeatureCollection<
     Polygon | MultiPolygon,
     GeoJsonProperties
   >;
+
   pendingPostalCodes?: string[];
+
   onAddPending?: () => void;
+
   onRemovePending?: () => void;
+
   // Layer management props
+
   areaId?: number;
+
   activeLayerId?: number | null;
+
   onLayerSelect?: (layerId: number) => void;
+
   // Layer data and operations passed from server
+
   layers?: Layer[];
+
   onLayerUpdate?: () => void; // Callback to refresh layer data
+
   addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>;
+
   removePostalCodesFromLayer?: (
     layerId: number,
-    codes: string[]
+
+    codes: string[],
   ) => Promise<void>;
+
   // Version viewing props
+
   isViewingVersion?: boolean;
+
   versionId?: number | null;
+
   // Version and change data for dialogs
+
   versions: SelectAreaVersions[];
+
   changes: SelectAreaChanges[];
 }
 
 const DEFAULT_COLORS = [
   "#3b82f6", // blue
+
   "#ef4444", // red
+
   "#10b981", // green
+
   "#f59e0b", // amber
+
   "#8b5cf6", // purple
+
   "#ec4899", // pink
+
   "#14b8a6", // teal
+
   "#f97316", // orange
 ];
 
-const drawingModes = [
-  {
-    id: "cursor" as const,
-    name: "Cursor",
-    icon: MousePointer,
-    description: "Klicken Sie, um Regionen auszuwählen",
-    category: "selection",
-  },
-  {
-    id: "freehand" as const,
-    name: "Lasso",
-    icon: Lasso,
-    description: "Freihand zeichnen, um Regionen auszuwählen",
-    category: "drawing",
-  },
-  {
-    id: "circle" as const,
-    name: "Kreis",
-    icon: Circle,
-    description: "Kreis zeichnen, um Regionen auszuwählen",
-    category: "drawing",
-  },
-  {
-    id: "polygon" as const,
-    name: "Polygon",
-    icon: Triangle,
-    description: "Polygon zeichnen, indem Sie Punkte klicken",
-    category: "drawing",
-  },
-  {
-    id: "rectangle" as const,
-    name: "Rechteck",
-    icon: Square,
-    description: "Rechtecke zeichnen",
-    category: "drawing",
-  },
-  {
-    id: "angled-rectangle" as const,
-    name: "Rechteck mit Winkel",
-    icon: Diamond,
-    description: "Rechtecke mit Winkeln zeichnen",
-    category: "drawing",
-  },
-  /*{
-    id: 'sector' as const,
-    name: 'Sector',
-    icon: PieChart,
-    description: 'Draw circle sectors',
-    category: 'drawing'
-  }*/
-];
-
 // Fill logic using server-side geoprocessing API
+
 async function fillRegions(
   mode: "all" | "holes" | "expand",
+
   _postalCodesData: FeatureCollection<
     Polygon | MultiPolygon,
     GeoJsonProperties
   >,
-  activeLayer: any,
+
+  activeLayer: Layer,
+
   addPostalCodesToLayer: (layerId: number, codes: string[]) => Promise<void>,
+
   setIsFilling: (b: boolean) => void,
-  granularity?: string
+
+  granularity?: string,
 ) {
   if (!granularity) {
     toast.error("Granularität ist erforderlich für die Geoverarbeitung");
+
     return;
   }
 
   if (!activeLayer) {
     toast.error("Bitte wählen Sie ein aktives Gebiet aus");
+
     return;
   }
 
@@ -224,43 +226,54 @@ async function fillRegions(
 
     try {
       const layerCodes =
-        activeLayer.postalCodes?.map((pc: any) => pc.postalCode) || [];
+        activeLayer.postalCodes?.map((pc) => pc.postalCode) || [];
 
       console.log(
         "Filling regions with mode:",
+
         mode,
+
         "granularity:",
+
         granularity,
+
         "layer codes:",
-        layerCodes
+
+        layerCodes,
       );
 
       // Use server action instead of client-side fetch
+
       const { geoprocessAction } = await import("@/app/actions/area-actions");
+
       const result = await geoprocessAction({
         mode,
+
         granularity,
+
         selectedCodes: layerCodes,
       });
 
       if (!result.success) {
         throw new Error(
-          result.error || "Server-Geoverarbeitung fehlgeschlagen"
+          result.error || "Server-Geoverarbeitung fehlgeschlagen",
         );
       }
 
       const resultCodes = result.data?.resultCodes || [];
+
       if (resultCodes && resultCodes.length > 0) {
         await addPostalCodesToLayer(activeLayer.id, resultCodes);
       }
 
       const count = (resultCodes || []).length;
+
       const modeText =
         mode === "all"
           ? "alle Lücken"
           : mode === "holes"
-          ? "Lücken"
-          : "eine Ebene";
+            ? "Lücken"
+            : "eine Ebene";
 
       return `${count} Region${count === 1 ? "" : "en"} gefüllt (${modeText})`;
     } finally {
@@ -270,40 +283,62 @@ async function fillRegions(
 
   toast.promise(fillPromise(), {
     loading: "Geoverarbeitung läuft...",
+
     success: (message) => message,
+
     error: "Fehler bei der Geoverarbeitung",
   });
 }
 
 function DrawingToolsImpl({
   currentMode,
-  onModeChange,
+
   onClearAll,
+
   onToggleVisibility,
+
   granularity,
+
   onGranularityChange,
+
   postalCodesData,
+
   pendingPostalCodes = [],
+
   onAddPending,
+
   onRemovePending,
+
   areaId,
+
   activeLayerId,
+
   onLayerSelect,
+
   layers = [],
+
   onLayerUpdate,
+
   addPostalCodesToLayer,
+
   removePostalCodesFromLayer,
+
   isViewingVersion = false,
-  versionId,
+
   versions = [],
+
   changes = [],
 }: DrawingToolsProps) {
   // Collapsible section states
+
   const [layersOpen, setLayersOpen] = useState(areaId ? true : false);
+
   const [regionsOpen, setRegionsOpen] = useState(false);
+
   const [actionsOpen, setActionsOpen] = useState(false);
 
   // Auto-expand regions section when there are pending postal codes
+
   useEffect(() => {
     if (pendingPostalCodes.length > 0) {
       setRegionsOpen(true);
@@ -311,16 +346,25 @@ function DrawingToolsImpl({
   }, [pendingPostalCodes.length]);
 
   // Auto-expand actions section when in drawing mode
+
   useEffect(() => {
-    const isDrawingMode = currentMode !== null && [
-      "freehand",
-      "circle",
-      "rectangle",
-      "polygon",
-      "point",
-      "linestring",
-      "angled-rectangle",
-    ].includes(currentMode);
+    const isDrawingMode =
+      currentMode !== null &&
+      [
+        "freehand",
+
+        "circle",
+
+        "rectangle",
+
+        "polygon",
+
+        "point",
+
+        "linestring",
+
+        "angled-rectangle",
+      ].includes(currentMode);
 
     if (isDrawingMode) {
       setActionsOpen(true);
@@ -328,39 +372,68 @@ function DrawingToolsImpl({
   }, [currentMode]);
 
   // Layer management state
+
   const [newLayerName, setNewLayerName] = useState("");
+
   const [isCreating, setIsCreating] = useState(false);
+
   const [editingLayerId, setEditingLayerId] = useState<number | null>(null);
+
   const [editingLayerName, setEditingLayerName] = useState("");
+
   const [showConflicts, setShowConflicts] = useState(false);
+
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+
   const [showCreateVersion, setShowCreateVersion] = useState(false);
+
   const [showLayerMerge, setShowLayerMerge] = useState(false);
 
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const [layerToDelete, setLayerToDelete] = useState<number | null>(null);
+
   // Server action implementations
+
   const createLayer = async (data: {
     name: string;
+
     color: string;
+
     orderIndex: number;
   }) => {
     if (!areaId) return;
+
     const result = await createLayerAction(areaId, {
       name: data.name,
+
       color: data.color,
+
       opacity: 100,
+
       isVisible: true,
+
       orderIndex: data.orderIndex,
     });
+
     if (result.success) {
       onLayerUpdate?.();
+
       return result.data;
     }
+
     throw new Error(result.error);
   };
 
-  const updateLayer = async (layerId: number, data: any) => {
+  const updateLayer = async (
+    layerId: number,
+
+    data: Record<string, unknown>,
+  ) => {
     if (!areaId) return;
+
     const result = await updateLayerAction(areaId, layerId, data);
+
     if (result.success) {
       onLayerUpdate?.();
     } else {
@@ -370,7 +443,9 @@ function DrawingToolsImpl({
 
   const deleteLayer = async (layerId: number) => {
     if (!areaId) return;
+
     const result = await deleteLayerAction(areaId, layerId);
+
     if (result.success) {
       onLayerUpdate?.();
     } else {
@@ -383,11 +458,15 @@ function DrawingToolsImpl({
   };
 
   // Create handlers for adding/removing pending postal codes to/from active layer
+
   const handleAddPendingToLayer = async () => {
     console.log("[handleAddPendingToLayer] Called with:", {
       areaId,
+
       activeLayerId,
+
       pendingCount: pendingPostalCodes.length,
+
       addFunction: !!addPostalCodesToLayer,
     });
 
@@ -408,25 +487,33 @@ function DrawingToolsImpl({
       } else if (!addPostalCodesToLayer) {
         toast.error("Gebiets-Funktion nicht verfügbar", { duration: 2000 });
       }
+
       return;
     }
 
     try {
       console.log(
         "[handleAddPendingToLayer] Adding codes:",
-        pendingPostalCodes
+
+        pendingPostalCodes,
       );
+
       await addPostalCodesToLayer(activeLayerId, pendingPostalCodes);
+
       toast.success(
         `${pendingPostalCodes.length} Region${
           pendingPostalCodes.length === 1 ? "" : "en"
         } zu Gebiet hinzugefügt`,
-        { duration: 2000 }
+
+        { duration: 2000 },
       );
+
       // Call the original onAddPending to clear the pending codes
+
       onAddPending?.();
     } catch (error) {
       console.error("Error adding pending codes to layer:", error);
+
       toast.error("Fehler beim Hinzufügen der Regionen", { duration: 2000 });
     }
   };
@@ -434,8 +521,11 @@ function DrawingToolsImpl({
   const handleRemovePendingFromLayer = async () => {
     console.log("[handleRemovePendingFromLayer] Called with:", {
       areaId,
+
       activeLayerId,
+
       pendingCount: pendingPostalCodes.length,
+
       removeFunction: !!removePostalCodesFromLayer,
     });
 
@@ -454,66 +544,75 @@ function DrawingToolsImpl({
       } else if (!removePostalCodesFromLayer) {
         toast.error("Gebiets-Funktion nicht verfügbar", { duration: 2000 });
       }
+
       return;
     }
 
     try {
       console.log(
         "[handleRemovePendingFromLayer] Removing codes:",
-        pendingPostalCodes
+
+        pendingPostalCodes,
       );
+
       await removePostalCodesFromLayer(activeLayerId, pendingPostalCodes);
+
       toast.success(
         `${pendingPostalCodes.length} Region${
           pendingPostalCodes.length === 1 ? "" : "en"
         } aus Gebiet entfernt`,
-        { duration: 2000 }
+
+        { duration: 2000 },
       );
+
       // Call the original onRemovePending to clear the pending codes
+
       onRemovePending?.();
     } catch (error) {
       console.error("Error removing pending codes from layer:", error);
+
       toast.error("Fehler beim Entfernen der Regionen", { duration: 2000 });
     }
   };
 
   useEffect(() => {
     // Layer data now comes from props passed by server component
+
     if (areaId) {
       console.log(
         "Drawing tools area changed to:",
+
         areaId,
+
         "- layers provided via props:",
-        layers.length
+
+        layers.length,
       );
     }
   }, [areaId, layers.length]);
 
-  // Helper: get all postal codes from active layer, prepending D-
-  const getPostalCodes = () => {
-    if (!activeLayerId) return [];
-    const activeLayer = layers.find((l) => l.id === activeLayerId);
-    if (!activeLayer) return [];
-    const codes = activeLayer.postalCodes?.map((pc) => pc.postalCode) || [];
-    return codes.map((code: string) => `D-${code}`);
-  };
-
   // Export as Excel with multiple sheets per layer
+
   const handleExportExcel = async () => {
     if (!layers.length) {
       toast.warning("Keine Ebenen zum Exportieren vorhanden");
+
       return;
     }
 
     const layersWithCodes = layers
+
       .filter((layer) => layer.postalCodes && layer.postalCodes.length > 0)
+
       .map((layer) => ({
         layerName: layer.name,
+
         postalCodes: layer.postalCodes!.map((pc) => pc.postalCode),
       }));
 
     if (!layersWithCodes.length) {
       toast.warning("Keine Ebenen mit Postleitzahlen zum Exportieren");
+
       return;
     }
 
@@ -521,27 +620,37 @@ function DrawingToolsImpl({
   };
 
   // Copy as CSV - moved to per-layer buttons
+
   // const handleCopyCSV = async () => {
+
   //   const codes = getPostalCodes();
+
   //   await copyPostalCodesCSV(codes);
+
   // };
 
   // Export as PDF with CSV list format
+
   const handleExportPDF = async () => {
     if (!layers.length) {
       toast.warning("Keine Ebenen zum Exportieren vorhanden");
+
       return;
     }
 
     const layersWithCodes = layers
+
       .filter((layer) => layer.postalCodes && layer.postalCodes.length > 0)
+
       .map((layer) => ({
         layerName: layer.name,
+
         postalCodes: layer.postalCodes!.map((pc) => pc.postalCode),
       }));
 
     if (!layersWithCodes.length) {
       toast.warning("Keine Ebenen mit Postleitzahlen zum Exportieren");
+
       return;
     }
 
@@ -549,22 +658,29 @@ function DrawingToolsImpl({
   };
 
   // --- UI State ---
+
   const [isFilling, setIsFilling] = useState(false);
 
   const handleCreateLayer = async () => {
     if (!newLayerName.trim()) return;
 
     setIsCreating(true);
+
     try {
       const nextColor = DEFAULT_COLORS[layers.length % DEFAULT_COLORS.length];
+
       const result = await createLayer({
         name: newLayerName,
+
         color: nextColor,
+
         orderIndex: layers.length,
       });
+
       setNewLayerName("");
 
       // Set the newly created layer as active
+
       if (result?.id && onLayerSelect) {
         onLayerSelect(result.id);
       }
@@ -578,13 +694,23 @@ function DrawingToolsImpl({
   };
 
   const handleDeleteLayer = async (layerId: number) => {
-    if (!deleteLayer) return;
-    if (!confirm("Möchten Sie diesen Layer wirklich löschen?")) return;
+    setLayerToDelete(layerId);
+
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteLayer = async () => {
+    if (!layerToDelete || !deleteLayer) return;
 
     try {
-      await deleteLayer(layerId);
+      await deleteLayer(layerToDelete);
+
       toast.success("Gebiet gelöscht");
-    } catch (error) {
+
+      setShowDeleteDialog(false);
+
+      setLayerToDelete(null);
+    } catch (_error) {
       // Error already handled by hook
     }
   };
@@ -592,13 +718,17 @@ function DrawingToolsImpl({
   const handleRenameLayer = async (layerId: number, newName: string) => {
     if (!newName.trim()) {
       toast.error("Gebiets-Name darf nicht leer sein");
+
       return;
     }
 
     try {
       await updateLayer(layerId, { name: newName.trim() });
+
       setEditingLayerId(null);
+
       setEditingLayerName("");
+
       toast.success("Gebiet umbenannt");
     } catch (error) {
       // Error already handled by hook
@@ -825,13 +955,16 @@ function DrawingToolsImpl({
                                 onClick={(e) => e.stopPropagation()}
                                 onKeyDown={(e) => {
                                   e.stopPropagation();
+
                                   if (e.key === "Enter") {
                                     handleRenameLayer(
                                       layer.id,
-                                      editingLayerName
+
+                                      editingLayerName,
                                     );
                                   } else if (e.key === "Escape") {
                                     setEditingLayerId(null);
+
                                     setEditingLayerName("");
                                   }
                                 }}
@@ -839,10 +972,12 @@ function DrawingToolsImpl({
                                   if (editingLayerName.trim()) {
                                     handleRenameLayer(
                                       layer.id,
-                                      editingLayerName
+
+                                      editingLayerName,
                                     );
                                   } else {
                                     setEditingLayerId(null);
+
                                     setEditingLayerName("");
                                   }
                                 }}
@@ -852,7 +987,9 @@ function DrawingToolsImpl({
                                 className="font-medium text-sm truncate"
                                 onDoubleClick={(e) => {
                                   e.stopPropagation();
+
                                   setEditingLayerId(layer.id);
+
                                   setEditingLayerName(layer.name);
                                 }}
                                 title="Doppelklick zum Umbenennen"
@@ -879,7 +1016,6 @@ function DrawingToolsImpl({
                                       size="icon"
                                       className="h-6 w-6"
                                       onClick={(e) => e.stopPropagation()}
-
                                     >
                                       <IconPalette className="h-3.5 w-3.5" />
                                     </Button>
@@ -902,6 +1038,7 @@ function DrawingToolsImpl({
                                       className="w-8 h-8 rounded-md border-2 hover:scale-110 transition-transform"
                                       style={{
                                         backgroundColor: color,
+
                                         borderColor:
                                           layer.color === color
                                             ? "currentColor"
@@ -924,19 +1061,20 @@ function DrawingToolsImpl({
                                   className="h-6 w-6"
                                   onClick={async (e) => {
                                     e.stopPropagation();
+
                                     const codes =
                                       layer.postalCodes?.map(
-                                        (pc) => `D-${pc.postalCode}`
+                                        (pc) => `D-${pc.postalCode}`,
                                       ) || [];
+
                                     if (codes.length > 0) {
                                       await copyPostalCodesCSV(codes);
                                     } else {
                                       toast.info(
-                                        "Keine Postleitzahlen zum Kopieren"
+                                        "Keine Postleitzahlen zum Kopieren",
                                       );
                                     }
                                   }}
-
                                 >
                                   <Copy className="h-3.5 w-3.5" />
                                 </Button>
@@ -955,9 +1093,9 @@ function DrawingToolsImpl({
                                   className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
                                   onClick={(e) => {
                                     e.stopPropagation();
+
                                     handleDeleteLayer(layer.id);
                                   }}
-
                                 >
                                   <X className="h-3.5 w-3.5" />
                                 </Button>
@@ -1059,11 +1197,17 @@ function DrawingToolsImpl({
         {currentMode !== null &&
           [
             "freehand",
+
             "circle",
+
             "rectangle",
+
             "polygon",
+
             "point",
+
             "linestring",
+
             "angled-rectangle",
           ].includes(currentMode) && (
             <>
@@ -1091,11 +1235,17 @@ function DrawingToolsImpl({
                   {currentMode !== null &&
                     [
                       "freehand",
+
                       "circle",
+
                       "rectangle",
+
                       "polygon",
+
                       "point",
+
                       "linestring",
+
                       "angled-rectangle",
                     ].includes(currentMode) && (
                       <Button
@@ -1103,12 +1253,12 @@ function DrawingToolsImpl({
                         size="sm"
                         onClick={() => {
                           onClearAll();
+
                           toast.success("🗑️ Zeichnungen gelöscht", {
                             duration: 2000,
                           });
                         }}
                         className="w-full h-7 text-xs"
-                        
                       >
                         <X className="h-3 w-3 mr-1.5" />
                         Zeichnung löschen
@@ -1123,21 +1273,26 @@ function DrawingToolsImpl({
                       }
                       onClick={() => {
                         const activeLayer = layers.find(
-                          (l) => l.id === activeLayerId
+                          (l) => l.id === activeLayerId,
                         );
+
                         if (postalCodesData && activeLayer) {
                           fillRegions(
                             "holes",
+
                             postalCodesData,
+
                             activeLayer,
+
                             addPostalCodesToLayer ?? (async () => {}),
+
                             setIsFilling,
-                            granularity
+
+                            granularity,
                           );
                         }
                       }}
                       className="w-full h-7 text-xs"
-                      
                     >
                       {isFilling ? (
                         <Loader2Icon className="h-3 w-3 mr-1.5 animate-spin" />
@@ -1164,7 +1319,6 @@ function DrawingToolsImpl({
                       variant="outline"
                       size="sm"
                       onClick={handleExportExcel}
-
                       className="flex-1 h-7 text-xs"
                     >
                       <FileSpreadsheet className="h-3 w-3 mr-1" />
@@ -1181,7 +1335,6 @@ function DrawingToolsImpl({
                       variant="outline"
                       size="sm"
                       onClick={handleExportPDF}
-
                       className="flex-1 h-7 text-xs"
                     >
                       📄 PDF
@@ -1229,6 +1382,28 @@ function DrawingToolsImpl({
                 onLayerUpdate?.();
               }}
             />
+            <AlertDialog
+              open={showDeleteDialog}
+              onOpenChange={setShowDeleteDialog}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Gebiet löschen</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Möchten Sie dieses Gebiet wirklich löschen? Diese Aktion
+                    kann nicht rückgängig gemacht werden.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setShowDeleteDialog(false)}>
+                    Abbrechen
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDeleteLayer}>
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )}
       </CardContent>

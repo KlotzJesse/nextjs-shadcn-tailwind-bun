@@ -11,11 +11,13 @@ import {
 
 import { eq, and, inArray, sql } from "drizzle-orm";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 
 import { recordChangeAction } from "./change-tracking-actions";
 
 import { createVersionAction } from "./version-actions";
+
+import type { FeatureCollection } from "geojson";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -25,13 +27,37 @@ type ServerActionResponse<T = void> = Promise<{
   error?: string;
 }>;
 
+interface Result {
+  place_id: string;
+
+  display_name: string;
+
+  lon: string;
+
+  lat: string;
+
+  address: {
+    postcode: string;
+
+    city: string;
+
+    town: string;
+
+    village: string;
+
+    state: string;
+
+    country: string;
+  };
+}
+
 // ===============================
 
 // AREA OPERATIONS
 
 // ===============================
 
-export async function getAreasAction(): ServerActionResponse<any[]> {
+export async function getAreasAction(): ServerActionResponse<unknown[]> {
   try {
     const result = await db.query.areas.findMany({
       orderBy: (areas, { desc }) => [desc(areas.updatedAt)],
@@ -221,7 +247,9 @@ export async function deleteAreaAction(id: number): ServerActionResponse {
   }
 }
 
-export async function getAreaByIdAction(id: number): ServerActionResponse<any> {
+export async function getAreaByIdAction(
+  id: number,
+): ServerActionResponse<unknown> {
   try {
     const area = await db.query.areas.findFirst({
       where: eq(areas.id, id),
@@ -257,7 +285,7 @@ export async function getAreaByIdAction(id: number): ServerActionResponse<any> {
 
 export async function getLayersAction(
   areaId: number,
-): ServerActionResponse<any[]> {
+): ServerActionResponse<unknown[]> {
   try {
     const result = await db.query.areaLayers.findMany({
       where: eq(areaLayers.areaId, areaId),
@@ -451,9 +479,9 @@ export async function updateLayerAction(
 
     // Record change
 
-    const changeData: any = {};
+    const changeData: Record<string | number | symbol, unknown> = {};
 
-    const previousData: any = {};
+    const previousData: Record<string | number | symbol, unknown> = {};
 
     if (data.name !== undefined) {
       changeData.name = data.name;
@@ -1124,8 +1152,6 @@ export async function geocodeSearchAction(data: {
       includePostalCode = true,
 
       limit = 5,
-
-      enhancedSearch = true,
     } = data;
 
     // For now, use simple Nominatim search
@@ -1160,31 +1186,35 @@ export async function geocodeSearchAction(data: {
 
     const nominatimResults = await response.json();
 
-    const results = nominatimResults.map((result: any) => ({
-      id: result.place_id,
+    const results = nominatimResults.map(
+      (result: Result) => ({
+        id: result.place_id,
 
-      display_name: result.display_name,
+        display_name: result.display_name,
 
-      coordinates: [parseFloat(result.lon), parseFloat(result.lat)] as [
-        number,
+        coordinates: [parseFloat(result.lon), parseFloat(result.lat)] as [
+          number,
 
-        number,
-      ],
+          number,
+        ],
 
-      postal_code: result.address?.postcode,
+        postal_code: result.address?.postcode,
 
-      city:
-        result.address?.city || result.address?.town || result.address?.village,
+        city:
+          result.address?.city ||
+          result.address?.town ||
+          result.address?.village,
 
-      state: result.address?.state,
+        state: result.address?.state,
 
-      country: result.address?.country,
-    }));
+        country: result.address?.country,
+      }),
+    );
 
     // Filter results if postal code is required
 
     const filteredResults = includePostalCode
-      ? results.filter((result: any) => result.postal_code)
+      ? results.filter((result: { postal_code: string }) => result.postal_code)
       : results;
 
     return {
@@ -1228,7 +1258,7 @@ export async function searchPostalCodesByLocationAction(data: {
 
   count: number;
 
-  features: any[];
+  features: FeatureCollection;
 }> {
   try {
     const { location, granularity, limit = 50 } = data;

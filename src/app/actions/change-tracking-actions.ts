@@ -9,11 +9,14 @@ import {
   areas,
   areaLayers,
   areaLayerPostalCodes,
+  type SelectAreaChanges,
 } from "../../lib/schema/schema";
 
-import { eq, and, desc, asc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
-import { revalidatePath, updateTag, unstable_cache } from "next/cache";
+export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+import { updateTag, unstable_cache } from "next/cache";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -30,9 +33,9 @@ export interface ChangeRecord {
 
   entityId?: number;
 
-  changeData: any;
+  changeData: Record<string, unknown>;
 
-  previousData?: any;
+  previousData?: Record<string, unknown>;
 
   createdBy?: string;
 }
@@ -446,8 +449,12 @@ export async function redoChangeAction(
  * Apply an undo operation based on change type
  */
 
-async function applyUndoOperation(tx: any, change: any): Promise<void> {
-  const { changeType, entityId, previousData, entityType } = change;
+async function applyUndoOperation(
+  tx: Transaction,
+
+  change: SelectAreaChanges,
+): Promise<void> {
+  const { changeType, entityId, previousData } = change;
 
   switch (changeType) {
     case "create_layer":
@@ -564,7 +571,11 @@ async function applyUndoOperation(tx: any, change: any): Promise<void> {
  * Apply a redo operation based on change type
  */
 
-async function applyRedoOperation(tx: any, change: any): Promise<void> {
+async function applyRedoOperation(
+  tx: Transaction,
+
+  change: SelectAreaChanges,
+): Promise<void> {
   const { changeType, entityId, changeData } = change;
 
   switch (changeType) {
@@ -686,7 +697,7 @@ export async function getChangeHistoryAction(
 
     includeUndone?: boolean;
   },
-): ServerActionResponse<any[]> {
+): ServerActionResponse<SelectAreaChanges[]> {
   try {
     let whereConditions = eq(areaChanges.areaId, areaId);
 
@@ -733,7 +744,7 @@ export async function getChangeHistoryAction(
       .orderBy(desc(areaChanges.sequenceNumber));
 
     if (options?.limit) {
-      query = query.limit(options.limit) as any;
+      query = query.limit(options.limit);
     }
 
     const changes = await query;

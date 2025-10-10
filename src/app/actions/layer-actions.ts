@@ -121,8 +121,8 @@ export async function updateLayerAction(
     });
 
     // Record change
-    const changeData: any = {};
-    const previousData: any = {};
+    const changeData: Record<string, unknown> = {};
+    const previousData: Record<string, unknown> = {};
 
     if (data.name !== undefined) {
       changeData.name = data.name;

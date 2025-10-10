@@ -2,6 +2,11 @@ import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { isFeatureWithCode } from "@/lib/utils/map-feature-utils";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { toast } from "sonner";
+import type { SelectAreaLayers, SelectAreaLayerPostalCodes } from "@/lib/schema/schema";
+
+type LayerWithPostalCodes = SelectAreaLayers & {
+  postalCodes?: SelectAreaLayerPostalCodes[];
+};
 
 /**
  * Hook for managing click interactions and feature selection
@@ -14,7 +19,7 @@ export function useMapClickInteraction(
   isCursorMode: boolean,
   areaId?: number | null,
   activeLayerId?: number | null,
-  layers?: any[],
+  layers?: LayerWithPostalCodes[],
   addPostalCodesToLayer?: (layerId: number, codes: string[]) => Promise<void>,
   removePostalCodesFromLayer?: (
     layerId: number,
@@ -75,7 +80,7 @@ export function useMapClickInteraction(
         }
 
         const existingCodes =
-          activeLayer.postalCodes?.map((pc: any) => pc.postalCode) || [];
+          activeLayer.postalCodes?.map((pc: SelectAreaLayerPostalCodes) => pc.postalCode) || [];
         const codeExists = existingCodes.includes(regionCode);
 
         console.log(

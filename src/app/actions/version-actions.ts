@@ -12,8 +12,6 @@ import {
 
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
-import { revalidatePath, updateTag } from "next/cache";
-
 import { clearUndoRedoStacksAction } from "./change-tracking-actions";
 
 type ServerActionResponse<T = void> = Promise<{
@@ -286,7 +284,7 @@ export async function autoSaveVersionAction(
 
 export async function getVersionsAction(
   areaId: number,
-): ServerActionResponse<any[]> {
+): ServerActionResponse<unknown[]> {
   try {
     const versions = await db.query.areaVersions.findMany({
       where: eq(areaVersions.areaId, areaId),
@@ -310,7 +308,7 @@ export async function getVersionAction(
   areaId: number,
 
   versionNumber: number,
-): ServerActionResponse<any> {
+): ServerActionResponse<unknown> {
   try {
     const version = await db.query.areaVersions.findFirst({
       where: and(
@@ -329,28 +327,6 @@ export async function getVersionAction(
     console.error("Error fetching version:", error);
 
     return { success: false, error: "Failed to fetch version" };
-  }
-}
-
-/**
- * Switch to a different version (read-only view)
- */
-
-export async function switchToVersionAction(
-  areaId: number,
-
-  versionId: number,
-): ServerActionResponse {
-  try {
-    // This is primarily for UI state - the actual data is read from the version's snapshot
-
-    // No database changes needed here as this is a read-only operation
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error switching version:", error);
-
-    return { success: false, error: "Failed to switch version" };
   }
 }
 

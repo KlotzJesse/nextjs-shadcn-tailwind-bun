@@ -24,8 +24,8 @@ import { useState } from "react";
 
 interface ConflictItem {
   field: string;
-  localValue: any;
-  remoteValue: any;
+  localValue: unknown;
+  remoteValue: unknown;
   type: "layer" | "postal_code" | "area";
 }
 
@@ -66,7 +66,7 @@ export function EnhancedConflictResolutionDialog({
     onResolve(resolutions);
   };
 
-  const renderValue = (value: any) => {
+  const renderValue = (value: unknown) => {
     if (typeof value === "object") {
       return JSON.stringify(value, null, 2);
     }

@@ -9,9 +9,7 @@ import {
   postalCodes,
 } from "../../lib/schema/schema";
 
-import { eq, and, sql, like } from "drizzle-orm";
-
-import { revalidatePath } from "next/cache";
+import { eq, and, like } from "drizzle-orm";
 
 import { getGranularityLevel } from "@/lib/utils/granularity-utils";
 

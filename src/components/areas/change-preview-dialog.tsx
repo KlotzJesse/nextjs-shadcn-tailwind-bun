@@ -25,8 +25,8 @@ interface ChangePreviewDialogProps {
     id: number;
     changeType: string;
     entityType: string;
-    changeData: any;
-    previousData: any;
+    changeData: Record<string, unknown>;
+    previousData: Record<string, unknown>;
     createdAt: string;
     createdBy: string | null;
   } | null;

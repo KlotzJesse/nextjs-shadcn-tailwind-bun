@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
 import { Label } from "@/components/ui/label";
+
 import {
   Select,
   SelectContent,
@@ -17,47 +20,69 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import { useLayerMerge } from "@/lib/hooks/use-layer-merge";
-import { Layer } from "@/lib/types/area-types";
+
+import type { Layer } from "@/lib/types/area-types";
+
 import { IconGitMerge } from "@tabler/icons-react";
+
 import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
+
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface LayerMergeDialogProps {
   open: boolean;
+
   onOpenChange: (open: boolean) => void;
+
   areaId: number;
+
   layers: Layer[];
+
   onMergeComplete?: () => void;
 }
 
 export function LayerMergeDialog({
   open,
+
   onOpenChange,
+
   areaId,
+
   layers,
+
   onMergeComplete,
 }: LayerMergeDialogProps) {
   const { mergeLayers } = useLayerMerge({
     areaId,
+
     layers,
+
     onLayerUpdate: onMergeComplete,
   });
+
   const [selectedLayers, setSelectedLayers] = useState<Set<number>>(new Set());
+
   const [targetLayerId, setTargetLayerId] = useState<string>("");
+
   const [strategy, setStrategy] = useState<
     "union" | "keep-target" | "keep-source"
   >("union");
+
   const [isMerging, setIsMerging] = useState(false);
 
   const toggleLayer = (layerId: number) => {
     const newSet = new Set(selectedLayers);
+
     if (newSet.has(layerId)) {
       newSet.delete(layerId);
     } else {
       newSet.add(layerId);
     }
+
     setSelectedLayers(newSet);
   };
 
@@ -65,17 +90,22 @@ export function LayerMergeDialog({
     if (selectedLayers.size < 2 || !targetLayerId) return;
 
     setIsMerging(true);
+
     try {
       const targetId = parseInt(targetLayerId, 10);
+
       const sourceIds = Array.from(selectedLayers).filter(
-        (id) => id !== targetId
+        (id) => id !== targetId,
       );
 
       await mergeLayers(sourceIds, targetId, strategy);
 
       setSelectedLayers(new Set());
+
       setTargetLayerId("");
+
       onOpenChange(false);
+
       onMergeComplete?.();
     } catch (error) {
       console.error("Failed to merge layers:", error);
@@ -88,23 +118,27 @@ export function LayerMergeDialog({
     if (!targetLayerId || selectedLayers.size < 2) return null;
 
     const targetId = parseInt(targetLayerId, 10);
+
     const targetLayer = layers.find((l) => l.id === targetId);
+
     const sourceLayers = layers.filter(
-      (l) => selectedLayers.has(l.id) && l.id !== targetId
+      (l) => selectedLayers.has(l.id) && l.id !== targetId,
     );
 
     if (!targetLayer) return null;
 
     const targetCodes = new Set(
-      targetLayer.postalCodes?.map((pc) => pc.postalCode) || []
+      targetLayer.postalCodes?.map((pc) => pc.postalCode) || [],
     );
+
     const sourceCodes = new Set(
       sourceLayers.flatMap(
-        (l) => l.postalCodes?.map((pc) => pc.postalCode) || []
-      )
+        (l) => l.postalCodes?.map((pc) => pc.postalCode) || [],
+      ),
     );
 
     let resultCount = 0;
+
     if (strategy === "union") {
       resultCount = new Set([...targetCodes, ...sourceCodes]).size;
     } else if (strategy === "keep-target") {
@@ -115,7 +149,9 @@ export function LayerMergeDialog({
 
     return {
       targetCount: targetCodes.size,
+
       sourceCount: sourceCodes.size,
+
       resultCount,
     };
   };
@@ -173,7 +209,9 @@ export function LayerMergeDialog({
                 <SelectContent>
                   {Array.from(selectedLayers).map((layerId) => {
                     const layer = layers.find((l) => l.id === layerId);
+
                     if (!layer) return null;
+
                     return (
                       <SelectItem key={layer.id} value={layer.id.toString()}>
                         <div className="flex items-center gap-2">
@@ -197,7 +235,9 @@ export function LayerMergeDialog({
               <Label>Strategie</Label>
               <Select
                 value={strategy}
-                onValueChange={(val: any) => setStrategy(val)}
+                onValueChange={(val: "union" | "keep-target" | "keep-source") =>
+                  setStrategy(val)
+                }
               >
                 <SelectTrigger>
                   <SelectValue />

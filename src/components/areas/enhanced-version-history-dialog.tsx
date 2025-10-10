@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+
 import {
   Dialog,
   DialogContent,
@@ -9,87 +10,153 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Badge } from "@/components/ui/badge";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import {
   IconClock,
-  IconEye,
   IconRestore,
   IconGitBranch,
   IconDelta,
 } from "@tabler/icons-react";
+
 import { useState, useTransition } from "react";
+
 import { formatDistanceToNow } from "date-fns";
+
 import { de } from "date-fns/locale";
+
 import {
   restoreVersionAction,
   compareVersionsAction,
 } from "@/app/actions/version-actions";
+
 import { toast } from "sonner";
-import { SelectAreaVersions, SelectAreaChanges } from "@/lib/schema/schema";
+
+import type {
+  SelectAreaVersions,
+  SelectAreaChanges,
+} from "@/lib/schema/schema";
 
 interface VersionSnapshot {
   layers: Array<{
     name: string;
+
     postalCodes: string[];
   }>;
 }
 
 interface ChangeData {
   postalCodes?: string[];
+
   layer?: {
     name: string;
   };
 }
 
+interface ComparisonResult {
+  layersAdded?: Array<{ name: string }>;
+
+  layersRemoved?: Array<{ name: string }>;
+
+  layersModified?: Array<{ name: string }>;
+
+  postalCodesAdded?: string[];
+
+  postalCodesRemoved?: string[];
+}
+
 interface EnhancedVersionHistoryDialogProps {
   open: boolean;
+
   onOpenChange: (open: boolean) => void;
+
   areaId: number;
+
   versions: SelectAreaVersions[];
+
   changes: SelectAreaChanges[];
 }
 
 export function EnhancedVersionHistoryDialog({
   open,
+
   onOpenChange,
+
   areaId,
+
   versions,
+
   changes,
 }: EnhancedVersionHistoryDialogProps) {
   const [selectedVersion, setSelectedVersion] =
     useState<SelectAreaVersions | null>(null);
+
   const [compareVersion, setCompareVersion] =
     useState<SelectAreaVersions | null>(null);
-  const [comparison, setComparison] = useState<any>(null);
+
+  const [comparison, setComparison] = useState<ComparisonResult | null>(null);
+
   const [isPending, startTransition] = useTransition();
 
-  const handleRestore = async (version: SelectAreaVersions) => {
-    if (
-      !confirm(
-        `Restore version ${version.versionNumber}? This will create a new branch.`
-      )
-    ) {
-      return;
-    }
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+
+  const [versionToRestore, setVersionToRestore] =
+    useState<SelectAreaVersions | null>(null);
+
+  const handleRestore = (version: SelectAreaVersions) => {
+    setVersionToRestore(version);
+
+    setShowRestoreDialog(true);
+  };
+
+  const confirmRestore = async () => {
+    if (!versionToRestore) return;
 
     startTransition(async () => {
       try {
-        const result = await restoreVersionAction(areaId, version.versionNumber, {
-          createBranch: true,
-          branchName: `Restored from v${version.versionNumber}`,
-        });
+        const result = await restoreVersionAction(
+          areaId,
+
+          versionToRestore.versionNumber,
+
+          {
+            createBranch: true,
+
+            branchName: `Restored from v${versionToRestore.versionNumber}`,
+          },
+        );
 
         if (result.success) {
-          toast.success(`Version ${version.versionNumber} restored`);
+          toast.success(`Version ${versionToRestore.versionNumber} restored`);
+
           onOpenChange(false);
+
           window.location.reload();
         } else {
           toast.error(result.error || "Failed to restore version");
         }
-      } catch (error) {
+      } catch (_error) {
         toast.error("Failed to restore version");
+      } finally {
+        setShowRestoreDialog(false);
+
+        setVersionToRestore(null);
       }
     });
   };
@@ -100,9 +167,12 @@ export function EnhancedVersionHistoryDialog({
     try {
       const result = await compareVersionsAction(
         selectedVersion.areaId,
+
         selectedVersion.versionNumber,
+
         compareVersion.areaId,
-        compareVersion.versionNumber
+
+        compareVersion.versionNumber,
       );
 
       if (result.success && result.data) {
@@ -118,12 +188,18 @@ export function EnhancedVersionHistoryDialog({
   const getChangeTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       create_layer: "Layer erstellt",
+
       update_layer: "Layer aktualisiert",
+
       delete_layer: "Layer gelöscht",
+
       add_postal_codes: "Postleitzahlen hinzugefügt",
+
       remove_postal_codes: "Postleitzahlen entfernt",
+
       update_area: "Gebiet aktualisiert",
     };
+
     return labels[type] || type;
   };
 
@@ -170,8 +246,8 @@ export function EnhancedVersionHistoryDialog({
                         selectedVersion?.versionNumber === version.versionNumber
                           ? "border-primary bg-accent"
                           : version.isActive === "true"
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
-                          : "hover:border-primary/50"
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
+                            : "hover:border-primary/50"
                       }`}
                       onClick={() => setSelectedVersion(version)}
                     >
@@ -198,6 +274,7 @@ export function EnhancedVersionHistoryDialog({
                         <span className="text-sm text-muted-foreground">
                           {formatDistanceToNow(new Date(version.createdAt), {
                             addSuffix: true,
+
                             locale: de,
                           })}
                         </span>
@@ -212,7 +289,9 @@ export function EnhancedVersionHistoryDialog({
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span>{version.changeCount} changes</span>
                         <span>
-                          {(version.snapshot as VersionSnapshot)?.layers?.length || 0} layer(s)
+                          {(version.snapshot as VersionSnapshot)?.layers
+                            ?.length || 0}{" "}
+                          layer(s)
                         </span>
                         {version.createdBy && (
                           <span>by {version.createdBy}</span>
@@ -250,6 +329,7 @@ export function EnhancedVersionHistoryDialog({
                         <span className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(change.createdAt), {
                             addSuffix: true,
+
                             locale: de,
                           })}
                         </span>
@@ -257,20 +337,24 @@ export function EnhancedVersionHistoryDialog({
                       <div className="text-sm">
                         {change.changeType === "add_postal_codes" && (
                           <span>
-                            Added {(change.changeData as ChangeData)?.postalCodes?.length || 0}{" "}
+                            Added{" "}
+                            {(change.changeData as ChangeData)?.postalCodes
+                              ?.length || 0}{" "}
                             postal code(s)
                           </span>
                         )}
                         {change.changeType === "remove_postal_codes" && (
                           <span>
                             Removed{" "}
-                            {(change.changeData as ChangeData)?.postalCodes?.length || 0} postal
-                            code(s)
+                            {(change.changeData as ChangeData)?.postalCodes
+                              ?.length || 0}{" "}
+                            postal code(s)
                           </span>
                         )}
                         {change.changeType === "create_layer" && (
                           <span>
-                            Layer erstellt: {(change.changeData as ChangeData)?.layer?.name}
+                            Layer erstellt:{" "}
+                            {(change.changeData as ChangeData)?.layer?.name}
                           </span>
                         )}
                         {change.changeType === "update_layer" && (
@@ -278,7 +362,8 @@ export function EnhancedVersionHistoryDialog({
                         )}
                         {change.changeType === "delete_layer" && (
                           <span>
-                            Layer gelöscht: {(change.previousData as ChangeData)?.layer?.name}
+                            Layer gelöscht:{" "}
+                            {(change.previousData as ChangeData)?.layer?.name}
                           </span>
                         )}
                         {change.createdBy && (
@@ -306,9 +391,11 @@ export function EnhancedVersionHistoryDialog({
                     value={selectedVersion?.versionNumber || ""}
                     onChange={(e) => {
                       const version = versions.find(
-                        (v) => v.versionNumber === Number(e.target.value)
+                        (v) => v.versionNumber === Number(e.target.value),
                       );
+
                       setSelectedVersion(version || null);
+
                       setComparison(null);
                     }}
                   >
@@ -329,9 +416,11 @@ export function EnhancedVersionHistoryDialog({
                     value={compareVersion?.versionNumber || ""}
                     onChange={(e) => {
                       const version = versions.find(
-                        (v) => v.versionNumber === Number(e.target.value)
+                        (v) => v.versionNumber === Number(e.target.value),
                       );
+
                       setCompareVersion(version || null);
+
                       setComparison(null);
                     }}
                   >
@@ -362,14 +451,14 @@ export function EnhancedVersionHistoryDialog({
                           Layer hinzugefügt ({comparison.layersAdded.length})
                         </h4>
                         {comparison.layersAdded.map(
-                          (layer: any, idx: number) => (
+                          (layer: { name: string }, idx: number) => (
                             <div
                               key={`added-${layer.name}-${idx}`}
                               className="text-sm pl-4"
                             >
                               + {layer.name}
                             </div>
-                          )
+                          ),
                         )}
                       </div>
                     )}
@@ -379,14 +468,14 @@ export function EnhancedVersionHistoryDialog({
                           Layer entfernt ({comparison.layersRemoved.length})
                         </h4>
                         {comparison.layersRemoved.map(
-                          (layer: any, idx: number) => (
+                          (layer: { name: string }, idx: number) => (
                             <div
                               key={`removed-${layer.name}-${idx}`}
                               className="text-sm pl-4"
                             >
                               - {layer.name}
                             </div>
-                          )
+                          ),
                         )}
                       </div>
                     )}
@@ -396,14 +485,14 @@ export function EnhancedVersionHistoryDialog({
                           Layer geändert ({comparison.layersModified.length})
                         </h4>
                         {comparison.layersModified.map(
-                          (layer: any, idx: number) => (
+                          (layer: { name: string }, idx: number) => (
                             <div
                               key={`modified-${layer.name}-${idx}`}
                               className="text-sm pl-4"
                             >
                               ~ {layer.name}
                             </div>
-                          )
+                          ),
                         )}
                       </div>
                     )}
@@ -442,6 +531,25 @@ export function EnhancedVersionHistoryDialog({
           )}
         </DialogFooter>
       </DialogContent>
+      <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Version wiederherstellen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie Version {versionToRestore?.versionNumber} wirklich
+              wiederherstellen? Dies erstellt einen neuen Branch.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowRestoreDialog(false)}>
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRestore}>
+              Wiederherstellen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

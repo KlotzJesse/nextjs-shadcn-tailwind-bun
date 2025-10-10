@@ -25,7 +25,7 @@ export async function exportLayersPDF(layers: LayerExportData[]) {
     pdfMake.default.vfs = pdfFonts.vfs;
 
     // Create document content
-    const content: any[] = [];
+    const content: unknown[] = [];
 
     // Add title
     content.push({
