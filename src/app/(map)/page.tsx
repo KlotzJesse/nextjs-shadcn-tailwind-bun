@@ -2,8 +2,6 @@ import { FeatureErrorBoundary } from "@/components/ui/error-boundaries";
 import { PostalCodesViewSkeleton } from "@/components/ui/loading-skeletons";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { SiteHeader } from "@/components/site-header";
 import { PostalCodesOverview } from "@/components/postal-codes/postal-codes-overview";
 
 const ServerPostalCodesView = dynamic(

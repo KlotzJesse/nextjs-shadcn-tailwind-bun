@@ -14,14 +14,6 @@ const AppSidebar = dynamic(
   }
 );
 
-const SiteHeader = dynamic(
-  () =>
-    import("@/components/site-header").then((m) => ({ default: m.SiteHeader })),
-  {
-    loading: () => <Skeleton className="w-full h-12" />,
-  }
-);
-
 async function AppSidebarWithData() {
   // Ensure connection is established for prerendering
   await connection();
@@ -34,7 +26,7 @@ async function AppSidebarWithData() {
 
 export const experimental_ppr = true;
 
-export default async function MapLayout({
+export default function MapLayout({
   children,
 }: {
   children: React.ReactNode;

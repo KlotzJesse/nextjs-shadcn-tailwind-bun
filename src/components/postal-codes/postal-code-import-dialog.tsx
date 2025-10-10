@@ -19,7 +19,7 @@ import {
     groupMatchesByPattern,
     parsePostalCodeInput,
 } from "@/lib/utils/postal-code-parser";
-import { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
+import type { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
 import { AlertCircle, CheckCircle2, Download, FileText, Upload } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";

@@ -11,7 +11,7 @@ import {
   areaUndoStacks,
   postalCodes,
 } from "../schema/schema";
-import { eq, and, desc, asc, like, sql } from "drizzle-orm";
+import { eq, and, desc, like } from "drizzle-orm";
 import { db } from "../db";
 
 export async function getAreas() {
@@ -203,7 +203,7 @@ export async function getChangeHistory(
       .orderBy(desc(areaChanges.sequenceNumber));
 
     if (options?.limit) {
-      query = query.limit(options.limit) as any;
+      query = query.limit(options.limit) as unknown as typeof query;
     }
 
     const changes = await query;
@@ -227,8 +227,8 @@ export async function getUndoRedoStatus(areaId: number) {
       return { canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 };
     }
 
-    const undoStack = (stack.undoStack as any[]) || [];
-    const redoStack = (stack.redoStack as any[]) || [];
+    const undoStack = (stack.undoStack as unknown[]) || [];
+    const redoStack = (stack.redoStack as unknown[]) || [];
 
     return {
       canUndo: undoStack.length > 0,

@@ -41,7 +41,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateAreaAction, deleteAreaAction } from "@/app/actions/area-actions";
 import { toast } from "sonner";
-import { Route } from "next";
+import type { Route } from "next";
 
 interface NavAreasProps {
   areas: Area[];
@@ -62,7 +62,6 @@ export function NavAreas({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [areaToDelete, setAreaToDelete] = useState<Area | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isRenaming, setIsRenaming] = useState(false);
   const router = useRouter();
 
   const handleAreaCreated = (areaId: number) => {
@@ -116,7 +115,7 @@ export function NavAreas({
       return;
     }
 
-    setIsRenaming(true);
+    // Renaming in progress
     try {
       const result = await updateAreaAction(areaId, {
         name: editingAreaName.trim(),
@@ -135,7 +134,7 @@ export function NavAreas({
       console.error("Error renaming area:", error);
       toast.error("Fehler beim Umbenennen des Gebiets");
     } finally {
-      setIsRenaming(false);
+      // Renaming completed
     }
   };
 
@@ -165,7 +164,7 @@ export function NavAreas({
       } else {
         toast.error(result.error || "Fehler beim Löschen des Gebiets");
       }
-    } catch (error) {
+    } catch {
       toast.error("Fehler beim Löschen des Gebiets");
     } finally {
       setIsDeleting(false);

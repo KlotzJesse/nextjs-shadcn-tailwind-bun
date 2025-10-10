@@ -1,8 +1,6 @@
-import {
-  featureCollectionFromIds,
-  makeLabelPoints,
-} from "@/lib/utils/map-data";
+import { makeLabelPoints } from "@/lib/utils/map-data";
 import type {
+  Feature,
   FeatureCollection,
   GeoJsonProperties,
   Geometry,
@@ -34,7 +32,7 @@ export function useMapOptimizations({
   const selectedFeatureCollection = useMemo(() => {
     return {
       type: "FeatureCollection" as const,
-      features: [] as import("geojson").Feature<
+      features: [] as Feature<
         Polygon | MultiPolygon,
         GeoJsonProperties
       >[],
@@ -107,7 +105,7 @@ export function useMapOptimizations({
     }
 
     return minLng !== Infinity ? { minLng, maxLng, minLat, maxLat } : null;
-  }, [data.features.length]);
+  }, [data.features]);
 
   // Stable callback functions for layer usage
   // Note: Returns empty collection since selections are now per-layer

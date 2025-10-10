@@ -25,7 +25,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { Route } from "next";
+import type { Route } from "next";
 
 export function NavDocuments({
   items,

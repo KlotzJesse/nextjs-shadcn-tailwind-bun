@@ -12,7 +12,7 @@ interface LayerMergeProps {
 export function useLayerMerge({
   areaId,
   layers,
-  onLayerUpdate,
+  onLayerUpdate: _onLayerUpdate,
 }: LayerMergeProps) {
   const mergeLayers = useCallback(
     async (
@@ -77,7 +77,7 @@ export function useLayerMerge({
         throw error;
       }
     },
-    [layers, areaId, onLayerUpdate]
+    [layers, areaId]
   );
 
   const splitLayer = useCallback(
@@ -113,7 +113,7 @@ export function useLayerMerge({
         throw error;
       }
     },
-    [layers, areaId, onLayerUpdate]
+    [layers, areaId]
   );
 
   return {

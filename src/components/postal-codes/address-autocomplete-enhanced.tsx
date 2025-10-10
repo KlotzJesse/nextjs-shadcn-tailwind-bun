@@ -31,7 +31,6 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   geocodeSearchAction,
-  searchPostalCodesByLocationAction,
   searchPostalCodesByBoundaryAction,
 } from "@/app/actions/area-actions";
 
@@ -227,9 +226,8 @@ export function AddressAutocompleteEnhanced({
           if (data.postalCodes && data.postalCodes.length > 0) {
             onBoundarySelect(data.postalCodes);
             return `${data.count} PLZ-Regionen in ${data.areaInfo.name} ausgewählt`;
-          } else {
-            throw new Error("Keine PLZ-Regionen in diesem Gebiet gefunden");
           }
+          throw new Error("Keine PLZ-Regionen in diesem Gebiet gefunden");
         } catch (error) {
           console.error("Boundary search failed:", error);
           throw new Error("Gebietsauswahl fehlgeschlagen");
@@ -282,29 +280,28 @@ export function AddressAutocompleteEnhanced({
           // Use traditional straight-line radius search - it handles its own toast
           await onRadiusSelect(selectedCoords, finalRadius, granularity);
           return `✅ ${finalRadius}km Luftlinie erfolgreich ausgewählt`;
-        } else {
-          // Use driving radius search - it handles its own toast
-          const mode = searchMode === "distance" ? "distance" : "time";
-          const method = "osrm"; // Always start with precision mode
-
-          // The performDrivingRadiusSearch hook already calls the onRadiusComplete callback
-          // internally, so we don't need to call onDrivingRadiusSelect manually
-          if (performDrivingRadiusSearch) {
-            await performDrivingRadiusSearch(
-              selectedCoords,
-              finalRadius,
-              granularity,
-              mode,
-              method
-            );
-          } else {
-            throw new Error("Driving radius search is not available");
-          }
-
-          const unit = mode === "time" ? "min" : "km";
-          const modeText = mode === "time" ? "Fahrzeit" : "Fahrstrecke";
-          return `✅ ${finalRadius}${unit} ${modeText} erfolgreich ausgewählt`;
         }
+        // Use driving radius search - it handles its own toast
+        const mode = searchMode === "distance" ? "distance" : "time";
+        const method = "osrm"; // Always start with precision mode
+
+        // The performDrivingRadiusSearch hook already calls the onRadiusComplete callback
+        // internally, so we don't need to call onDrivingRadiusSelect manually
+        if (performDrivingRadiusSearch) {
+          await performDrivingRadiusSearch(
+            selectedCoords,
+            finalRadius,
+            granularity,
+            mode,
+            method
+          );
+        } else {
+          throw new Error("Driving radius search is not available");
+        }
+
+        const unit = mode === "time" ? "min" : "km";
+        const modeText = mode === "time" ? "Fahrzeit" : "Fahrstrecke";
+        return `✅ ${finalRadius}${unit} ${modeText} erfolgreich ausgewählt`;
       };
 
       // Since the individual search functions handle their own toasts,

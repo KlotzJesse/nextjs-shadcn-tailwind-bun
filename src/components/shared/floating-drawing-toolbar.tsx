@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { TerraDrawMode } from "@/lib/hooks/use-terradraw";
+import type { TerraDrawMode } from "@/lib/hooks/use-terradraw";
 import {
   Circle,
   Diamond,

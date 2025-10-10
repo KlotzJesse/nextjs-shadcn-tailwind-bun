@@ -2,8 +2,6 @@ import { useState, useMemo } from "react";
 
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 
-import { useMapState } from "@/lib/url-state/map-state";
-
 import type {
   FeatureCollection,
   GeoJsonProperties,

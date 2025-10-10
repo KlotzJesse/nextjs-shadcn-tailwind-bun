@@ -2,16 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconEye, IconHistory } from "@tabler/icons-react";
 import { getVersionIndicatorInfo, getAreaById } from "@/lib/db/data-functions";
-import { Result } from "pg";
 
 interface VersionIndicatorProps {
   areaId?: number | null;
-}
-
-interface VersionInfo {
-  versionNumber: number;
-  name?: string;
-  isLatest?: boolean;
 }
 
 export async function VersionIndicator({ areaId }: VersionIndicatorProps) {

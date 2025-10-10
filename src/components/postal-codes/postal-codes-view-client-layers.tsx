@@ -369,7 +369,7 @@ export function PostalCodesViewClientWithLayers({
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
-  const handleGranularityChange = async (newGranularity: string) => {
+  const handleGranularityChange = (newGranularity: string) => {
     if (newGranularity === defaultGranularity) return;
 
     // Granularity changes are now handled through the GranularitySelector component

@@ -1,5 +1,5 @@
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
-import { MapLibreMap } from "@/types/map";
+import type { MapLibreMap } from "@/types/map";
 import { useEffect, useLayoutEffect } from "react";
 
 /**

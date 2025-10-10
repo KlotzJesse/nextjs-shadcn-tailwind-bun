@@ -1,10 +1,9 @@
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
-import { useMapState } from "@/lib/url-state/map-state";
 import {
   findPostalCodeMatches,
   parsePostalCodeInput,
 } from "@/lib/utils/postal-code-parser";
-import {
+import type {
   FeatureCollection,
   GeoJsonProperties,
   MultiPolygon,
@@ -21,7 +20,7 @@ export function usePostalCodeBulkImport({
   data,
   granularity,
 }: PostalCodeBulkImportProps) {
-  const importPostalCodes = useStableCallback(async (input: string) => {
+  const importPostalCodes = useStableCallback((input: string) => {
     if (!input.trim()) {
       toast.error("Keine PLZ-Eingabe gefunden");
       return { success: false, count: 0 };

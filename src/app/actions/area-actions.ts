@@ -17,7 +17,7 @@ import { recordChangeAction } from "./change-tracking-actions";
 
 import { createVersionAction } from "./version-actions";
 
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, Geometry } from "geojson";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -1285,25 +1285,35 @@ export async function searchPostalCodesByLocationAction(data: {
       (acc, condition, index) =>
         index === 0 ? condition : sql`${acc} OR ${condition}`,
     )}) AND granularity = ${granularity}`;
+const results = await db
 
-    const results = await db
+  .select({
 
-      .select({
-        code: postalCodes.code,
+    code: postalCodes.code,
 
-        granularity: postalCodes.granularity,
+    granularity: postalCodes.granularity,
 
-        geometry: postalCodes.geometry,
+    geometry: sql<string>`ST_AsGeoJSON(${postalCodes.geometry})`,
 
-        properties: postalCodes.properties,
-      })
+    properties: postalCodes.properties,
 
-      .from(postalCodes)
+  })
 
-      .where(whereCondition)
+  .from(postalCodes)
 
-      .limit(limit);
+  .where(whereCondition)
 
+  .limit(limit) as {
+
+    code: string;
+
+    granularity: string;
+
+    geometry: string;
+
+    properties: unknown;
+
+  }[];
     // Create features array
 
     const features = results.map((result) => ({
@@ -1317,7 +1327,7 @@ export async function searchPostalCodesByLocationAction(data: {
         ...((result.properties as object) || {}),
       },
 
-      geometry: result.geometry,
+      geometry: JSON.parse(result.geometry) as Geometry,
     }));
 
     return {
@@ -1334,7 +1344,10 @@ export async function searchPostalCodesByLocationAction(data: {
 
         count: results.length,
 
-        features,
+        features: {
+          type: "FeatureCollection" as const,
+          features,
+        },
       },
     };
   } catch (error) {

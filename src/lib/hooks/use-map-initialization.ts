@@ -2,7 +2,7 @@
 
 import type { FeatureCollection } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { RefObject, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 export function useMapInitialization({
   mapContainer,

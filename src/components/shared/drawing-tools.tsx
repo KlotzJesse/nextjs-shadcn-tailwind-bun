@@ -1,8 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 import {
   Card,
@@ -710,7 +709,7 @@ function DrawingToolsImpl({
       setShowDeleteDialog(false);
 
       setLayerToDelete(null);
-    } catch (_error) {
+    } catch {
       // Error already handled by hook
     }
   };
@@ -730,7 +729,7 @@ function DrawingToolsImpl({
       setEditingLayerName("");
 
       toast.success("Gebiet umbenannt");
-    } catch (error) {
+    } catch {
       // Error already handled by hook
     }
   };

@@ -42,9 +42,8 @@ export function useVersionHistory(areaId: number) {
         if (result.success && result.data) {
           toast.success(`Version ${result.data.versionNumber} erstellt`);
           return result.data;
-        } else {
-          throw new Error(result.error || "Failed to create version");
         }
+        throw new Error(result.error || "Failed to create version");
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
@@ -57,16 +56,15 @@ export function useVersionHistory(areaId: number) {
 
 
   const restoreVersion = useCallback(
-    async (version: AreaVersion) => {
+    (version: AreaVersion) => {
       try {
         toast.promise(
           (async () => {
             const result = await restoreVersionAction(areaId, version.id);
             if (result.success) {
               return `Version ${version.versionNumber} wiederhergestellt`;
-            } else {
-              throw new Error(result.error || "Failed to restore version");
             }
+            throw new Error(result.error || "Failed to restore version");
           })(),
           {
             loading: "Wiederherstellen...",

@@ -125,7 +125,7 @@ export function EnhancedVersionHistoryDialog({
     setShowRestoreDialog(true);
   };
 
-  const confirmRestore = async () => {
+  const confirmRestore = () => {
     if (!versionToRestore) return;
 
     startTransition(async () => {
@@ -151,7 +151,7 @@ export function EnhancedVersionHistoryDialog({
         } else {
           toast.error(result.error || "Failed to restore version");
         }
-      } catch (_error) {
+      } catch {
         toast.error("Failed to restore version");
       } finally {
         setShowRestoreDialog(false);
@@ -180,7 +180,7 @@ export function EnhancedVersionHistoryDialog({
       } else {
         toast.error("Failed to compare versions");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to compare versions");
     }
   };

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
-import {
+import type {
   FeatureCollection,
   GeoJsonProperties,
   MultiPolygon,

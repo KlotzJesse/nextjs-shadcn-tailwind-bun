@@ -148,14 +148,13 @@ export function getGranularityChangeDescription(
           ? `${postalCodeCount} Regionen bleiben kompatibel`
           : "Kompatible Änderung",
     };
-  } else {
-    return {
-      type: "destructive",
-      title: `Wechsel zu ${newLabel}`,
-      description:
-        postalCodeCount > 0
-          ? `⚠️ Würde alle ${postalCodeCount} Regionen löschen`
-          : "Niedrigere Granularität",
-    };
   }
+  return {
+    type: "destructive",
+    title: `Wechsel zu ${newLabel}`,
+    description:
+      postalCodeCount > 0
+        ? `⚠️ Würde alle ${postalCodeCount} Regionen löschen`
+        : "Niedrigere Granularität",
+  };
 }

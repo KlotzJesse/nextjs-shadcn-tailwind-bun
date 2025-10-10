@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Layer } from "../types/area-types";
+import type { Layer } from "../types/area-types";
 
 export interface ConflictingPostalCode {
   postalCode: string;

@@ -100,7 +100,7 @@ export function usePostalCodeLookup({
     return index;
   }, [data.features]);
 
-  const lookupPostalCode = useStableCallback(async (postalCode: string) => {
+  const lookupPostalCode = useStableCallback((postalCode: string) => {
     const lookupPromise = async () => {
       setIsLoading(true);
 

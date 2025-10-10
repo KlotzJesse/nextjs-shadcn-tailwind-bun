@@ -12,7 +12,7 @@
     "typescript/explicit-function-return-type": "off",
     "typescript/no-empty-interface": "off",
     "typescript/consistent-type-imports": "error",
-    "typescript/require-await": "warn",
+    //"typescript/require-await": "warn",
     "react/self-closing-comp": "error",
     "react/exhaustive-deps": "error",
     "react/jsx-no-useless-fragment": "error",

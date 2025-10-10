@@ -20,7 +20,6 @@ export function useUndoRedo(
   onStatusUpdate?: () => void
 ) {
   const [isLoading, setIsLoading] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const undo = useCallback(async () => {
     if (!areaId || !initialStatus?.canUndo || isLoading) return;

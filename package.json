@@ -105,6 +105,7 @@
     "@types/topojson-client": "^3.1.5",
     "@typescript-eslint/eslint-plugin": "^8.46.0",
     "@typescript-eslint/parser": "^8.46.0",
+    "@typescript/native-preview": "^7.0.0-dev.20251010.1",
     "eslint": "^9.37.0",
     "eslint-config-next": "^15.5.4",
     "eslint-config-prettier": "^10.1.8",
@@ -121,7 +122,8 @@
     "build": "next build --turbo --experimental-next-config-strip-types",
     "dev": "next dev --turbopack --experimental-next-config-strip-types",
     "lint": "oxlint --type-aware",
-    "start": "next start --experimental-next-config-strip-types"
+    "start": "next start --experimental-next-config-strip-types",
+    "type-check": "bunx tsgo --noEmit"
   },
   "type": "module",
   "version": "0.1.0",

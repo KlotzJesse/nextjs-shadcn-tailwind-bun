@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLayerConflicts } from "@/lib/hooks/use-layer-conflicts";
-import { Layer } from "@/lib/types/area-types";
+import type { Layer } from "@/lib/types/area-types";
 import { updateLayerAction } from "@/app/actions/layer-actions";
 import { IconAlertTriangle, IconCheck, IconLoader } from "@tabler/icons-react";
 import { useState, useEffect } from "react";

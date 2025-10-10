@@ -11,7 +11,7 @@ import type {
   Polygon,
 } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { useStableCallback } from "./use-stable-callback";
 

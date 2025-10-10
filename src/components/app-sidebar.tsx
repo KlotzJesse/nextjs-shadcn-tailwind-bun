@@ -4,9 +4,7 @@
 
 import {
   IconDashboard,
-  IconFolder,
   IconMapPin2,
-  IconInnerShadowTop,
 } from "@tabler/icons-react";
 import * as React from "react";
 

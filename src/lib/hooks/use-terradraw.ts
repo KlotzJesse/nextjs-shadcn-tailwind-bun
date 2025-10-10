@@ -1,8 +1,7 @@
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import type { Map as MapLibre } from "maplibre-gl";
-import { RefObject, useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import {
-  GeoJSONStoreFeatures,
   TerraDraw,
   TerraDrawAngledRectangleMode,
   TerraDrawCircleMode,
@@ -13,6 +12,7 @@ import {
   TerraDrawRectangleMode,
   TerraDrawSectorMode,
   TerraDrawSelectMode,
+  type GeoJSONStoreFeatures,
 } from "terra-draw";
 import { TerraDrawMapLibreGLAdapter } from "terra-draw-maplibre-gl-adapter";
 

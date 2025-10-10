@@ -11,8 +11,8 @@ import type {
   Map as MapLibreMap,
 } from "maplibre-gl";
 import { useEffect, useLayoutEffect, useMemo } from "react";
-import { InferSelectModel } from "drizzle-orm";
-import { areaLayers } from "../schema/schema";
+import type { InferSelectModel } from "drizzle-orm";
+import type { areaLayers } from "../schema/schema";
 
 type Layer = InferSelectModel<typeof areaLayers> & {
   postalCodes?: { postalCode: string }[];
@@ -420,6 +420,8 @@ export function useMapLayers({
     layerId,
     getSelectedFeatureCollection,
     getLabelPoints,
+    activeLayerId,
+    layers,
   ]);
 
   // Update selected features source when layers change
@@ -646,7 +648,7 @@ export function useMapLayers({
             if (!currentLayerIds.has(layerIdNum)) {
               try {
                 map.removeLayer(layer.id);
-              } catch (e) {
+              } catch {
                 // Layer might already be removed
               }
             }
@@ -663,7 +665,7 @@ export function useMapLayers({
             if (!currentLayerIds.has(layerIdNum)) {
               try {
                 map.removeSource(sourceId);
-              } catch (e) {
+              } catch {
                 // Source might already be removed
               }
             }
@@ -671,7 +673,7 @@ export function useMapLayers({
         }
       });
     };
-  }, [map, isMapLoaded, layers, layerDataCache, ids.hoverLayerId]);
+  }, [map, isMapLoaded, layers, layerDataCache, ids.hoverLayerId, activeLayerId]);
 
   // Optimized layer switching - only update visibility and active state
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { PostalCodesErrorBoundary } from "@/components/ui/error-boundaries";
 import { PostalCodesViewSkeleton } from "@/components/ui/loading-skeletons";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -20,9 +20,6 @@ const ServerPostalCodesView = nextDynamic(
 );
 
 export const experimental_ppr = true;
-
-const VALID_GRANULARITIES = ["1digit", "2digit", "3digit", "5digit"] as const;
-type Granularity = (typeof VALID_GRANULARITIES)[number];
 
 interface PostalCodesPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;

@@ -1,5 +1,4 @@
-import { useMapState } from "@/lib/url-state/map-state";
-import {
+import type {
   FeatureCollection,
   GeoJsonProperties,
   MultiPolygon,

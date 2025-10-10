@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -30,7 +29,6 @@ import { AlertTriangle, Info, Lock } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { updateAreaAction } from "@/app/actions/area-actions";
 import { changeAreaGranularityAction } from "@/app/actions/granularity-actions";
 import {
   GRANULARITY_OPTIONS,
@@ -233,7 +231,7 @@ export function GranularitySelector({
       : "available";
   };
 
-  const getSelectItemTooltip = (optionValue: string, status: string) => {
+  const getSelectItemTooltip = (optionValue: string, _status: string) => {
     const changeDescription = getGranularityChangeDescription(
       currentGranularity,
       optionValue,

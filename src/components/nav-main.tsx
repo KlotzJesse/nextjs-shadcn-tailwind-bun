@@ -11,7 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Route } from "next";
+import type { Route } from "next";
 
 // Optimize with memoization
 const MemoizedSidebarMenuButton = memo(SidebarMenuButton);

@@ -1,6 +1,6 @@
 // filename: db/postgis-types.ts
 import { customType } from "drizzle-orm/pg-core";
-import { sql, SQL } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 export type GeoJSONPolygon = {
   type: "Polygon";

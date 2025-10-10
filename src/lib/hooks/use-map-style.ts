@@ -1,4 +1,3 @@
-import { useMapState } from "@/lib/url-state/map-state";
 import { useEffect, useLayoutEffect } from "react";
 
 import type { Map as MapLibre } from "maplibre-gl";

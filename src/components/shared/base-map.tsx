@@ -9,7 +9,6 @@ import { useMapInitialization } from "@/lib/hooks/use-map-initialization";
 import { useMapInteractions } from "@/lib/hooks/use-map-interactions";
 import { useMapLayers } from "@/lib/hooks/use-map-layers";
 import { useMapOptimizations } from "@/lib/hooks/use-map-optimizations";
-import { useMapSelectedFeaturesSource } from "@/lib/hooks/use-map-selected-features-source";
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { useMapState } from "@/lib/url-state/map-state";
 import type {

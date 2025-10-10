@@ -5,12 +5,12 @@ import type {
   Polygon,
 } from "geojson";
 
-import {
+import type {
   SelectAreaVersions,
   SelectAreaChanges,
   areaLayers,
 } from "@/lib/schema/schema";
-import { InferSelectModel } from "drizzle-orm";
+import type { InferSelectModel } from "drizzle-orm";
 
 type Layer = InferSelectModel<typeof areaLayers> & {
   postalCodes?: { postalCode: string }[];

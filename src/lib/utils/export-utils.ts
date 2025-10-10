@@ -15,7 +15,7 @@ interface LayerExportData {
  * ...
  * @param layers Array of layer data with postal codes
  */
-export async function exportLayersPDF(layers: LayerExportData[]) {
+export function exportLayersPDF(layers: LayerExportData[]) {
   const exportPromise = async () => {
     // Use pdfmake for PDF generation without manual positioning
     const pdfMake = await import("pdfmake/build/pdfmake");
@@ -69,10 +69,10 @@ export async function exportLayersPDF(layers: LayerExportData[]) {
 
     // Create document definition
     const docDefinition = {
-      content,
+      content: content as unknown,
       styles,
-      pageSize: "A4",
-      pageMargins: [20, 20, 20, 20],
+      pageSize: "A4" as unknown,
+      pageMargins: [20, 20, 20, 20] as [number, number, number, number],
     };
 
     // Generate filename with timestamp

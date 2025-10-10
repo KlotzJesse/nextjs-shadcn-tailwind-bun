@@ -1,4 +1,3 @@
-import { useMapState } from "@/lib/url-state/map-state";
 import type { MapLayerMouseEvent, Map as MapLibre } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 import { useStableCallback } from "./use-stable-callback";

@@ -1,6 +1,5 @@
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useMapState } from "@/lib/url-state/map-state";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 

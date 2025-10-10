@@ -369,7 +369,7 @@ export async function restoreVersionAction(
         throw new Error("Version not found");
       }
 
-      const snapshot = version.snapshot as any;
+      const snapshot = version.snapshot as unknown;
 
       // Delete all current layers
 
@@ -616,15 +616,15 @@ export async function compareVersionsAction(
 
   versionNumber2: number,
 ): ServerActionResponse<{
-  layersAdded: any[];
+  layersAdded: unknown[];
 
-  layersRemoved: any[];
+  layersRemoved: unknown[];
 
-  layersModified: any[];
+  layersModified: unknown[];
 
-  postalCodesAdded: any[];
+  postalCodesAdded: unknown[];
 
-  postalCodesRemoved: any[];
+  postalCodesRemoved: unknown[];
 }> {
   try {
     const [version1, version2] = await Promise.all([
@@ -649,45 +649,45 @@ export async function compareVersionsAction(
       return { success: false, error: "One or both versions not found" };
     }
 
-    const snapshot1 = version1.snapshot as any;
+    const snapshot1 = version1.snapshot as unknown;
 
-    const snapshot2 = version2.snapshot as any;
+    const snapshot2 = version2.snapshot as unknown;
 
     // Compare layers
 
-    const layers1Map = new Map(snapshot1.layers.map((l: any) => [l.name, l]));
+    const layers1Map = new Map((snapshot1 as { layers: unknown[] }).layers.map((l: unknown) => [(l as { name: string }).name, l]));
 
-    const layers2Map = new Map(snapshot2.layers.map((l: any) => [l.name, l]));
+    const layers2Map = new Map((snapshot2 as { layers: unknown[] }).layers.map((l: unknown) => [(l as { name: string }).name, l]));
 
-    const layersAdded = snapshot2.layers.filter(
-      (l: any) => !layers1Map.has(l.name),
+    const layersAdded = (snapshot2 as { layers: unknown[] }).layers.filter(
+      (l: unknown) => !layers1Map.has((l as { name: string }).name),
     );
 
-    const layersRemoved = snapshot1.layers.filter(
-      (l: any) => !layers2Map.has(l.name),
+    const layersRemoved = (snapshot1 as { layers: unknown[] }).layers.filter(
+      (l: unknown) => !layers2Map.has((l as { name: string }).name),
     );
 
-    const layersModified = snapshot2.layers.filter((l2: any) => {
-      const l1 = layers1Map.get(l2.name);
+    const layersModified = (snapshot2 as { layers: unknown[] }).layers.filter((l2: unknown) => {
+      const l1 = layers1Map.get((l2 as { name: string }).name);
 
       if (!l1) return false;
 
       return (
-        (l1 as any).color !== l2.color ||
-        (l1 as any).opacity !== l2.opacity ||
-        JSON.stringify((l1 as any).postalCodes.sort()) !==
-          JSON.stringify(l2.postalCodes.sort())
+        (l1 as { color: string }).color !== (l2 as { color: string }).color ||
+        (l1 as { opacity: number }).opacity !== (l2 as { opacity: number }).opacity ||
+        JSON.stringify((l1 as { postalCodes: string[] }).postalCodes.sort()) !==
+          JSON.stringify((l2 as { postalCodes: string[] }).postalCodes.sort())
       );
     });
 
     // Compare postal codes
 
     const allCodes1 = new Set(
-      snapshot1.layers.flatMap((l: any) => l.postalCodes),
+      (snapshot1 as { layers: unknown[] }).layers.flatMap((l: unknown) => (l as { postalCodes: string[] }).postalCodes),
     );
 
     const allCodes2 = new Set(
-      snapshot2.layers.flatMap((l: any) => l.postalCodes),
+      (snapshot2 as { layers: unknown[] }).layers.flatMap((l: unknown) => (l as { postalCodes: string[] }).postalCodes),
     );
 
     const postalCodesAdded = Array.from(allCodes2).filter(
