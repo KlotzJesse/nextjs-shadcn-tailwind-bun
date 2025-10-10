@@ -3,7 +3,7 @@
 import { db } from "../../lib/db";
 import { areaLayers, areaLayerPostalCodes } from "../../lib/schema/schema";
 import { eq } from "drizzle-orm";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { recordChangeAction } from "./change-tracking-actions";
 
 export async function createLayerAction(
@@ -52,11 +52,11 @@ export async function createLayerAction(
     });
 
     revalidatePath(`/postal-codes`);
-    revalidateTag("layers");
-    revalidateTag(`area-${areaId}-layers`);
-    revalidateTag(`area-${areaId}`);
-    revalidateTag("undo-redo");
-    revalidateTag(`area-${areaId}-undo-redo`);
+    updateTag("layers");
+    updateTag(`area-${areaId}-layers`);
+    updateTag(`area-${areaId}`);
+    updateTag("undo-redo");
+    updateTag(`area-${areaId}-undo-redo`);
     return { success: true, data: { id: layer.id } };
   } catch (error) {
     console.error("Error creating layer:", error);
@@ -160,11 +160,11 @@ export async function updateLayerAction(
     });
 
     revalidatePath(`/postal-codes`);
-    revalidateTag("layers");
-    revalidateTag(`area-${areaId}-layers`);
-    revalidateTag(`area-${areaId}`);
-    revalidateTag("undo-redo");
-    revalidateTag(`area-${areaId}-undo-redo`);
+    updateTag("layers");
+    updateTag(`area-${areaId}-layers`);
+    updateTag(`area-${areaId}`);
+    updateTag("undo-redo");
+    updateTag(`area-${areaId}-undo-redo`);
     return { success: true };
   } catch (error) {
     console.error("Error updating layer:", error);
@@ -222,11 +222,11 @@ export async function deleteLayerAction(
     });
 
     revalidatePath(`/postal-codes`);
-    revalidateTag("layers");
-    revalidateTag(`area-${areaId}-layers`);
-    revalidateTag(`area-${areaId}`);
-    revalidateTag("undo-redo");
-    revalidateTag(`area-${areaId}-undo-redo`);
+    updateTag("layers");
+    updateTag(`area-${areaId}-layers`);
+    updateTag(`area-${areaId}`);
+    updateTag("undo-redo");
+    updateTag(`area-${areaId}-undo-redo`);
     return { success: true };
   } catch (error) {
     console.error("Error deleting layer:", error);
@@ -298,11 +298,11 @@ export async function addPostalCodesToLayerAction(
     });
 
     revalidatePath(`/postal-codes`);
-    revalidateTag("layers");
-    revalidateTag(`area-${areaId}-layers`);
-    revalidateTag(`area-${areaId}`);
-    revalidateTag("undo-redo");
-    revalidateTag(`area-${areaId}-undo-redo`);
+    updateTag("layers");
+    updateTag(`area-${areaId}-layers`);
+    updateTag(`area-${areaId}`);
+    updateTag("undo-redo");
+    updateTag(`area-${areaId}-undo-redo`);
     return { success: true };
   } catch (error) {
     console.error("Error adding postal codes to layer:", error);
@@ -376,11 +376,11 @@ export async function removePostalCodesFromLayerAction(
     });
 
     revalidatePath(`/postal-codes`);
-    revalidateTag("layers");
-    revalidateTag(`area-${areaId}-layers`);
-    revalidateTag(`area-${areaId}`);
-    revalidateTag("undo-redo");
-    revalidateTag(`area-${areaId}-undo-redo`);
+    updateTag("layers");
+    updateTag(`area-${areaId}-layers`);
+    updateTag(`area-${areaId}`);
+    updateTag("undo-redo");
+    updateTag(`area-${areaId}-undo-redo`);
     return { success: true };
   } catch (error) {
     console.error("Error removing postal codes from layer:", error);

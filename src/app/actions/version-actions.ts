@@ -9,7 +9,7 @@ import {
   areaChanges,
 } from "../../lib/schema/schema";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { clearUndoRedoStacksAction } from "./change-tracking-actions";
 
 type ServerActionResponse<T = void> = Promise<{

@@ -10,7 +10,7 @@ import {
   areaLayerPostalCodes,
 } from "../../lib/schema/schema";
 import { eq, and, desc, asc, inArray, sql } from "drizzle-orm";
-import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath, updateTag, unstable_cache } from "next/cache";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -115,7 +115,7 @@ export async function recordChangeAction(
     }
 
     revalidatePath("/postal-codes");
-    revalidateTag("undo-redo-status");
+    updateTag("undo-redo-status");
     return { success: true, data: changeKey };
   } catch (error) {
     console.error("Error recording change:", error);
@@ -232,7 +232,7 @@ export async function undoChangeAction(
     });
 
     revalidatePath("/postal-codes");
-    revalidateTag("undo-redo-status");
+    updateTag("undo-redo-status");
     return { success: true, data: result };
   } catch (error) {
     console.error("Error undoing change:", error);
@@ -317,7 +317,7 @@ export async function redoChangeAction(
     });
 
     revalidatePath("/postal-codes");
-    revalidateTag("undo-redo-status");
+    updateTag("undo-redo-status");
     return { success: true, data: result };
   } catch (error) {
     console.error("Error redoing change:", error);
