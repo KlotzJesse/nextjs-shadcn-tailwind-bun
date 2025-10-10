@@ -16,6 +16,11 @@ import type {
   MapErrorMessageProps,
   ToggleButtonProps,
 } from "@/types/base-map";
+import type { SelectAreaLayers, SelectAreaLayerPostalCodes } from "@/lib/schema/schema";
+
+type LayerWithPostalCodes = SelectAreaLayers & {
+  postalCodes?: SelectAreaLayerPostalCodes[];
+};
 import { PlusIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { memo, startTransition, Suspense, useMemo, useRef } from "react";
@@ -120,7 +125,7 @@ const BaseMapComponent = ({
     hoveredRegionId: hoveredRegionIdRef.current,
     getSelectedFeatureCollection: optimizations.getSelectedFeatureCollection,
     getLabelPoints: optimizations.getLabelPoints,
-    layers,
+    layers: layers as any,
     activeLayerId,
   });
 
@@ -133,7 +138,7 @@ const BaseMapComponent = ({
     layersLoaded,
     areaId,
     activeLayerId,
-    layers,
+    layers: layers as any,
     addPostalCodesToLayer,
     removePostalCodesFromLayer,
   });
@@ -210,7 +215,7 @@ const BaseMapComponent = ({
                 }}
                 addPostalCodesToLayer={addPostalCodesToLayer}
                 removePostalCodesFromLayer={removePostalCodesFromLayer}
-                layers={layers || []}
+                layers={layers as any}
                 isViewingVersion={isViewingVersion}
                 versionId={versionId}
                 versions={versions}

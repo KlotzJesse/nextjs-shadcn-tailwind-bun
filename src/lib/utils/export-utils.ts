@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { Content,PageSize } from "pdfmake/interfaces";
 
 interface LayerExportData {
   layerName: string;
@@ -25,7 +26,7 @@ export function exportLayersPDF(layers: LayerExportData[]) {
     pdfMake.default.vfs = pdfFonts.vfs;
 
     // Create document content
-    const content: unknown[] = [];
+    const content: Content[] = [];
 
     // Add title
     content.push({
@@ -69,9 +70,9 @@ export function exportLayersPDF(layers: LayerExportData[]) {
 
     // Create document definition
     const docDefinition = {
-      content: content as unknown,
+      content: content as any,
       styles,
-      pageSize: "A4" as unknown,
+      pageSize: "A4" as PageSize,
       pageMargins: [20, 20, 20, 20] as [number, number, number, number],
     };
 

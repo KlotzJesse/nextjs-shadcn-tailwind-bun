@@ -18,6 +18,26 @@ import {
   IconArrowForwardUp,
 } from "@tabler/icons-react";
 
+interface LayerData {
+  id: number;
+  areaId: number;
+  name: string;
+  color: string;
+  opacity: number;
+  isVisible: string;
+  orderIndex: number;
+}
+
+interface ChangeDataWithLayer extends Record<string, unknown> {
+  layer?: LayerData;
+  postalCodes?: string[];
+}
+
+interface PreviousDataWithLayer extends Record<string, unknown> {
+  layer?: LayerData;
+  postalCodes?: string[];
+}
+
 interface ChangePreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,8 +45,8 @@ interface ChangePreviewDialogProps {
     id: number;
     changeType: string;
     entityType: string;
-    changeData: Record<string, unknown>;
-    previousData: Record<string, unknown>;
+    changeData: ChangeDataWithLayer;
+    previousData: PreviousDataWithLayer;
     createdAt: string;
     createdBy: string | null;
   } | null;
@@ -101,7 +121,7 @@ export function ChangePreviewDialog({
               {mode === "undo" ? "Stellt wieder her" : "Löscht"} Layer:{" "}
               <strong>{change.previousData?.layer?.name}</strong>
             </p>
-            {change.previousData?.postalCodes?.length > 0 && (
+            {change.previousData?.postalCodes && change.previousData.postalCodes.length > 0 && (
               <p className="text-sm text-muted-foreground">
                 Einschließlich {change.previousData.postalCodes.length} Postleitzahlen
               </p>
@@ -116,18 +136,18 @@ export function ChangePreviewDialog({
               {mode === "undo" ? "Entfernt" : "Fügt hinzu"}{" "}
               {change.changeData?.postalCodes?.length || 0} Postleitzahlen
             </p>
-            {change.changeData?.postalCodes?.length <= 10 ? (
+            {change.changeData?.postalCodes && change.changeData.postalCodes.length > 0 && change.changeData.postalCodes.length <= 10 ? (
               <div className="pl-4 text-sm text-muted-foreground">
                 {change.changeData.postalCodes.map((code: string) => (
                   <div key={code}>{code}</div>
                 ))}
               </div>
-            ) : (
+            ) : change.changeData?.postalCodes && change.changeData.postalCodes.length > 10 ? (
               <p className="text-xs text-muted-foreground">
                 Zu viele zum Anzeigen ({change.changeData.postalCodes.length}{" "}
                 Codes)
               </p>
-            )}
+            ) : null}
           </div>
         );
 
@@ -138,18 +158,18 @@ export function ChangePreviewDialog({
               {mode === "undo" ? "Stellt wieder her" : "Entfernt"}{" "}
               {change.previousData?.postalCodes?.length || 0} Postleitzahlen
             </p>
-            {change.previousData?.postalCodes?.length <= 10 ? (
+            {change.previousData?.postalCodes && change.previousData.postalCodes.length > 0 && change.previousData.postalCodes.length <= 10 ? (
               <div className="pl-4 text-sm text-muted-foreground">
                 {change.previousData.postalCodes.map((code: string) => (
                   <div key={code}>{code}</div>
                 ))}
               </div>
-            ) : (
+            ) : change.previousData?.postalCodes && change.previousData.postalCodes.length > 10 ? (
               <p className="text-xs text-muted-foreground">
                 Zu viele zum Anzeigen ({change.previousData.postalCodes.length}{" "}
                 Codes)
               </p>
-            )}
+            ) : null}
           </div>
         );
 

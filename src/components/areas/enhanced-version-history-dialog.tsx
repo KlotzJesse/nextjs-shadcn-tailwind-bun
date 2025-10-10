@@ -70,15 +70,15 @@ interface ChangeData {
 }
 
 interface ComparisonResult {
-  layersAdded?: Array<{ name: string }>;
+  layersAdded: Array<{ name: string }>;
 
-  layersRemoved?: Array<{ name: string }>;
+  layersRemoved: Array<{ name: string }>;
 
-  layersModified?: Array<{ name: string }>;
+  layersModified: Array<{ name: string }>;
 
-  postalCodesAdded?: string[];
+  postalCodesAdded: string[];
 
-  postalCodesRemoved?: string[];
+  postalCodesRemoved: string[];
 }
 
 interface EnhancedVersionHistoryDialogProps {
@@ -445,13 +445,13 @@ export function EnhancedVersionHistoryDialog({
               {comparison && (
                 <ScrollArea className="h-[400px] border rounded-lg p-4">
                   <div className="space-y-4">
-                    {comparison.layersAdded?.length > 0 && (
+                    {comparison.layersAdded && comparison.layersAdded.length > 0 && (
                       <div>
                         <h4 className="font-medium text-green-600 mb-2">
                           Layer hinzugefügt ({comparison.layersAdded.length})
                         </h4>
                         {comparison.layersAdded.map(
-                          (layer: { name: string }, idx: number) => (
+                          (layer, idx: number) => (
                             <div
                               key={`added-${layer.name}-${idx}`}
                               className="text-sm pl-4"
@@ -462,13 +462,13 @@ export function EnhancedVersionHistoryDialog({
                         )}
                       </div>
                     )}
-                    {comparison.layersRemoved?.length > 0 && (
+                    {comparison.layersRemoved && comparison.layersRemoved.length > 0 && (
                       <div>
                         <h4 className="font-medium text-red-600 mb-2">
                           Layer entfernt ({comparison.layersRemoved.length})
                         </h4>
                         {comparison.layersRemoved.map(
-                          (layer: { name: string }, idx: number) => (
+                          (layer, idx: number) => (
                             <div
                               key={`removed-${layer.name}-${idx}`}
                               className="text-sm pl-4"
@@ -479,13 +479,13 @@ export function EnhancedVersionHistoryDialog({
                         )}
                       </div>
                     )}
-                    {comparison.layersModified?.length > 0 && (
+                    {comparison.layersModified && comparison.layersModified.length > 0 && (
                       <div>
                         <h4 className="font-medium text-blue-600 mb-2">
                           Layer geändert ({comparison.layersModified.length})
                         </h4>
                         {comparison.layersModified.map(
-                          (layer: { name: string }, idx: number) => (
+                          (layer, idx: number) => (
                             <div
                               key={`modified-${layer.name}-${idx}`}
                               className="text-sm pl-4"

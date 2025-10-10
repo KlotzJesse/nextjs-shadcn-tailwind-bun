@@ -40,6 +40,26 @@ export interface ChangeRecord {
   createdBy?: string;
 }
 
+interface LayerData {
+  id: number;
+  areaId: number;
+  name: string;
+  color: string;
+  opacity: number;
+  isVisible: string;
+  orderIndex: number;
+}
+
+interface ChangeDataWithLayer extends Record<string, unknown> {
+  layer?: LayerData;
+  postalCodes?: string[];
+}
+
+interface PreviousDataWithLayer extends Record<string, unknown> {
+  layer?: LayerData;
+  postalCodes?: string[];
+}
+
 export interface ChangeKey {
   areaId: number;
 
@@ -455,6 +475,8 @@ async function applyUndoOperation(
   change: SelectAreaChanges,
 ): Promise<void> {
   const { changeType, entityId, previousData } = change;
+  const typedPreviousData = previousData as PreviousDataWithLayer;
+  const typedChangeData = change.changeData as ChangeDataWithLayer;
 
   switch (changeType) {
     case "create_layer":
@@ -480,7 +502,7 @@ async function applyUndoOperation(
 
           .update(areaLayers)
 
-          .set(previousData)
+          .set(previousData as any)
 
           .where(eq(areaLayers.id, entityId));
       }
@@ -495,15 +517,15 @@ async function applyUndoOperation(
 
           .insert(areaLayers)
 
-          .values(previousData.layer)
+          .values((previousData as any).layer)
 
           .returning();
 
         // Recreate postal codes
 
-        if (previousData.postalCodes?.length > 0) {
+        if ((previousData as any).postalCodes?.length > 0) {
           await tx.insert(areaLayerPostalCodes).values(
-            previousData.postalCodes.map((code: string) => ({
+            (previousData as any).postalCodes.map((code: string) => ({
               layerId: layer.id,
 
               postalCode: code,
@@ -515,7 +537,7 @@ async function applyUndoOperation(
       break;
 
     case "add_postal_codes":
-      if (entityId && change.changeData?.postalCodes) {
+      if (entityId && typedChangeData?.postalCodes) {
         // Remove the postal codes
 
         await tx
@@ -529,7 +551,7 @@ async function applyUndoOperation(
               inArray(
                 areaLayerPostalCodes.postalCode,
 
-                change.changeData.postalCodes,
+                typedChangeData.postalCodes,
               ),
             ),
           );
@@ -538,11 +560,11 @@ async function applyUndoOperation(
       break;
 
     case "remove_postal_codes":
-      if (entityId && previousData?.postalCodes) {
+      if (entityId && typedPreviousData?.postalCodes) {
         // Re-add the postal codes
 
         await tx.insert(areaLayerPostalCodes).values(
-          previousData.postalCodes.map((code: string) => ({
+          typedPreviousData.postalCodes.map((code: string) => ({
             layerId: entityId,
 
             postalCode: code,
@@ -558,7 +580,7 @@ async function applyUndoOperation(
 
           .update(areas)
 
-          .set(previousData)
+          .set(previousData as any)
 
           .where(eq(areas.id, change.areaId));
       }
@@ -577,6 +599,7 @@ async function applyRedoOperation(
   change: SelectAreaChanges,
 ): Promise<void> {
   const { changeType, entityId, changeData } = change;
+  const typedChangeData = changeData as ChangeDataWithLayer;
 
   switch (changeType) {
     case "create_layer":
@@ -587,15 +610,15 @@ async function applyRedoOperation(
 
           .insert(areaLayers)
 
-          .values(changeData.layer)
+          .values((changeData as any).layer)
 
           .returning();
 
         // Recreate postal codes
 
-        if (changeData.postalCodes?.length > 0) {
+        if ((changeData as any).postalCodes?.length > 0) {
           await tx.insert(areaLayerPostalCodes).values(
-            changeData.postalCodes.map((code: string) => ({
+            (changeData as any).postalCodes.map((code: string) => ({
               layerId: layer.id,
 
               postalCode: code,
@@ -612,7 +635,7 @@ async function applyRedoOperation(
 
           .update(areaLayers)
 
-          .set(changeData)
+          .set(changeData as any)
 
           .where(eq(areaLayers.id, entityId));
       }
@@ -633,9 +656,9 @@ async function applyRedoOperation(
       break;
 
     case "add_postal_codes":
-      if (entityId && changeData?.postalCodes) {
+      if (entityId && typedChangeData?.postalCodes) {
         await tx.insert(areaLayerPostalCodes).values(
-          changeData.postalCodes.map((code: string) => ({
+          typedChangeData.postalCodes.map((code: string) => ({
             layerId: entityId,
 
             postalCode: code,
@@ -646,7 +669,7 @@ async function applyRedoOperation(
       break;
 
     case "remove_postal_codes":
-      if (entityId && changeData?.postalCodes) {
+      if (entityId && typedChangeData?.postalCodes) {
         await tx
 
           .delete(areaLayerPostalCodes)
@@ -655,7 +678,7 @@ async function applyRedoOperation(
             and(
               eq(areaLayerPostalCodes.layerId, entityId),
 
-              inArray(areaLayerPostalCodes.postalCode, changeData.postalCodes),
+              inArray(areaLayerPostalCodes.postalCode, typedChangeData.postalCodes),
             ),
           );
       }
@@ -668,7 +691,7 @@ async function applyRedoOperation(
 
           .update(areas)
 
-          .set(changeData)
+          .set(changeData as any)
 
           .where(eq(areas.id, change.areaId));
       }
@@ -744,7 +767,7 @@ export async function getChangeHistoryAction(
       .orderBy(desc(areaChanges.sequenceNumber));
 
     if (options?.limit) {
-      query = query.limit(options.limit);
+      query = query.limit(options.limit) as any;
     }
 
     const changes = await query;
