@@ -1,7 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import {
   Command,
   CommandEmpty,
@@ -9,27 +11,35 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
+
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
+
 import { useMapState } from "@/lib/url-state/map-state";
+
 import {
   addPostalCodesToLayerAction,
   removePostalCodesFromLayerAction,
   radiusSearchAction,
   drivingRadiusSearchAction,
 } from "@/app/actions/area-actions";
+
 import {
   areas,
   areaLayers,
   SelectAreaChanges,
   SelectAreaVersions,
 } from "@/lib/schema/schema";
+
 import type { InferSelectModel } from "drizzle-orm";
+
 import {
   FeatureCollection,
   GeoJsonProperties,
@@ -38,20 +48,28 @@ import {
 } from "geojson";
 
 type Area = InferSelectModel<typeof areas>;
+
 type Layer = InferSelectModel<typeof areaLayers> & {
   postalCodes?: { postalCode: string }[];
 };
+
 import { ChevronsUpDownIcon, FileUpIcon } from "lucide-react";
+
 import dynamic from "next/dynamic";
+
 import { useRouter } from "next/navigation";
+
 import { useState, useEffect, useTransition, useOptimistic } from "react";
+
 import { toast } from "sonner";
+
 import { EnhancedVersionHistoryDialog } from "@/components/areas/enhanced-version-history-dialog";
 
 import {
   AddressAutocompleteErrorBoundary,
   MapErrorBoundary,
 } from "@/components/ui/error-boundaries";
+
 import {
   AddressAutocompleteSkeleton,
   MapSkeleton,
@@ -60,21 +78,25 @@ import {
 const AddressAutocompleteEnhanced = dynamic(
   () =>
     import("./address-autocomplete-enhanced").then(
-      (m) => m.AddressAutocompleteEnhanced
+      (m) => m.AddressAutocompleteEnhanced,
     ),
+
   {
     ssr: false,
+
     loading: () => <AddressAutocompleteSkeleton />,
-  }
+  },
 );
 
 const PostalCodesMap = dynamic(
   () =>
     import("./postal-codes-map").then((m) => ({ default: m.PostalCodesMap })),
+
   {
     ssr: false,
+
     loading: () => <MapSkeleton />,
-  }
+  },
 );
 
 const PostalCodeImportDialog = dynamic(
@@ -82,9 +104,10 @@ const PostalCodeImportDialog = dynamic(
     import("./postal-code-import-dialog").then((m) => ({
       default: m.PostalCodeImportDialog,
     })),
+
   {
     ssr: false,
-  }
+  },
 );
 
 import {
@@ -92,96 +115,142 @@ import {
   getGranularityLabel,
   wouldGranularityChangeCauseDataLoss,
 } from "@/lib/utils/granularity-utils";
+
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 
 interface PostalCodesViewClientWithLayersProps {
   initialData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
+
   statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
+
   defaultGranularity: string;
+
   areaId: number;
+
   activeLayerId: number | null;
+
   initialAreas: Area[];
+
   initialArea: Area | null;
+
   initialLayers: Layer[];
+
   initialUndoRedoStatus: {
     canUndo: boolean;
+
     canRedo: boolean;
+
     undoCount: number;
+
     redoCount: number;
   };
+
   versions: SelectAreaVersions[];
+
   changes: SelectAreaChanges[];
+
   isViewingVersion?: boolean;
+
   versionId?: number | null;
 }
 
 export function PostalCodesViewClientWithLayers({
   initialData,
+
   statesData,
+
   defaultGranularity,
+
   areaId,
+
   activeLayerId,
+
   initialAreas,
+
   initialArea,
+
   initialLayers,
+
   initialUndoRedoStatus,
+
   versions,
+
   changes,
+
   isViewingVersion = false,
+
   versionId,
 }: PostalCodesViewClientWithLayersProps) {
   const [searchResults, setSearchResults] = useState<string[]>([]);
+
   const [data] =
     useState<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>>(
-      initialData
+      initialData,
     );
+
   const router = useRouter();
+
   const mapState = useMapState();
+
   const { setActiveLayer } = mapState;
 
   // Optimistic state for layers
+
   const [optimisticLayers, updateOptimisticLayers] = useOptimistic(
     initialLayers,
+
     (
       currentLayers: Layer[],
-      update: { type: "add" | "remove"; layerId: number; postalCodes: string[] }
+
+      update: {
+        type: "add" | "remove";
+        layerId: number;
+        postalCodes: string[];
+      },
     ) => {
       return currentLayers.map((layer) => {
         if (layer.id === update.layerId) {
           const currentCodes =
             layer.postalCodes?.map((pc) => pc.postalCode) || [];
+
           let newCodes: string[];
 
           if (update.type === "add") {
             newCodes = [...new Set([...currentCodes, ...update.postalCodes])];
           } else {
             newCodes = currentCodes.filter(
-              (code) => !update.postalCodes.includes(code)
+              (code) => !update.postalCodes.includes(code),
             );
           }
 
           return {
             ...layer,
+
             postalCodes: newCodes.map((code) => ({ postalCode: code })),
           };
         }
+
         return layer;
       });
-    }
+    },
   );
 
   const [isPending, startTransition] = useTransition();
 
   // When viewing a version, we need special handling for layer updates
+
   const isWorkingWithVersion = isViewingVersion && versionId;
 
   // Server action wrappers with optimistic updates
+
   const addPostalCodesToLayer = async (
     layerId: number,
-    postalCodes: string[]
+
+    postalCodes: string[],
   ) => {
     if (!areaId) {
       toast.error("Kein Bereich ausgewählt");
+
       return;
     }
 
@@ -191,18 +260,22 @@ export function PostalCodesViewClientWithLayers({
       try {
         const result = await addPostalCodesToLayerAction(
           areaId,
+
           layerId,
-          postalCodes
+
+          postalCodes,
         );
+
         if (!result.success) {
           throw new Error(result.error);
         }
+
         // Success handled by map click interaction toast
       } catch (error) {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Fehler beim Hinzufügen der PLZ"
+            : "Fehler beim Hinzufügen der PLZ",
         );
       }
     });
@@ -210,10 +283,12 @@ export function PostalCodesViewClientWithLayers({
 
   const removePostalCodesFromLayer = async (
     layerId: number,
-    postalCodes: string[]
+
+    postalCodes: string[],
   ) => {
     if (!areaId) {
       toast.error("Kein Bereich ausgewählt");
+
       return;
     }
 
@@ -223,37 +298,48 @@ export function PostalCodesViewClientWithLayers({
       try {
         const result = await removePostalCodesFromLayerAction(
           areaId,
+
           layerId,
-          postalCodes
+
+          postalCodes,
         );
+
         if (!result.success) {
           throw new Error(result.error);
         }
+
         // Success handled by map click interaction toast
       } catch (error) {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Fehler beim Entfernen der PLZ"
+            : "Fehler beim Entfernen der PLZ",
         );
       }
     });
   };
 
   const { searchPostalCodes, selectPostalCode } = usePostalCodeSearch({ data });
+
   const { findPostalCodeByCoords } = usePostalCodeLookup({ data });
 
   const performRadiusSearch = async (searchData: {
     latitude: number;
+
     longitude: number;
+
     radius: number;
+
     granularity: string;
   }) => {
     const result = await radiusSearchAction(searchData);
+
     if (result.success && result.data) {
       const postalCodes = result.data.postalCodes;
+
       if (activeLayerId && areaId) {
         await addPostalCodesToLayer(activeLayerId, postalCodes);
+
         toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
       } else {
         toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
@@ -266,23 +352,34 @@ export function PostalCodesViewClientWithLayers({
   };
 
   // Wrapper function to match the expected interface for AddressAutocompleteEnhanced
+
   const performDrivingRadiusSearchWrapper = async (
     coordinates: [number, number],
+
     radius: number,
+
     granularity: string,
+
     mode: "distance" | "time",
-    method: "osrm" | "approximation"
+
+    method: "osrm" | "approximation",
   ) => {
     const result = await drivingRadiusSearchAction({
       latitude: coordinates[1],
+
       longitude: coordinates[0],
+
       maxDuration: radius, // Using radius as maxDuration for time mode
+
       granularity,
     });
+
     if (result.success && result.data) {
       const postalCodes = result.data.postalCodes;
+
       if (activeLayerId && areaId) {
         await addPostalCodesToLayer(activeLayerId, postalCodes);
+
         toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
       } else {
         toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
@@ -295,38 +392,51 @@ export function PostalCodesViewClientWithLayers({
   };
 
   const [postalCodeQuery, setPostalCodeQuery] = useState("");
+
   const [postalCodeOpen, setPostalCodeOpen] = useState(false);
+
   const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(
-    null
+    null,
   );
+
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
   const [showEnhancedHistory, setShowEnhancedHistory] = useState(false);
 
   const handleGranularityChange = async (newGranularity: string) => {
     if (newGranularity === defaultGranularity) return;
 
     // Granularity changes are now handled through the GranularitySelector component
+
     // which updates the area's granularity via server action and triggers a refresh
+
     toast.info("Granularität wird über den Bereich aktualisiert", {
       description: "Die Änderung wird automatisch gespeichert",
+
       duration: 3000,
     });
   };
 
   // Handle direct address selection (pin icon)
+
   const handleAddressSelect = (
     coords: [number, number],
+
     _label: string,
-    postalCode?: string
+
+    postalCode?: string,
   ) => {
     const selectionPromise = async () => {
       const code = postalCode || findPostalCodeByCoords(coords[0], coords[1]);
+
       if (code) {
         if (activeLayerId && areaId) {
           await addPostalCodesToLayer(activeLayerId, [code]);
+
           return `PLZ ${code} zu Gebiet hinzugefügt`;
         } else {
           selectPostalCode(code);
+
           return `PLZ ${code} ausgewählt`;
         }
       } else {
@@ -336,30 +446,40 @@ export function PostalCodesViewClientWithLayers({
 
     toast.promise(selectionPromise(), {
       loading: "📍 PLZ-Region wird ermittelt...",
+
       success: (message: string) => message,
+
       error: (error: unknown) =>
         error instanceof Error ? error.message : "Fehler bei PLZ-Auswahl",
     });
   };
 
   // Handle radius selection (radius icon)
+
   const handleRadiusSelect = async (
     coords: [number, number],
+
     radius: number,
-    granularity: string
+
+    granularity: string,
   ) => {
     await performRadiusSearch({
       latitude: coords[1],
+
       longitude: coords[0],
+
       radius,
+
       granularity,
     });
   };
 
   // Handle bulk postal code import
+
   const handleImport = async (postalCodes: string[]) => {
     if (activeLayerId && areaId) {
       await addPostalCodesToLayer(activeLayerId, postalCodes);
+
       toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
     } else {
       toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
@@ -373,12 +493,17 @@ export function PostalCodesViewClientWithLayers({
   };
 
   // Get all postal codes for autocomplete
+
   const allPostalCodes = data.features
+
     .map((f) => f.properties?.code || f.properties?.PLZ || f.properties?.plz)
+
     .filter((code): code is string => Boolean(code));
 
   // Get current layer's postal codes for map display
+
   const activeLayer = optimisticLayers.find((l) => l.id === activeLayerId);
+
   const layerPostalCodes =
     activeLayer?.postalCodes?.map((pc) => pc.postalCode) || [];
 
@@ -426,10 +551,13 @@ export function PostalCodesViewClientWithLayers({
               />
               <CommandList>
                 {allPostalCodes
+
                   .filter((code) =>
-                    code.toLowerCase().includes(postalCodeQuery.toLowerCase())
+                    code.toLowerCase().includes(postalCodeQuery.toLowerCase()),
                   )
+
                   .slice(0, 10)
+
                   .map((code) => (
                     <CommandItem
                       key={code}
@@ -440,8 +568,11 @@ export function PostalCodesViewClientWithLayers({
                         } else {
                           selectPostalCode(code);
                         }
+
                         setSelectedPostalCode(code);
+
                         setPostalCodeQuery("");
+
                         setPostalCodeOpen(false);
                       }}
                       className="cursor-pointer truncate"
@@ -452,7 +583,7 @@ export function PostalCodesViewClientWithLayers({
                     </CommandItem>
                   ))}
                 {allPostalCodes.filter((code) =>
-                  code.toLowerCase().includes(postalCodeQuery.toLowerCase())
+                  code.toLowerCase().includes(postalCodeQuery.toLowerCase()),
                 ).length === 0 && (
                   <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
                 )}
@@ -464,7 +595,7 @@ export function PostalCodesViewClientWithLayers({
         {/* Import Button - Opens the import dialog */}
         <div className="flex-shrink-0">
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <Button
                 variant="secondary"
                 onClick={() => setImportDialogOpen(true)}
