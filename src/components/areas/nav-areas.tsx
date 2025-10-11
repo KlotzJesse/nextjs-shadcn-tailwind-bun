@@ -34,10 +34,12 @@ import {
   IconDots,
   IconEdit,
   IconTrash,
+  IconCheck,
+  IconX,
 } from "@tabler/icons-react";
-import { useState } from "react";
+import { useState, Activity } from "react";
 import { CreateAreaDialog } from "./create-area-dialog";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { updateAreaAction, deleteAreaAction } from "@/app/actions/area-actions";
 import { toast } from "sonner";
@@ -63,13 +65,15 @@ export function NavAreas({
   const [areaToDelete, setAreaToDelete] = useState<Area | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
+  const params = useParams();
+  const currentAreaIdFromRoute = params?.areaId ? String(params.areaId) : null;
 
   const handleAreaCreated = (areaId: number) => {
     if (onAreaSelect) {
       onAreaSelect(areaId);
     } else {
       // Use router.push for programmatic navigation after creation
-      router.push(`/postal-codes?areaId=${areaId}`);
+      router.push(`/postal-codes/${areaId}`);
     }
   };
 
@@ -82,7 +86,7 @@ export function NavAreas({
   };
 
   const getAreaUrl = (area: Area) => {
-    return `/postal-codes?areaId=${area.id}`;
+    return `/postal-codes/${area.id}`;
   };
 
   const handleAreaDoubleClick = (area: Area, e: React.MouseEvent) => {
@@ -155,9 +159,9 @@ export function NavAreas({
         toast.success(`Gebiet "${areaToDelete.name}" erfolgreich gelöscht`);
         setDeleteDialogOpen(false);
         setAreaToDelete(null);
-        // If the deleted area was the current one, clear selection
-        if (currentAreaId === areaToDelete.id && onAreaSelect) {
-          onAreaSelect(0); // Reset to no selection
+        // If the deleted area was the current one, navigate to overview
+        if (currentAreaIdFromRoute === String(areaToDelete.id)) {
+          router.push("/postal-codes");
         }
         // Trigger a refresh of the areas list
         router.refresh();
@@ -188,12 +192,12 @@ export function NavAreas({
         </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            {isLoading && (
+            <Activity mode={isLoading ? "visible" : "hidden"}>
               <SidebarMenuItem>
                 <SidebarMenuButton disabled>Lade...</SidebarMenuButton>
               </SidebarMenuItem>
-            )}
-            {!isLoading && areas.length === 0 && (
+            </Activity>
+            <Activity mode={!isLoading && areas.length === 0 ? "visible" : "hidden"}>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setCreateDialogOpen(true)}
@@ -203,91 +207,131 @@ export function NavAreas({
                   <span>Erstes Gebiet erstellen</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            )}
+            </Activity>
             {!isLoading &&
               areas.map((area) => (
                 <SidebarMenuItem key={area.id}>
-                  {editingAreaId === area.id ? (
-                    // Inline rename mode
-                    <div className="flex items-center gap-2 px-2 py-1.5 min-h-8">
-                      <IconFolder className="h-4 w-4 flex-shrink-0" />
-                      <Input
-                        value={editingAreaName}
-                        onChange={(e) => setEditingAreaName(e.target.value)}
-                        className="h-auto px-0 py-0 border-none bg-transparent text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 flex-1"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleConfirmRename(area.id);
-                          } else if (e.key === "Escape") {
-                            e.preventDefault();
-                            handleCancelRename();
-                          }
-                        }}
-                        onBlur={() => {
-                          // Only save if there's a valid name, otherwise cancel
-                          if (
-                            editingAreaName.trim() &&
-                            editingAreaName.trim() !== area.name
-                          ) {
-                            handleConfirmRename(area.id);
-                          } else {
-                            handleCancelRename();
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    // Normal display mode
-                    <div className="flex items-center group">
-                      <SidebarMenuButton
-                        asChild
-                        isActive={currentAreaId === area.id}
-                        className="flex-1"
-                        onDoubleClick={(e) => handleAreaDoubleClick(area, e)}
-                      >
-                        <Link
-                          href={getAreaUrl(area) as Route}
-                          onClick={() => handleAreaClick(area)}
-                        >
-                          <IconFolder className="h-4 w-4" />
-                          <span className="truncate">{area.name}</span>
-                        </Link>
-                      </SidebarMenuButton>
-
-                      {/* Dropdown menu for area actions */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                  <div className="group/item relative flex items-center w-full">
+                    {editingAreaId === area.id ? (
+                      // Edit mode - Input field with icon inside (matches view mode styling)
+                      <div className="flex items-center gap-2 w-full h-8 px-2 rounded-md bg-sidebar-accent text-sidebar-accent-foreground">
+                        <IconFolder className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <input
+                          type="text"
+                          value={editingAreaName}
+                          onChange={(e) => setEditingAreaName(e.target.value)}
+                          className="flex-1 text-sm font-medium bg-transparent border-none outline-none focus:outline-none focus:ring-0 min-w-0"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleConfirmRename(area.id);
+                            } else if (e.key === "Escape") {
+                              e.preventDefault();
+                              handleCancelRename();
+                            }
+                          }}
+                          onBlur={(e) => {
+                            // Don't blur if clicking on check or X buttons
+                            const relatedTarget = e.relatedTarget as HTMLElement;
+                            if (relatedTarget && relatedTarget.closest('[data-edit-action]')) {
+                              return;
+                            }
+                            // Only save if there's a valid name, otherwise cancel
+                            if (
+                              editingAreaName.trim() &&
+                              editingAreaName.trim() !== area.name
+                            ) {
+                              handleConfirmRename(area.id);
+                            } else {
+                              handleCancelRename();
+                            }
+                          }}
+                        />
+                        {/* Action buttons for edit mode */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => e.stopPropagation()}
+                            className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            onClick={() => handleConfirmRename(area.id)}
+                            data-edit-action="confirm"
                           >
-                            <IconDots className="h-3 w-3" />
+                            <IconCheck className="h-3.5 w-3.5" />
+                            <span className="sr-only">Bestätigen</span>
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem
-                            onClick={(e) => handleStartRename(area, e)}
-                            className="cursor-pointer"
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            onClick={handleCancelRename}
+                            data-edit-action="cancel"
                           >
-                            <IconEdit className="h-4 w-4 mr-2" />
-                            Umbenennen
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => handleStartDelete(area, e)}
-                            className="cursor-pointer text-destructive focus:text-destructive"
-                          >
-                            <IconTrash className="h-4 w-4 mr-2" />
-                            Löschen
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
+                            <IconX className="h-3.5 w-3.5" />
+                            <span className="sr-only">Abbrechen</span>
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      // View mode - Clickable area with icon and dots inside
+                      <div
+                        className={`flex items-center gap-2 w-full h-8 px-2 rounded-md transition-colors ${
+                          currentAreaIdFromRoute === String(area.id)
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                        }`}
+                        onDoubleClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleStartRename(area, e);
+                        }}
+                      >
+                        <IconFolder className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <Link
+                          href={getAreaUrl(area) as Route}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAreaClick(area);
+                          }}
+                          className="flex-1 text-sm font-medium truncate min-w-0"
+                        >
+                          {area.name}
+                        </Link>
+
+                        {/* Dropdown menu for actions - only visible on hover */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <IconDots className="h-3.5 w-3.5" />
+                              <span className="sr-only">Aktionen</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem
+                              onClick={(e) => handleStartRename(area, e)}
+                              className="cursor-pointer"
+                            >
+                              <IconEdit className="h-4 w-4 mr-2" />
+                              Umbenennen
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => handleStartDelete(area, e)}
+                              className="cursor-pointer text-destructive focus:text-destructive"
+                            >
+                              <IconTrash className="h-4 w-4 mr-2" />
+                              Löschen
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
                 </SidebarMenuItem>
               ))}
           </SidebarMenu>

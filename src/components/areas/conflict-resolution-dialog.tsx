@@ -13,7 +13,7 @@ import { useLayerConflicts } from "@/lib/hooks/use-layer-conflicts";
 import type { Layer } from "@/lib/types/area-types";
 import { updateLayerAction } from "@/app/actions/layer-actions";
 import { IconAlertTriangle, IconCheck, IconLoader } from "@tabler/icons-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Activity } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -120,21 +120,23 @@ export function ConflictResolutionDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {isDetecting ? (
+          <Activity mode={isDetecting ? "visible" : "hidden"}>
             <div className="flex items-center justify-center gap-2 p-8">
               <IconLoader className="h-5 w-5 animate-spin" />
               <span className="text-sm text-muted-foreground">
                 Scanne nach Konflikten...
               </span>
             </div>
-          ) : conflicts.length === 0 ? (
+          </Activity>
+          <Activity mode={!isDetecting && conflicts.length === 0 ? "visible" : "hidden"}>
             <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
               <IconCheck className="h-5 w-5 text-green-600" />
               <span className="text-sm text-green-700 dark:text-green-300">
                 Keine Konflikte gefunden
               </span>
             </div>
-          ) : (
+          </Activity>
+          <Activity mode={!isDetecting && conflicts.length > 0 ? "visible" : "hidden"}>
             <>
               <div className="flex items-center gap-2 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg">
                 <IconAlertTriangle className="h-5 w-5 text-amber-600" />
@@ -176,7 +178,7 @@ export function ConflictResolutionDialog({
                 ))}
               </div>
 
-              {selectedConflicts.size > 0 && (
+              <Activity mode={selectedConflicts.size > 0 ? "visible" : "hidden"}>
                 <div className="space-y-2">
                   <Label>Auflösungsstrategie</Label>
                   <Select
@@ -198,9 +200,9 @@ export function ConflictResolutionDialog({
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              </Activity>
             </>
-          )}
+          </Activity>
         </div>
 
         <DialogFooter>
@@ -217,12 +219,12 @@ export function ConflictResolutionDialog({
               "Neu scannen"
             )}
           </Button>
-          {selectedConflicts.size > 0 && (
+          <Activity mode={selectedConflicts.size > 0 ? "visible" : "hidden"}>
             <Button onClick={handleResolve} disabled={!resolutionStrategy || isDetecting}>
               {selectedConflicts.size} Konflikt
               {selectedConflicts.size !== 1 ? "e" : ""} auflösen
             </Button>
-          )}
+          </Activity>
         </DialogFooter>
       </DialogContent>
     </Dialog>

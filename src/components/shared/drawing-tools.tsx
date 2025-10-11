@@ -46,7 +46,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, Activity } from "react";
 
 import { toast } from "sonner";
 
@@ -1137,7 +1137,7 @@ function DrawingToolsImpl({
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-2 pt-2">
             {/* Gefundene Regionen durch Zeichnung */}
-            {pendingPostalCodes.length > 0 && (
+            <Activity mode={pendingPostalCodes.length > 0 ? "visible" : "hidden"}>
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center px-1">
                   <span className="text-xs font-medium">Gefunden</span>
@@ -1154,11 +1154,11 @@ function DrawingToolsImpl({
                       {region}
                     </div>
                   ))}
-                  {pendingPostalCodes.length > 5 && (
+                  <Activity mode={pendingPostalCodes.length > 5 ? "visible" : "hidden"}>
                     <div className="text-xs text-muted-foreground text-center py-0.5">
                       +{pendingPostalCodes.length - 5}
                     </div>
-                  )}
+                  </Activity>
                 </div>
                 <div className="grid grid-cols-2 gap-1">
                   <Button
@@ -1188,7 +1188,7 @@ function DrawingToolsImpl({
                 </div>
                 <Separator />
               </div>
-            )}
+            </Activity>
           </CollapsibleContent>
         </Collapsible>
 
@@ -1263,7 +1263,7 @@ function DrawingToolsImpl({
                         Zeichnung löschen
                       </Button>
                     )}
-                  {activeLayerId && areaId && (
+                  <Activity mode={!!(activeLayerId && areaId) ? "visible" : "hidden"}>
                     <Button
                       variant="secondary"
                       size="sm"
@@ -1300,14 +1300,14 @@ function DrawingToolsImpl({
                       )}
                       Löcher füllen
                     </Button>
-                  )}
+                  </Activity>
                 </CollapsibleContent>
               </Collapsible>
             </>
           )}
 
         {/* Export Section */}
-        {postalCodesData && (
+        <Activity mode={!!postalCodesData ? "visible" : "hidden"}>
           <>
             <Separator />
             <div className="space-y-1">
@@ -1346,7 +1346,7 @@ function DrawingToolsImpl({
               </div>
             </div>
           </>
-        )}
+        </Activity>
 
         {/* Layer Dialogs */}
         {areaId && (

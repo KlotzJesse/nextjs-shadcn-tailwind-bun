@@ -26,7 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { type Layer } from "@/lib/types/area-types";
 import { AlertTriangle, Info, Lock } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useState, useTransition, Activity } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { changeAreaGranularityAction } from "@/app/actions/granularity-actions";
@@ -149,7 +149,7 @@ export function GranularitySelector({
           if (result.success && result.data) {
             const newLabel = getGranularityLabel(newGranularity);
             const { addedPostalCodes, migratedLayers } = result.data;
-            
+
             toast.success(`Wechsel zu ${newLabel} PLZ-Ansicht`, {
               description: `${migratedLayers} Layer migriert, ${addedPostalCodes} Regionen hinzugefügt`,
               duration: 4000,
@@ -190,15 +190,15 @@ export function GranularitySelector({
 
         if (result.success && result.data) {
           const { removedPostalCodes } = result.data;
-          
+
           toast.success(`Wechsel zu ${newLabel} erfolgreich`, {
             description: `${removedPostalCodes} Regionen entfernt. Die Seite wird aktualisiert...`,
             duration: 3000,
           });
-          
+
           // Refresh the page to load new granularity data
           router.refresh();
-          
+
           // Call the callback for any additional handling
           onGranularityChange(pendingGranularity);
         } else {
@@ -272,17 +272,17 @@ export function GranularitySelector({
                       <div className="flex items-center justify-between w-full">
                         <span>{option.label}</span>
                         <div className="flex items-center gap-1 ml-2">
-                          {status === "current" && (
+                          <Activity mode={status === "current" ? "visible" : "hidden"}>
                             <Badge variant="secondary" className="text-xs px-1">
                               Aktiv
                             </Badge>
-                          )}
-                          {status === "destructive" && (
+                          </Activity>
+                          <Activity mode={status === "destructive" ? "visible" : "hidden"}>
                             <AlertTriangle className="h-3 w-3 text-destructive" />
-                          )}
-                          {status === "compatible" && (
+                          </Activity>
+                          <Activity mode={status === "compatible" ? "visible" : "hidden"}>
                             <Info className="h-3 w-3 text-green-600" />
-                          )}
+                          </Activity>
                         </div>
                       </div>
                     </SelectItem>
@@ -297,7 +297,7 @@ export function GranularitySelector({
         </Select>
 
         {/* Status Information */}
-        {hasPostalCodes && (
+        <Activity mode={hasPostalCodes ? "visible" : "hidden"}>
           <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
             <div className="flex items-center gap-1 mb-1">
               <Lock className="h-3 w-3" />
@@ -310,7 +310,7 @@ export function GranularitySelector({
               niedrigerer Granularität (←) löscht alle Regionen.
             </p>
           </div>
-        )}
+        </Activity>
 
         {/* Confirmation Dialog */}
         <AlertDialog

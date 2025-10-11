@@ -53,7 +53,7 @@ export function AppSidebar({
 
   const handleAreaCreated = (areaId: number) => {
     // Navigate to the newly created area
-    router.push(`/postal-codes?areaId=${areaId}`);
+    router.push(`/postal-codes/${areaId}`);
     if (onAreaSelect) {
       onAreaSelect(areaId);
     }

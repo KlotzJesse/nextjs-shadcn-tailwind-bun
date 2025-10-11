@@ -496,13 +496,13 @@ async function applyUndoOperation(
 
     case "update_layer":
       if (entityId && previousData) {
-        // Restore previous layer state
+        // Restore the previous state
 
         await tx
 
           .update(areaLayers)
 
-          .set(previousData as any)
+          .set(previousData as Partial<typeof areaLayers.$inferInsert>)
 
           .where(eq(areaLayers.id, entityId));
       }
@@ -512,20 +512,21 @@ async function applyUndoOperation(
     case "delete_layer":
       if (previousData) {
         // Recreate the layer
+        const typedPreviousData = previousData as PreviousDataWithLayer;
 
         const [layer] = await tx
 
           .insert(areaLayers)
 
-          .values((previousData as any).layer)
+          .values(typedPreviousData.layer!)
 
           .returning();
 
         // Recreate postal codes
 
-        if ((previousData as any).postalCodes?.length > 0) {
+        if (typedPreviousData.postalCodes && typedPreviousData.postalCodes.length > 0) {
           await tx.insert(areaLayerPostalCodes).values(
-            (previousData as any).postalCodes.map((code: string) => ({
+            typedPreviousData.postalCodes.map((code: string) => ({
               layerId: layer.id,
 
               postalCode: code,
@@ -580,7 +581,7 @@ async function applyUndoOperation(
 
           .update(areas)
 
-          .set(previousData as any)
+          .set(previousData as Partial<typeof areas.$inferInsert>)
 
           .where(eq(areas.id, change.areaId));
       }
@@ -605,20 +606,21 @@ async function applyRedoOperation(
     case "create_layer":
       if (changeData) {
         // Recreate the layer
+        const typedChangeData = changeData as ChangeDataWithLayer;
 
         const [layer] = await tx
 
           .insert(areaLayers)
 
-          .values((changeData as any).layer)
+          .values(typedChangeData.layer!)
 
           .returning();
 
         // Recreate postal codes
 
-        if ((changeData as any).postalCodes?.length > 0) {
+        if (typedChangeData.postalCodes && typedChangeData.postalCodes.length > 0) {
           await tx.insert(areaLayerPostalCodes).values(
-            (changeData as any).postalCodes.map((code: string) => ({
+            typedChangeData.postalCodes.map((code: string) => ({
               layerId: layer.id,
 
               postalCode: code,
@@ -635,7 +637,7 @@ async function applyRedoOperation(
 
           .update(areaLayers)
 
-          .set(changeData as any)
+          .set(changeData as Partial<typeof areaLayers.$inferInsert>)
 
           .where(eq(areaLayers.id, entityId));
       }
@@ -691,7 +693,7 @@ async function applyRedoOperation(
 
           .update(areas)
 
-          .set(changeData as any)
+          .set(changeData as Partial<typeof areas.$inferInsert>)
 
           .where(eq(areas.id, change.areaId));
       }
@@ -767,7 +769,7 @@ export async function getChangeHistoryAction(
       .orderBy(desc(areaChanges.sequenceNumber));
 
     if (options?.limit) {
-      query = query.limit(options.limit) as any;
+      query = query.limit(options.limit) as unknown as typeof query;
     }
 
     const changes = await query;

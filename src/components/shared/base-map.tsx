@@ -16,14 +16,9 @@ import type {
   MapErrorMessageProps,
   ToggleButtonProps,
 } from "@/types/base-map";
-import type { SelectAreaLayers, SelectAreaLayerPostalCodes } from "@/lib/schema/schema";
-
-type LayerWithPostalCodes = SelectAreaLayers & {
-  postalCodes?: SelectAreaLayerPostalCodes[];
-};
 import { PlusIcon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { memo, startTransition, Suspense, useMemo, useRef } from "react";
+import { memo, startTransition, Suspense, useMemo, useRef, Activity } from "react";
 import { Button } from "../ui/button";
 
 // Memoized drawing tools component with lazy loading for performance
@@ -125,7 +120,7 @@ const BaseMapComponent = ({
     hoveredRegionId: hoveredRegionIdRef.current,
     getSelectedFeatureCollection: optimizations.getSelectedFeatureCollection,
     getLabelPoints: optimizations.getLabelPoints,
-    layers: layers as any,
+    layers,
     activeLayerId,
   });
 
@@ -138,7 +133,7 @@ const BaseMapComponent = ({
     layersLoaded,
     areaId,
     activeLayerId,
-    layers: layers as any,
+    layers,
     addPostalCodesToLayer,
     removePostalCodesFromLayer,
   });
@@ -188,7 +183,7 @@ const BaseMapComponent = ({
         initialUndoRedoStatus={initialUndoRedoStatus}
       />
 
-      {interactions.isDrawingToolsVisible && (
+      <Activity mode={interactions.isDrawingToolsVisible ? "visible" : "hidden"}>
         <div
           className="absolute top-4 left-4 z-10"
           role="region"
@@ -215,7 +210,7 @@ const BaseMapComponent = ({
                 }}
                 addPostalCodesToLayer={addPostalCodesToLayer}
                 removePostalCodesFromLayer={removePostalCodesFromLayer}
-                layers={layers as any}
+                layers={layers}
                 isViewingVersion={isViewingVersion}
                 versionId={versionId}
                 versions={versions}
@@ -224,9 +219,9 @@ const BaseMapComponent = ({
             </Suspense>
           </DrawingToolsErrorBoundary>
         </div>
-      )}
+      </Activity>
 
-      {!interactions.isDrawingToolsVisible && (
+      <Activity mode={!interactions.isDrawingToolsVisible ? "visible" : "hidden"}>
         <div
           className="absolute top-4 left-4 z-10"
           role="region"
@@ -240,7 +235,7 @@ const BaseMapComponent = ({
             <PlusIcon width={24} height={24} />
           </ToggleButton>
         </div>
-      )}
+      </Activity>
     </MapErrorBoundary>
   );
 };

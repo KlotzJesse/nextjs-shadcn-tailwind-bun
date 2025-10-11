@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconEye, IconHistory } from "@tabler/icons-react";
 import { getVersionIndicatorInfo, getAreaById } from "@/lib/db/data-functions";
+import { Activity } from "react";
 
 interface VersionIndicatorProps {
   areaId?: number | null;
@@ -35,17 +36,17 @@ export async function VersionIndicator({ areaId }: VersionIndicatorProps) {
         {versionInfo.versionInfo.versionNumber}
         {versionInfo.versionInfo.name && ` (${versionInfo.versionInfo.name})`}
       </Badge>
-      {!versionInfo.versionInfo.isLatest && (
+      <Activity mode={!versionInfo.versionInfo.isLatest ? "visible" : "hidden"}>
         <Button variant="outline" size="sm" className="h-6 text-xs">
           <IconEye className="h-3 w-3 mr-1" />
           Aktuelle Version
         </Button>
-      )}
-      {!versionInfo.versionInfo.isLatest && (
+      </Activity>
+      <Activity mode={!versionInfo.versionInfo.isLatest ? "visible" : "hidden"}>
         <span className="text-xs text-muted-foreground">
           Änderungen → neue Version
         </span>
-      )}
+      </Activity>
     </div>
   );
 }

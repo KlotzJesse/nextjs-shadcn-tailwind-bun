@@ -16,7 +16,7 @@ export function useMapView() {
   ] as const;
 }
 
-// Hook for managing all map state (Optimized v4 - with area/layer support)
+// Hook for managing all map state (Optimized v4 - with layer support)
 export function useMapState() {
   // --- Atomic map view state ---
   const [mapView, setMapView] = useMapView();
@@ -24,20 +24,13 @@ export function useMapState() {
   const [granularity, setGranularity] = useQueryState("granularity");
   const [radius, setRadius] = useQueryState("radius");
 
-  // Area and layer management
-  const [areaId, setAreaId] = useQueryState("areaId", {
-    shallow: false,
-  });
+  // Layer management (activeLayerId and versionId remain as search params)
   const [activeLayerId, setActiveLayerId] = useQueryState("activeLayerId", {
     shallow: false,
   });
   const [versionId, setVersionId] = useQueryState("versionId");
 
-  // Parse area and layer IDs
-  const parsedAreaId = useMemo(() => {
-    return areaId ? parseInt(areaId, 10) : null;
-  }, [areaId]);
-
+  // Parse layer IDs
   const parsedActiveLayerId = useMemo(() => {
     return activeLayerId ? parseInt(activeLayerId, 10) : null;
   }, [activeLayerId]);
@@ -53,11 +46,7 @@ export function useMapState() {
     }
   );
 
-  // Area/Layer helpers
-  const setArea = useStableCallback((id: number | null) => {
-    setAreaId(id !== null ? id.toString() : null);
-  });
-
+  // Layer helpers
   const setActiveLayer = useStableCallback((id: number | null) => {
     setActiveLayerId(id !== null ? id.toString() : null);
   });
@@ -71,7 +60,6 @@ export function useMapState() {
     center: mapView.center,
     zoom: mapView.zoom,
     radius: radius ? parseInt(radius, 10) : 10,
-    areaId: parsedAreaId,
     activeLayerId: parsedActiveLayerId,
     versionId: parsedVersionId,
     setGranularity,
@@ -79,7 +67,6 @@ export function useMapState() {
     setRadius: useStableCallback((radiusValue: number) =>
       setRadius(radiusValue.toString())
     ),
-    setArea,
     setActiveLayer,
     setVersion,
   };

@@ -23,11 +23,10 @@ import type { RefObject } from "react";
 
 import type {
   SelectAreaLayers,
-  SelectAreaLayerPostalCodes,
 } from "@/lib/schema/schema";
 
 type LayerWithPostalCodes = SelectAreaLayers & {
-  postalCodes?: SelectAreaLayerPostalCodes[];
+  postalCodes?: { postalCode: string }[];
 };
 
 interface UseMapInteractionsProps {
