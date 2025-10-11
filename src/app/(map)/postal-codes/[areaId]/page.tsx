@@ -31,7 +31,7 @@ export async function generateMetadata({
 }: PostalCodesPageProps): Promise<Metadata> {
   const { areaId: areaIdParam } = await params;
   const search = await searchParams;
-  
+
   const areaId = parseInt(areaIdParam, 10);
 
   // Get granularity from area or version
