@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 
 const data = {
   navMain: [
@@ -53,7 +54,7 @@ export function AppSidebar({
 
   const handleAreaCreated = (areaId: number) => {
     // Navigate to the newly created area
-    router.push(`/postal-codes/${areaId}`);
+    router.push(`/postal-codes/${areaId}` as Route);
     if (onAreaSelect) {
       onAreaSelect(areaId);
     }

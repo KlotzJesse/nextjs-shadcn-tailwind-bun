@@ -598,6 +598,7 @@ export function PostalCodesViewClientWithLayers({
         data={data}
         granularity={defaultGranularity}
         onImport={handleImport}
+        areaId={areaId}
       />
     </div>
   );

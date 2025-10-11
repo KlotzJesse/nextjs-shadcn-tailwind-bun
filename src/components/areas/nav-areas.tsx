@@ -25,7 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { type Area } from "@/lib/types/area-types";
 import {
@@ -55,7 +54,7 @@ interface NavAreasProps {
 export function NavAreas({
   areas,
   isLoading = false,
-  currentAreaId,
+  currentAreaId: _currentAreaId,
   onAreaSelect,
 }: NavAreasProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -89,7 +88,7 @@ export function NavAreas({
     return `/postal-codes/${area.id}`;
   };
 
-  const handleAreaDoubleClick = (area: Area, e: React.MouseEvent) => {
+  const _handleAreaDoubleClick = (area: Area, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     handleStartRename(area, e);

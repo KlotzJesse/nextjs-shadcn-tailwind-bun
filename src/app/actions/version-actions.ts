@@ -10,7 +10,7 @@ import {
   areaChanges,
 } from "../../lib/schema/schema";
 
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 
 import { clearUndoRedoStacksAction } from "./change-tracking-actions";
 

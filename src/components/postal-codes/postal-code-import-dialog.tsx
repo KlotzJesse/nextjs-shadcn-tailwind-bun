@@ -20,10 +20,16 @@ import {
     parsePostalCodeInput,
 } from "@/lib/utils/postal-code-parser";
 import type { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
-import { AlertCircle, CheckCircle2, Download, FileText, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText, Upload } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
+import dynamic from "next/dynamic";
+
+const BulkImportDialog = dynamic(
+  () => import("./bulk-import-dialog").then(m => ({ default: m.BulkImportDialog })),
+  { ssr: false }
+);
 
 interface PostalCodeImportDialogProps {
   open: boolean;
@@ -31,6 +37,7 @@ interface PostalCodeImportDialogProps {
   data: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
   granularity: string;
   onImport: (postalCodes: string[]) => void;
+  areaId?: number; // Optional for bulk import
 }
 
 export function PostalCodeImportDialog({
@@ -39,9 +46,11 @@ export function PostalCodeImportDialog({
   data,
   granularity,
   onImport,
+  areaId,
 }: PostalCodeImportDialogProps) {
   const [textInput, setTextInput] = useState("");
   const [activeTab, setActiveTab] = useState("paste");
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const { processMultipleFiles, isProcessing } = useFileImport();
 
   // Parse and validate input
@@ -152,7 +161,7 @@ export function PostalCodeImportDialog({
 
         <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="upload" className="flex items-center gap-2">
                 <Upload className="h-4 w-4" />
                 Datei hochladen
@@ -161,6 +170,12 @@ export function PostalCodeImportDialog({
                 <FileText className="h-4 w-4" />
                 Text eingeben
               </TabsTrigger>
+              {areaId && (
+                <TabsTrigger value="bulk" className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Excel/CSV Massen-Import
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="upload" className="flex-1 mt-4">
@@ -284,6 +299,41 @@ Unterstützte Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
                 </div>
               )}
             </TabsContent>
+
+            {areaId && (
+              <TabsContent value="bulk" className="flex-1 mt-4">
+                <div className="flex flex-col items-center gap-6 p-8">
+                  <div className="p-6 rounded-full bg-muted">
+                    <FileSpreadsheet className="h-16 w-16 text-muted-foreground" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <h3 className="text-lg font-semibold">Excel/CSV Massen-Import</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Laden Sie Excel (.xlsx, .xls) oder CSV Dateien mit PLZ und Layer-Zuordnungen hoch.
+                      Ordnen Sie Spalten zu und importieren Sie mehrere Layer gleichzeitig.
+                    </p>
+                  </div>
+                  <Button
+                    size="lg"
+                    onClick={() => {
+                      setBulkImportOpen(true);
+                      onOpenChange(false);
+                    }}
+                    className="gap-2"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Massen-Import starten
+                  </Button>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>✓ Unterstützt Excel (.xlsx, .xls) und CSV Dateien</p>
+                    <p>✓ Automatische Spaltenerkennung für PLZ und Layer</p>
+                    <p>✓ Vorschau und Validierung vor Import</p>
+                    <p>✓ Bulk-Erstellung oder Update von Layern</p>
+                    <p>✓ Unterstützt Format: 12345 oder D-12345</p>
+                  </div>
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 
@@ -305,6 +355,19 @@ Unterstützte Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
           </div>
         </div>
       </DialogContent>
+
+      {/* Bulk Import Dialog */}
+      {areaId && (
+        <BulkImportDialog
+          open={bulkImportOpen}
+          onOpenChange={setBulkImportOpen}
+          areaId={areaId}
+          onImportComplete={() => {
+            setBulkImportOpen(false);
+            onOpenChange(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
