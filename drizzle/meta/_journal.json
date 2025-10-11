@@ -64,6 +64,13 @@
       "when": 1759955328661,
       "tag": "0008_nasty_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1760221511355,
+      "tag": "0009_fancy_hiroim",
+      "breakpoints": true
     }
   ]
 }

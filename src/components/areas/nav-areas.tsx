@@ -73,7 +73,7 @@ export function NavAreas({
       onAreaSelect(areaId);
     } else {
       // Use router.push for programmatic navigation after creation
-      router.push(`/postal-codes/${areaId}`);
+      router.push(`/postal-codes/${areaId}` as Route);
     }
   };
 
