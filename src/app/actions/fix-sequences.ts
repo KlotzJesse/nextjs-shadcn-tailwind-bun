@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 /**
  * Fix PostgreSQL sequences that may be out of sync
  * This can happen when data is inserted with explicit IDs
- * 
+ *
  * Run this if you encounter primary key constraint violations
  */
 export async function fixPostalCodeSequences() {

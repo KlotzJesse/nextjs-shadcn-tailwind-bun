@@ -14,11 +14,11 @@ async function checkData() {
 
     console.log(`\n📊 Current Database State:\n`);
     console.log(`Total Areas: ${areas.length}`);
-    
+
     for (const area of areas) {
       console.log(`\nArea #${area.id}: ${area.name}`);
       console.log(`  Layers: ${area.layers?.length || 0}`);
-      
+
       if (area.layers && area.layers.length > 0) {
         for (const layer of area.layers) {
           console.log(`    - ${layer.name}: ${layer.postalCodes?.length || 0} postal codes`);
