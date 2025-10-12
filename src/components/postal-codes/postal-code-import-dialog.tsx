@@ -12,7 +12,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useFileImport } from "@/lib/hooks/use-file-import";
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import {
     findPostalCodeMatches,
@@ -20,9 +19,8 @@ import {
     parsePostalCodeInput,
 } from "@/lib/utils/postal-code-parser";
 import type { FeatureCollection, GeoJsonProperties, MultiPolygon, Polygon } from "geojson";
-import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText, Upload } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { AlertCircle, CheckCircle2, FileSpreadsheet, FileText } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
 
@@ -51,7 +49,6 @@ export function PostalCodeImportDialog({
   const [textInput, setTextInput] = useState("");
   const [activeTab, setActiveTab] = useState("paste");
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
-  const { processMultipleFiles, isProcessing } = useFileImport();
 
   // Parse and validate input
   const parsedCodes = useMemo(() => {
@@ -84,46 +81,6 @@ export function PostalCodeImportDialog({
     };
   }, [parsedCodes, matches]);
 
-  // File drop handling
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    try {
-      const results = await processMultipleFiles(acceptedFiles as unknown as FileList);
-      const allCodes: string[] = [];
-
-      for (const result of results) {
-        if (result.error) {
-          toast.error(`Fehler in ${result.fileName}: ${result.error}`);
-        } else {
-          allCodes.push(...result.postalCodes);
-          toast.success(`${result.postalCodes.length} PLZ aus ${result.fileName} geladen`);
-        }
-      }
-
-      if (allCodes.length > 0) {
-        setTextInput(prev => {
-          const existing = prev.trim();
-          const newCodes = allCodes.join(', ');
-          return existing ? `${existing}, ${newCodes}` : newCodes;
-        });
-        setActiveTab("paste"); // Switch to paste tab to show results
-      }
-    } catch (error) {
-      toast.error("Fehler beim Verarbeiten der Dateien");
-      console.error("File processing error:", error);
-    }
-  }, [processMultipleFiles]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'text/csv': ['.csv'],
-      'text/plain': ['.txt'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-    },
-    multiple: true,
-  });
-
   // Handle import
   const handleImport = useStableCallback(() => {
     if (stats.uniqueMatches === 0) {
@@ -154,18 +111,13 @@ export function PostalCodeImportDialog({
         <DialogHeader>
           <DialogTitle>PLZ-Regionen importieren</DialogTitle>
           <DialogDescription>
-            Importieren Sie PLZ aus Dateien oder fügen Sie sie direkt ein.
-            Unterstützte Formate: CSV, TXT, oder direkte Eingabe (kommagetrennt, zeilenweise).
+            Importieren Sie PLZ direkt oder nutzen Sie den Excel/CSV Massen-Import für mehrere Layer.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="upload" className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Datei hochladen
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="paste" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Text eingeben
@@ -177,38 +129,6 @@ export function PostalCodeImportDialog({
                 </TabsTrigger>
               )}
             </TabsList>
-
-            <TabsContent value="upload" className="flex-1 mt-4">
-              <div
-                {...getRootProps()}
-                className={`
-                  border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-                  ${isDragActive
-                    ? 'border-primary bg-primary/10'
-                    : 'border-muted-foreground/25 hover:border-primary/50'
-                  }
-                `}
-              >
-                <input {...getInputProps()} />
-                <div className="flex flex-col items-center gap-4">
-                  <div className="p-4 rounded-full bg-muted">
-                    <Download className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  {isDragActive ? (
-                    <p className="text-lg">Dateien hier ablegen...</p>
-                  ) : (
-                    <>
-                      <p className="text-lg">
-                        Ziehen Sie Dateien hierher oder klicken Sie zum Auswählen
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Unterstützte Formate: CSV, TXT, XLS, XLSX
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
 
             <TabsContent value="paste" className="flex-1 mt-4 flex flex-col gap-4">
               <div className="space-y-2">
@@ -348,9 +268,9 @@ Unterstützte Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
             </Button>
             <Button
               onClick={handleImport}
-              disabled={stats.uniqueMatches === 0 || isProcessing}
+              disabled={stats.uniqueMatches === 0}
             >
-              {isProcessing ? "Verarbeite..." : `${stats.uniqueMatches} PLZ importieren`}
+              {`${stats.uniqueMatches} PLZ importieren`}
             </Button>
           </div>
         </div>

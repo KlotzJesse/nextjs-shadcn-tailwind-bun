@@ -488,7 +488,7 @@ export function PostalCodesViewClientWithLayers({
               className="w-[100px] justify-between truncate"
             >
               <span className="truncate block w-full text-left">
-                {selectedPostalCode ? selectedPostalCode : "PLZ auswählen..."}
+                {selectedPostalCode ? selectedPostalCode : "PLZ"}
               </span>
               <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
@@ -496,7 +496,7 @@ export function PostalCodesViewClientWithLayers({
           <PopoverContent className="w-[100px] p-0">
             <Command>
               <CommandInput
-                placeholder="PLZ suchen..."
+                placeholder="PLZ"
                 value={postalCodeQuery}
                 onValueChange={(v) => {
                   setPostalCodeQuery(v);
