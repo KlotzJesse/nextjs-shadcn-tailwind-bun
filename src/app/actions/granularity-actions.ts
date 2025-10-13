@@ -169,7 +169,7 @@ export async function changeAreaGranularityAction(
     updateTag("layers");
     updateTag(`area-${areaId}-layers`);
     revalidatePath('/postal-codes', 'layout');
-        refresh();
+    refresh();
     return {
       success: true,
 

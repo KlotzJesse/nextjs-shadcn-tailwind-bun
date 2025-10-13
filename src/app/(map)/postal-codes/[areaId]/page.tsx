@@ -3,13 +3,11 @@ import { PostalCodesViewSkeleton } from "@/components/ui/loading-skeletons";
 import { SiteHeaderSkeleton } from "@/components/ui/loading-skeleton";
 import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { areas, areaVersions } from "@/lib/schema/schema";
 import { eq, and } from "drizzle-orm";
 import { SiteHeader } from "@/components/site-header";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const ServerPostalCodesView = nextDynamic(
   () => import("@/components/postal-codes/server-postal-codes-view"),

@@ -46,10 +46,10 @@ export function CreateVersionDialog({
     e.preventDefault();
     setIsCreating(true);
 
-    // Optimistically show creating state
-    updateOptimisticCreating(true);
-
     startTransition(async () => {
+      // Optimistically show creating state
+      updateOptimisticCreating(true);
+
       try {
         await createVersion({
           name: name || undefined,
@@ -62,8 +62,6 @@ export function CreateVersionDialog({
         setChangesSummary("");
         onOpenChange(false);
         onVersionCreated?.();
-      } catch (error) {
-        console.error("Failed to create version:", error);
       } finally {
         setIsCreating(false);
         updateOptimisticCreating(false);

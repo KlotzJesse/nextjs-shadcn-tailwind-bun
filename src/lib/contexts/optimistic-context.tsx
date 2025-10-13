@@ -35,12 +35,6 @@ interface UndoRedoState {
   canRedo: boolean;
 }
 
-interface OptimisticState {
-  layers: Layer[];
-  areas: Area[];
-  undoRedo: UndoRedoState;
-}
-
 interface OptimisticContextValue {
   // State
   optimisticLayers: Layer[];

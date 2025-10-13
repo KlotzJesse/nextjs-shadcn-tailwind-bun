@@ -68,10 +68,10 @@ export function BulkImportDialog({
 
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, startTransition] = useTransition();
 
   // Optimistic import status
-  const [optimisticImportStatus, updateOptimisticImportStatus] = useOptimistic(
+  const [_optimisticImportStatus, updateOptimisticImportStatus] = useOptimistic(
     { importing: false, progress: 0, completed: false },
     (_state, update: { importing?: boolean; progress?: number; completed?: boolean }) => ({
       ..._state,
@@ -130,42 +130,37 @@ export function BulkImportDialog({
     setIsImporting(true);
     setImportProgress(0);
 
-    // Optimistically show import starting
-    updateOptimisticImportStatus({ importing: true, progress: 0, completed: false });
-
     startTransition(async () => {
+      // Optimistically show import starting
+      updateOptimisticImportStatus({ importing: true, progress: 0, completed: false });
+
+      // Prepare layers for bulk import
+      const layers = layerGroups.map(group => ({
+        name: group.layerName,
+        postalCodes: group.postalCodes,
+      }));
+
+      // Optimistically update progress
+      updateOptimisticImportStatus({ importing: true, progress: 50, completed: false });
+
       try {
-        // Prepare layers for bulk import
-        const layers = layerGroups.map(group => ({
-          name: group.layerName,
-          postalCodes: group.postalCodes,
-        }));
-
-        // Optimistically update progress
-        updateOptimisticImportStatus({ importing: true, progress: 50, completed: false });
-
-        const result = await bulkImportPostalCodesAndLayers(areaId, layers);
-
-        setImportProgress(100);
-        updateOptimisticImportStatus({ importing: false, progress: 100, completed: true });
-
-        if (result.success) {
-          toast.success(
-            `Import erfolgreich! ${result.createdLayers} neue Layer, ${result.updatedLayers} aktualisiert, ${result.totalPostalCodes} PLZ hinzugefügt.`
-          );
-
-          reset();
-          onOpenChange(false);
-          onImportComplete?.();
-        } else {
-          toast.error(
-            `Import fehlgeschlagen: ${result.errors?.join(", ") || "Unbekannter Fehler"}`
-          );
-        }
-      } catch (error) {
-        console.error("Import error:", error);
-        toast.error(
-          `Fehler: ${error instanceof Error ? error.message : "Unbekannt"}`
+        await toast.promise(
+          bulkImportPostalCodesAndLayers(areaId, layers),
+          {
+            loading: `Importiere ${layers.length} Gebiete...`,
+            success: (data) => {
+              if (data.success) {
+                setImportProgress(100);
+                updateOptimisticImportStatus({ importing: false, progress: 100, completed: true });
+                reset();
+                onOpenChange(false);
+                onImportComplete?.();
+                return `Import erfolgreich! ${data.createdLayers} neue Layer, ${data.updatedLayers} aktualisiert, ${data.totalPostalCodes} PLZ hinzugefügt.`;
+              }
+              throw new Error(data.errors?.join(", ") || "Unbekannter Fehler");
+            },
+            error: (err) => `Import fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`,
+          }
         );
       } finally {
         setIsImporting(false);

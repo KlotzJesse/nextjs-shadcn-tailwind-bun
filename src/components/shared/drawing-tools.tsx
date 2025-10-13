@@ -345,7 +345,7 @@ function DrawingToolsImpl({
     }
   );
 
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, startTransition] = useTransition();
 
   // Collapsible section states
 
@@ -686,12 +686,13 @@ function DrawingToolsImpl({
 
     startTransition(async () => {
       const nextColor = DEFAULT_COLORS[optimisticLayers.length % DEFAULT_COLORS.length];
+      const createdLayerName = newLayerName;
 
       // Optimistic update
       updateOptimisticLayers({
         type: 'create',
         layer: {
-          name: newLayerName,
+          name: createdLayerName,
           color: nextColor,
           opacity: 100,
           isVisible: "true",
@@ -701,25 +702,27 @@ function DrawingToolsImpl({
         }
       });
 
+      setNewLayerName("");
+
       try {
-        const result = await createLayer({
-          name: newLayerName,
-
-          color: nextColor,
-
-          orderIndex: optimisticLayers.length,
-        });
-
-        setNewLayerName("");
-
-        // Set the newly created layer as active
-
-        if (result?.id && onLayerSelect) {
-          onLayerSelect(result.id);
-        }
-      } catch (error) {
-        console.error("Error creating layer:", error);
-        toast.error("Fehler beim Erstellen des Gebiets");
+        await toast.promise(
+          createLayer({
+            name: createdLayerName,
+            color: nextColor,
+            orderIndex: optimisticLayers.length,
+          }).then((result) => {
+            // Set the newly created layer as active
+            if (result?.id && onLayerSelect) {
+              onLayerSelect(result.id);
+            }
+            return result;
+          }),
+          {
+            loading: `Erstelle Gebiet "${createdLayerName}"...`,
+            success: `Gebiet "${createdLayerName}" erstellt`,
+            error: "Fehler beim Erstellen - Bitte erneut versuchen",
+          }
+        );
       } finally {
         setIsCreating(false);
       }
@@ -731,11 +734,14 @@ function DrawingToolsImpl({
       // Optimistic update
       updateOptimisticLayers({ type: 'update', id: layerId, layer: { color } });
 
+      // Instant visual feedback - no need for toast, color changes are self-evident
+
       try {
         await updateLayerColor(layerId, color);
+        // Success - optimistic update was correct
       } catch (error) {
         console.error("Error updating layer color:", error);
-        toast.error("Fehler beim Ändern der Farbe");
+        toast.error("Fehler beim Ändern der Farbe - Bitte erneut versuchen");
       }
     });
   };
@@ -753,18 +759,18 @@ function DrawingToolsImpl({
       // Optimistic update
       updateOptimisticLayers({ type: 'delete', id: layerToDelete });
 
-      try {
-        await deleteLayer(layerToDelete);
+      setShowDeleteDialog(false);
+      const deletedLayerId = layerToDelete;
+      setLayerToDelete(null);
 
-        toast.success("Gebiet gelöscht");
-
-        setShowDeleteDialog(false);
-
-        setLayerToDelete(null);
-      } catch (error) {
-        console.error("Error deleting layer:", error);
-        toast.error("Fehler beim Löschen des Gebiets");
-      }
+      await toast.promise(
+        deleteLayer(deletedLayerId),
+        {
+          loading: "Lösche Gebiet...",
+          success: "Gebiet gelöscht",
+          error: "Fehler beim Löschen - Änderung wird rückgängig gemacht",
+        }
+      );
     });
   };
 
@@ -775,17 +781,22 @@ function DrawingToolsImpl({
       return;
     }
 
-    try {
-      await updateLayer(layerId, { name: newName.trim() });
+    startTransition(async () => {
+      // Optimistic update - instantly rename in UI
+      updateOptimisticLayers({ type: 'update', id: layerId, layer: { name: newName.trim() } });
 
       setEditingLayerId(null);
-
       setEditingLayerName("");
 
-      toast.success("Gebiet umbenannt");
-    } catch {
-      // Error already handled by hook
-    }
+      await toast.promise(
+        updateLayer(layerId, { name: newName.trim() }),
+        {
+          loading: "Benenne Gebiet um...",
+          success: "Gebiet umbenannt",
+          error: "Fehler beim Umbenennen - Bitte erneut versuchen",
+        }
+      );
+    });
   };
 
   return (
@@ -842,7 +853,6 @@ function DrawingToolsImpl({
                   onGranularityChange={onGranularityChange}
                   areaId={areaId}
                   layers={layers}
-                  isViewingVersion={isViewingVersion}
                 />
               </div>
             </Collapsible>

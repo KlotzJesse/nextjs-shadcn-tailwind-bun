@@ -10,7 +10,7 @@ import {
 import { IconArrowBackUp, IconArrowForwardUp } from "@tabler/icons-react";
 import { useUndoRedo } from "@/lib/hooks/use-undo-redo";
 import { cn } from "@/lib/utils";
-import { useState, useOptimistic, useCallback } from "react";
+import { useOptimistic } from "react";
 
 interface UndoRedoToolbarProps {
   areaId: number | null;
@@ -43,14 +43,13 @@ export function UndoRedoToolbar({
           undoCount: Math.max(0, current.undoCount - 1),
           redoCount: current.redoCount + 1,
         };
-      } else {
-        return {
-          canUndo: true,
-          canRedo: current.redoCount > 1,
-          undoCount: current.undoCount + 1,
-          redoCount: Math.max(0, current.redoCount - 1),
-        };
       }
+      return {
+        canUndo: true,
+        canRedo: current.redoCount > 1,
+        undoCount: current.undoCount + 1,
+        redoCount: Math.max(0, current.redoCount - 1),
+      };
     }
   );
 

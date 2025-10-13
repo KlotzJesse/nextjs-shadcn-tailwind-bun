@@ -15,6 +15,7 @@ import { updateLayerAction } from "@/app/actions/layer-actions";
 import { IconAlertTriangle, IconCheck, IconLoader } from "@tabler/icons-react";
 import { useState, useEffect, Activity } from "react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -75,7 +76,14 @@ export function ConflictResolutionDialog({
               (code) => code !== conflict.postalCode
             );
             if (currentCodes.length !== newCodes.length) {
-              await updateLayerAction(areaId, layer.id, { postalCodes: newCodes });
+              await toast.promise(
+                updateLayerAction(areaId, layer.id, { postalCodes: newCodes }),
+                {
+                  loading: `Entferne ${conflict.postalCode} aus ${layer.name}...`,
+                  success: `${conflict.postalCode} aus ${layer.name} entfernt`,
+                  error: `Fehler beim Entfernen aus ${layer.name}`,
+                }
+              );
             }
           }
         }
@@ -88,7 +96,14 @@ export function ConflictResolutionDialog({
             (code) => code !== conflict.postalCode
           );
           if (currentCodes.length !== newCodes.length) {
-            await updateLayerAction(areaId, layer.id, { postalCodes: newCodes });
+            await toast.promise(
+              updateLayerAction(areaId, layer.id, { postalCodes: newCodes }),
+              {
+                loading: `Entferne ${conflict.postalCode} aus ${layer.name}...`,
+                success: `${conflict.postalCode} aus ${layer.name} entfernt`,
+                error: `Fehler beim Entfernen aus ${layer.name}`,
+              }
+            );
           }
         }
       }

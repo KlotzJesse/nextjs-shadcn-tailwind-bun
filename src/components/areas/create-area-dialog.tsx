@@ -21,17 +21,16 @@ import {
 } from "@/components/ui/select";
 import { createAreaAction } from "@/app/actions/area-actions";
 import { useState, useTransition, useOptimistic } from "react";
+import { toast } from "sonner";
 
 interface CreateAreaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAreaCreated?: (areaId: number) => void;
 }
 
 export function CreateAreaDialog({
   open,
   onOpenChange,
-  onAreaCreated,
 }: CreateAreaDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
@@ -53,8 +52,14 @@ export function CreateAreaDialog({
         updateOptimisticCreating(true);
 
         // Server action handles redirect automatically
-        // This will throw NEXT_REDIRECT which is expected and should not be caught
-        await createAreaAction({ name, description, granularity, createdBy: "user" });
+        await toast.promise(
+          createAreaAction({ name, description, granularity, createdBy: "user" }),
+          {
+            loading: `Erstelle Gebiet "${name}"...`,
+            success: `Gebiet "${name}" erfolgreich erstellt`,
+            error: "Fehler beim Erstellen des Gebiets",
+          }
+        );
 
         // These lines won't execute if redirect happens (which is expected)
         setName("");

@@ -19,7 +19,7 @@ import { recordChangeAction } from "./change-tracking-actions";
 import { createVersionAction } from "./version-actions";
 
 import type { FeatureCollection, Geometry } from "geojson";
-import { Route } from "next";
+import type { Route } from "next";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;

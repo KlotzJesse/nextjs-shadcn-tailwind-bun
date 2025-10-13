@@ -38,18 +38,21 @@ export function useUndoRedo(
       options?.onOptimisticUndo?.();
 
       try {
-        const result = await undoChangeAction(areaId);
-
-        if (result.success) {
-          toast.success("Änderung rückgängig gemacht");
-          // Trigger revalidation to update status
-          onStatusUpdate?.();
-        } else {
-          toast.error(result.error || "Fehler beim Rückgängigmachen");
-        }
-      } catch (error) {
-        console.error("Error undoing change:", error);
-        toast.error("Fehler beim Rückgängigmachen");
+        await toast.promise(
+          undoChangeAction(areaId),
+          {
+            loading: "Mache Änderung rückgängig...",
+            success: (data) => {
+              if (data.success) {
+                // Trigger revalidation to update status
+                onStatusUpdate?.();
+                return "Änderung rückgängig gemacht";
+              }
+              throw new Error(data.error || "Fehler beim Rückgängigmachen");
+            },
+            error: "Fehler beim Rückgängigmachen",
+          }
+        );
       } finally {
         setIsLoading(false);
       }
@@ -66,18 +69,21 @@ export function useUndoRedo(
       options?.onOptimisticRedo?.();
 
       try {
-        const result = await redoChangeAction(areaId);
-
-        if (result.success) {
-          toast.success("Änderung wiederhergestellt");
-          // Trigger revalidation to update status
-          onStatusUpdate?.();
-        } else {
-          toast.error(result.error || "Fehler beim Wiederherstellen");
-        }
-      } catch (error) {
-        console.error("Error redoing change:", error);
-        toast.error("Fehler beim Wiederherstellen");
+        await toast.promise(
+          redoChangeAction(areaId),
+          {
+            loading: "Stelle Änderung wieder her...",
+            success: (data) => {
+              if (data.success) {
+                // Trigger revalidation to update status
+                onStatusUpdate?.();
+                return "Änderung wiederhergestellt";
+              }
+              throw new Error(data.error || "Fehler beim Wiederherstellen");
+            },
+            error: "Fehler beim Wiederherstellen",
+          }
+        );
       } finally {
         setIsLoading(false);
       }

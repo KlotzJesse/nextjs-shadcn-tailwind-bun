@@ -37,19 +37,20 @@ export function useVersionHistory(areaId: number) {
       changesSummary?: string;
       createdBy?: string;
     }) => {
-      try {
-        const result = await createVersionAction(areaId, data);
-        if (result.success && result.data) {
-          toast.success(`Version ${result.data.versionNumber} erstellt`);
-          return result.data;
+      return await toast.promise(
+        (async () => {
+          const result = await createVersionAction(areaId, data);
+          if (result.success && result.data) {
+            return result.data;
+          }
+          throw new Error(result.error || "Failed to create version");
+        })(),
+        {
+          loading: "Erstelle Version...",
+          success: (data) => `Version ${data.versionNumber} erfolgreich erstellt`,
+          error: (err) => `Fehler beim Erstellen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`,
         }
-        throw new Error(result.error || "Failed to create version");
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        toast.error(`Fehler beim Erstellen der Version: ${errorMessage}`);
-        throw error;
-      }
+      );
     },
     [areaId]
   );

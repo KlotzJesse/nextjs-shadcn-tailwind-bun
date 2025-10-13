@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
 import { ChevronsUpDownIcon, MapPinIcon, RadiusIcon } from "lucide-react";
-import { useRef, useState, useOptimistic, useTransition } from "react";
+import { useRef, useState, useOptimistic } from "react";
 import { toast } from "sonner";
 import {
   geocodeSearchAction,
@@ -90,10 +90,9 @@ export function AddressAutocompleteEnhanced({
     "straight" | "distance" | "time"
   >("distance"); // Simplified: straight, driving distance, or driving time
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   // Optimistic search state
-  const [optimisticSearching, updateOptimisticSearching] = useOptimistic(
+  const [_optimisticSearching, _updateOptimisticSearching] = useOptimistic(
     false,
     (_state, searching: boolean) => searching
   );

@@ -120,7 +120,7 @@ export function EnhancedVersionHistoryDialog({
     useState<SelectAreaVersions | null>(null);
 
   // Optimistic restore state
-  const [optimisticRestoring, updateOptimisticRestoring] = useOptimistic(
+  const [_optimisticRestoring, updateOptimisticRestoring] = useOptimistic(
     false,
     (_state, restoring: boolean) => restoring
   );
@@ -134,37 +134,37 @@ export function EnhancedVersionHistoryDialog({
   const confirmRestore = () => {
     if (!versionToRestore) return;
 
-    // Optimistically show restoring state
-    updateOptimisticRestoring(true);
-
     startTransition(async () => {
+      // Optimistically show restoring state
+      updateOptimisticRestoring(true);
+
       try {
-        const result = await restoreVersionAction(
-          areaId,
-
-          versionToRestore.versionNumber,
-
+        await toast.promise(
+          restoreVersionAction(
+            areaId,
+            versionToRestore.versionNumber,
+            {
+              createBranch: true,
+              branchName: `Restored from v${versionToRestore.versionNumber}`,
+            },
+          ),
           {
-            createBranch: true,
-
-            branchName: `Restored from v${versionToRestore.versionNumber}`,
-          },
+            loading: `Stelle Version ${versionToRestore.versionNumber} wieder her...`,
+            success: (data) => {
+              if (data.success) {
+                return `Version ${versionToRestore.versionNumber} wiederhergestellt`;
+              }
+              throw new Error(data.error || "Failed to restore version");
+            },
+            error: "Fehler beim Wiederherstellen der Version",
+          }
         );
 
-        if (result.success) {
-          toast.success(`Version ${versionToRestore.versionNumber} restored`);
-
-          onOpenChange(false);
-
-          window.location.reload();
-        } else {
-          toast.error(result.error || "Failed to restore version");
-        }
-      } catch {
-        toast.error("Failed to restore version");
+        // If we get here, restoration was successful
+        onOpenChange(false);
+        window.location.reload();
       } finally {
         setShowRestoreDialog(false);
-
         setVersionToRestore(null);
         updateOptimisticRestoring(false);
       }
@@ -174,25 +174,29 @@ export function EnhancedVersionHistoryDialog({
   const handleCompare = async () => {
     if (!selectedVersion || !compareVersion) return;
 
-    try {
-      const result = await compareVersionsAction(
+    await toast.promise(
+      compareVersionsAction(
         selectedVersion.areaId,
-
         selectedVersion.versionNumber,
-
         compareVersion.areaId,
-
         compareVersion.versionNumber,
-      );
-
-      if (result.success && result.data) {
-        setComparison(result.data);
-      } else {
-        toast.error("Failed to compare versions");
+      ).then((data) => {
+        if (data.success && data.data) {
+          setComparison(data.data);
+        }
+        return data;
+      }),
+      {
+        loading: `Vergleiche Version ${selectedVersion.versionNumber} mit ${compareVersion.versionNumber}...`,
+        success: (data) => {
+          if (data.success && data.data) {
+            return `Versionen erfolgreich verglichen`;
+          }
+          throw new Error("Failed to compare versions");
+        },
+        error: "Fehler beim Vergleichen der Versionen",
       }
-    } catch {
-      toast.error("Failed to compare versions");
-    }
+    );
   };
 
   const getChangeTypeLabel = (type: string) => {

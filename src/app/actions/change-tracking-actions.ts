@@ -12,7 +12,7 @@ import {
   type SelectAreaChanges,
 } from "../../lib/schema/schema";
 
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

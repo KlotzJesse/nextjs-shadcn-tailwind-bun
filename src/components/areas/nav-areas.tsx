@@ -38,7 +38,7 @@ import {
 } from "@tabler/icons-react";
 import { useState, Activity, useOptimistic, useTransition, use } from "react";
 import { CreateAreaDialog } from "./create-area-dialog";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { updateAreaAction, deleteAreaAction } from "@/app/actions/area-actions";
 import { toast } from "sonner";
@@ -66,7 +66,6 @@ export function NavAreas({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [areaToDelete, setAreaToDelete] = useState<Area | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const router = useRouter();
   const params = useParams();
   const currentAreaIdFromRoute = params?.areaId ? String(params.areaId) : null;
 
@@ -86,16 +85,7 @@ export function NavAreas({
     }
   );
 
-  const [isPending, startTransition] = useTransition();
-
-  const handleAreaCreated = (areaId: number) => {
-    if (onAreaSelect) {
-      onAreaSelect(areaId);
-    } else {
-      // Use router.push for programmatic navigation after creation
-      router.push(`/postal-codes/${areaId}` as Route);
-    }
-  };
+  const [_isPending, startTransition] = useTransition();
 
   const handleAreaClick = (area: Area) => {
     // This function is now mainly for the onAreaSelect callback
@@ -143,22 +133,23 @@ export function NavAreas({
     startTransition(async () => {
       updateOptimisticAreas({ type: 'rename', id: areaId, name: editingAreaName.trim() });
 
-      try {
-        const result = await updateAreaAction(areaId, {
+      await toast.promise(
+        updateAreaAction(areaId, {
           name: editingAreaName.trim(),
-        });
-
-        if (result.success) {
-          toast.success("Gebiet umbenannt");
-          setEditingAreaId(null);
-          setEditingAreaName("");
-        } else {
-          toast.error(result.error || "Umbenennen fehlgeschlagen");
+        }),
+        {
+          loading: "Benenne Gebiet um...",
+          success: (data) => {
+            if (data.success) {
+              setEditingAreaId(null);
+              setEditingAreaName("");
+              return "Gebiet umbenannt";
+            }
+            throw new Error(data.error || "Umbenennen fehlgeschlagen");
+          },
+          error: "Umbenennen fehlgeschlagen",
         }
-      } catch (error) {
-        console.error("Error renaming area:", error);
-        toast.error("Umbenennen fehlgeschlagen");
-      }
+      );
     });
   };
 
@@ -176,16 +167,21 @@ export function NavAreas({
     // Optimistic update for instant feedback
     startTransition(async () => {
       updateOptimisticAreas({ type: 'delete', id: areaToDelete.id });
+      const areaName = areaToDelete.name;
 
       try {
         // Server action now handles redirect
-        await deleteAreaAction(areaToDelete.id);
+        await toast.promise(
+          deleteAreaAction(areaToDelete.id),
+          {
+            loading: `Lösche "${areaName}"...`,
+            success: `"${areaName}" gelöscht`,
+            error: "Löschen fehlgeschlagen",
+          }
+        );
         // If successful, the server will redirect automatically
-        toast.success(`"${areaToDelete.name}" gelöscht`);
         setDeleteDialogOpen(false);
         setAreaToDelete(null);
-      } catch {
-        toast.error("Löschen fehlgeschlagen");
       } finally {
         setIsDeleting(false);
       }
@@ -358,7 +354,6 @@ export function NavAreas({
       <CreateAreaDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        onAreaCreated={handleAreaCreated}
       />
 
       {/* Delete confirmation dialog */}

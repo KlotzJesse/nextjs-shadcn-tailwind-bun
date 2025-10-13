@@ -200,7 +200,7 @@ export function PostalCodesViewClientWithLayers({
   // Optimistic state for undo/redo counts
   const [optimisticUndoRedo, updateOptimisticUndoRedo] = useOptimistic(
     initialUndoRedoStatus,
-    (current, action: 'increment') => ({
+    (current, _action: 'increment') => ({
       ...current,
       undoCount: current.undoCount + 1,
       redoCount: 0, // Clear redo stack on new change
@@ -308,23 +308,24 @@ export function PostalCodesViewClientWithLayers({
 
     granularity: string;
   }) => {
-    const result = await radiusSearchAction(searchData);
-
-    if (result.success && result.data) {
-      const postalCodes = result.data.postalCodes;
-
-      if (activeLayerId && areaId) {
-        await addPostalCodesToLayer(activeLayerId, postalCodes);
-
-        toast.success(`${postalCodes.length} PLZ hinzugefügt`);
-      } else {
-        toast.warning("Bitte aktives Gebiet wählen", {
-          duration: 3000,
-        });
+    await toast.promise(
+      radiusSearchAction(searchData),
+      {
+        loading: `Suche PLZ im Radius ${searchData.radius}km...`,
+        success: (data) => {
+          if (data.success && data.data) {
+            const postalCodes = data.data.postalCodes;
+            if (activeLayerId && areaId) {
+              addPostalCodesToLayer(activeLayerId, postalCodes);
+              return `${postalCodes.length} PLZ gefunden und hinzugefügt`;
+            }
+            throw new Error("Bitte aktives Gebiet wählen");
+          }
+          throw new Error("Radiussuche fehlgeschlagen");
+        },
+        error: "Radiussuche fehlgeschlagen",
       }
-    } else {
-      toast.error("Radiussuche fehlgeschlagen");
-    }
+    );
   };
 
   // Wrapper function to match the expected interface for AddressAutocompleteEnhanced
@@ -336,31 +337,29 @@ export function PostalCodesViewClientWithLayers({
 
     granularity: string,
   ) => {
-    const result = await drivingRadiusSearchAction({
-      latitude: coordinates[1],
-
-      longitude: coordinates[0],
-
-      maxDuration: radius, // Using radius as maxDuration for time mode
-
-      granularity,
-    });
-
-    if (result.success && result.data) {
-      const postalCodes = result.data.postalCodes;
-
-      if (activeLayerId && areaId) {
-        await addPostalCodesToLayer(activeLayerId, postalCodes);
-
-        toast.success(`${postalCodes.length} PLZ hinzugefügt`);
-      } else {
-        toast.warning("Bitte aktives Gebiet wählen", {
-          duration: 3000,
-        });
+    await toast.promise(
+      drivingRadiusSearchAction({
+        latitude: coordinates[1],
+        longitude: coordinates[0],
+        maxDuration: radius, // Using radius as maxDuration for time mode
+        granularity,
+      }),
+      {
+        loading: `Suche PLZ in ${radius}min Fahrzeit...`,
+        success: (data) => {
+          if (data.success && data.data) {
+            const postalCodes = data.data.postalCodes;
+            if (activeLayerId && areaId) {
+              addPostalCodesToLayer(activeLayerId, postalCodes);
+              return `${postalCodes.length} PLZ gefunden und hinzugefügt`;
+            }
+            throw new Error("Bitte aktives Gebiet wählen");
+          }
+          throw new Error("Fahrtzeitsuche fehlgeschlagen");
+        },
+        error: "Fahrtzeitsuche fehlgeschlagen",
       }
-    } else {
-      toast.error("Fahrtzeitsuche fehlgeschlagen");
-    }
+    );
   };
 
   const [postalCodeQuery, setPostalCodeQuery] = useState("");

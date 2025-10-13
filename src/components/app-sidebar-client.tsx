@@ -22,7 +22,6 @@ import {
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
-import type { Route } from "next";
 import type { Area } from "@/lib/types/area-types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -73,19 +72,11 @@ export function AppSidebarClient({
   onAreaSelect,
   ...props
 }: AppSidebarClientProps) {
-  const router = useRouter();
+  const _router = useRouter();
   const [createAreaDialogOpen, setCreateAreaDialogOpen] = React.useState(false);
 
   const handleCreateArea = () => {
     setCreateAreaDialogOpen(true);
-  };
-
-  const handleAreaCreated = (areaId: number) => {
-    // Navigate to the newly created area
-    router.push(`/postal-codes/${areaId}` as Route);
-    if (onAreaSelect) {
-      onAreaSelect(areaId);
-    }
   };
 
   return (
@@ -124,7 +115,6 @@ export function AppSidebarClient({
       <CreateAreaDialog
         open={createAreaDialogOpen}
         onOpenChange={setCreateAreaDialogOpen}
-        onAreaCreated={handleAreaCreated}
       />
     </>
   );
