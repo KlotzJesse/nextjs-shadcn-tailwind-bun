@@ -3,9 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactCompiler: true,
 
+
   typedRoutes: true,
 
   experimental: {
+
     useCache: true,
 
     // Forward browser logs to the terminal for easier debugging

@@ -84,7 +84,7 @@ export function PostalCodeImportDialog({
   // Handle import
   const handleImport = useStableCallback(() => {
     if (stats.uniqueMatches === 0) {
-      toast.error("Keine gültigen PLZ-Übereinstimmungen gefunden");
+      toast.error("Keine gültigen PLZ gefunden");
       return;
     }
 
@@ -93,7 +93,7 @@ export function PostalCodeImportDialog({
 
     onImport(uniqueCodes);
 
-    toast.success(`${uniqueCodes.length} PLZ-Regionen erfolgreich importiert`);
+    toast.success(`${uniqueCodes.length} PLZ importiert`);
 
     // Clear and close
     setTextInput("");
@@ -109,9 +109,9 @@ export function PostalCodeImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>PLZ-Regionen importieren</DialogTitle>
+          <DialogTitle>PLZ importieren</DialogTitle>
           <DialogDescription>
-            Importieren Sie PLZ direkt oder nutzen Sie den Excel/CSV Massen-Import für mehrere Layer.
+            PLZ direkt eingeben oder Excel/CSV-Import für mehrere Layer nutzen.
           </DialogDescription>
         </DialogHeader>
 
@@ -120,19 +120,19 @@ export function PostalCodeImportDialog({
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="paste" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Text eingeben
+                Text
               </TabsTrigger>
               {areaId && (
                 <TabsTrigger value="bulk" className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4" />
-                  Excel/CSV Massen-Import
+                  Excel/CSV-Import
                 </TabsTrigger>
               )}
             </TabsList>
 
             <TabsContent value="paste" className="flex-1 mt-4 flex flex-col gap-4">
               <div className="space-y-2">
-                <Label htmlFor="postal-input">PLZ eingeben</Label>
+                <Label htmlFor="postal-input">PLZ</Label>
                 <Textarea
                   id="postal-input"
                   placeholder={`PLZ eingeben... Beispiele:
@@ -142,7 +142,7 @@ D-86899, D-86932
 86899
 86932
 
-Unterstützte Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
+Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
                   className="min-h-32 font-mono text-sm"
@@ -164,7 +164,7 @@ Unterstützte Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
                       </Badge>
                     )}
                     <Badge variant="secondary">
-                      {stats.uniqueMatches} PLZ-Regionen gefunden
+                      {stats.uniqueMatches} PLZ gefunden
                     </Badge>
                   </div>
 
@@ -227,10 +227,9 @@ Unterstützte Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
                     <FileSpreadsheet className="h-16 w-16 text-muted-foreground" />
                   </div>
                   <div className="text-center space-y-2">
-                    <h3 className="text-lg font-semibold">Excel/CSV Massen-Import</h3>
+                    <h3 className="text-lg font-semibold">Excel/CSV-Import</h3>
                     <p className="text-sm text-muted-foreground max-w-md">
-                      Laden Sie Excel (.xlsx, .xls) oder CSV Dateien mit PLZ und Layer-Zuordnungen hoch.
-                      Ordnen Sie Spalten zu und importieren Sie mehrere Layer gleichzeitig.
+                      Excel (.xlsx, .xls) oder CSV-Dateien mit PLZ und Layer-Zuordnungen hochladen.
                     </p>
                   </div>
                   <Button
@@ -242,14 +241,14 @@ Unterstützte Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
                     className="gap-2"
                   >
                     <FileSpreadsheet className="h-4 w-4" />
-                    Massen-Import starten
+                    Import starten
                   </Button>
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p>✓ Unterstützt Excel (.xlsx, .xls) und CSV Dateien</p>
-                    <p>✓ Automatische Spaltenerkennung für PLZ und Layer</p>
-                    <p>✓ Vorschau und Validierung vor Import</p>
-                    <p>✓ Bulk-Erstellung oder Update von Layern</p>
-                    <p>✓ Unterstützt Format: 12345 oder D-12345</p>
+                    <p>✓ Excel (.xlsx, .xls) und CSV</p>
+                    <p>✓ Automatische Spaltenerkennung</p>
+                    <p>✓ Vorschau und Validierung</p>
+                    <p>✓ Bulk-Erstellung von Layern</p>
+                    <p>✓ Format: 12345 oder D-12345</p>
                   </div>
                 </div>
               </TabsContent>
@@ -260,7 +259,7 @@ Unterstützte Trennzeichen: Komma, Semikolon, Leerzeichen, neue Zeile`}
         {/* Actions */}
         <div className="flex justify-between pt-4 border-t">
           <Button variant="outline" onClick={handleClear} disabled={!textInput.trim()}>
-            Leeren
+            Zurücksetzen
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

@@ -24,58 +24,42 @@ interface ServerPostalCodesViewProps {
 
   areaId: number;
 
-  activeLayerId: number;
-
   versionId: number;
 }
 
 export default async function ServerPostalCodesView({
   defaultGranularity,
-
   areaId,
-
-  activeLayerId,
-
   versionId,
 }: ServerPostalCodesViewProps) {
-  const [postalCodesData, statesData] = await Promise.all([
-    getPostalCodesDataForGranularity(defaultGranularity),
-
-    getStatesData(),
-  ]);
-
-  const [areas, area, layers, versions, changes, undoRedoStatus] =
-    await Promise.all([
-      getAreas(),
-
-      getAreaById(areaId),
-
-      getLayers(areaId),
-
-      getVersions(areaId),
-
-      getChangeHistory(areaId, { limit: 50 }),
-
-      getUndoRedoStatus(areaId),
-    ]);
+  // Server Component: initiate all fetches as promises
+  // Pass promises down - let components consume where needed
+  // Deduplication ensures efficiency
+  const postalCodesDataPromise = getPostalCodesDataForGranularity(defaultGranularity);
+  const statesDataPromise = getStatesData();
+  const areasPromise = getAreas();
+  const areaPromise = getAreaById(areaId);
+  const layersPromise = getLayers(areaId);
+  const versionsPromise = getVersions(areaId);
+  const changesPromise = getChangeHistory(areaId, { limit: 50 });
+  const undoRedoStatusPromise = getUndoRedoStatus(areaId);
 
   return (
     <PostalCodesErrorBoundary>
       <Suspense fallback={<PostalCodesViewSkeleton />}>
         <PostalCodesViewClientWithLayers
-          initialData={postalCodesData}
-          statesData={statesData}
+          postalCodesDataPromise={postalCodesDataPromise}
+          statesDataPromise={statesDataPromise}
           defaultGranularity={defaultGranularity}
           areaId={areaId}
-          activeLayerId={activeLayerId || layers[0]?.id || null}
-          initialAreas={areas}
-          initialArea={area}
-          initialLayers={layers}
-          initialUndoRedoStatus={undoRedoStatus}
+          areasPromise={areasPromise}
+          areaPromise={areaPromise}
+          layersPromise={layersPromise}
+          undoRedoStatusPromise={undoRedoStatusPromise}
           isViewingVersion={false}
           versionId={versionId || null}
-          versions={versions}
-          changes={changes}
+          versionsPromise={versionsPromise}
+          changesPromise={changesPromise}
         />
       </Suspense>
     </PostalCodesErrorBoundary>

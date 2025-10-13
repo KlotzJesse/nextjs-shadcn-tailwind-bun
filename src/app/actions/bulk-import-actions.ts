@@ -3,7 +3,7 @@
 import { db } from "../../lib/db";
 import { areaLayers, areaLayerPostalCodes } from "../../lib/schema/schema";
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { updateTag, revalidatePath,refresh } from "next/cache";
 import { recordChangeAction } from "./change-tracking-actions";
 
 export interface BulkImportLayer {
@@ -190,8 +190,13 @@ export async function bulkImportPostalCodesAndLayers(
       }
     }
 
-    // Revalidate paths
-    revalidatePath(`/postal-codes`);
+    // Update cache tags and refresh
+    updateTag("layers");
+    updateTag(`area-${areaId}-layers`);
+    updateTag(`area-${areaId}`);
+    updateTag("undo-redo-status");
+    refresh();
+    revalidatePath("/postal-codes", "layout");
 
     return {
       success: errors.length === 0,

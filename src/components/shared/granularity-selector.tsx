@@ -26,7 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { type Layer } from "@/lib/types/area-types";
 import { AlertTriangle, Info, Lock } from "lucide-react";
-import { useState, useTransition, Activity } from "react";
+import { useState, useTransition, useOptimistic, Activity } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { changeAreaGranularityAction } from "@/app/actions/granularity-actions";
@@ -59,6 +59,12 @@ export function GranularitySelector({
   );
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // Optimistic granularity state
+  const [optimisticGranularity, updateOptimisticGranularity] = useOptimistic(
+    currentGranularity,
+    (_state, newGranularity: string) => newGranularity
+  );
 
   // Check if area has any postal codes
   const hasPostalCodes = layers.some(
@@ -138,6 +144,9 @@ export function GranularitySelector({
 
     // If compatible change (upgrade), show info and proceed with migration
     if (isGranularityChangeCompatible(currentGranularity, newGranularity)) {
+      // Optimistically update granularity
+      updateOptimisticGranularity(newGranularity);
+
       startTransition(async () => {
         try {
           const result = await changeAreaGranularityAction(
@@ -246,7 +255,7 @@ export function GranularitySelector({
       <div className="space-y-2">
         {/* Granularity Selector */}
         <Select
-          value={currentGranularity}
+          value={optimisticGranularity}
           onValueChange={handleGranularitySelect}
           disabled={isPending}
         >

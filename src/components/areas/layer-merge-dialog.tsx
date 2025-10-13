@@ -27,7 +27,7 @@ import type { Layer } from "@/lib/types/area-types";
 
 import { IconGitMerge } from "@tabler/icons-react";
 
-import { useState } from "react";
+import { useState, useOptimistic, useTransition } from "react";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -73,6 +73,16 @@ export function LayerMergeDialog({
   >("union");
 
   const [isMerging, setIsMerging] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  // Optimistic merge state
+  const [optimisticLayers, updateOptimisticLayers] = useOptimistic(
+    layers,
+    (state, { targetId, sourceIds }: { targetId: number; sourceIds: number[] }) => {
+      // Remove source layers optimistically
+      return state.filter(layer => !sourceIds.includes(layer.id));
+    }
+  );
 
   const toggleLayer = (layerId: number) => {
     const newSet = new Set(selectedLayers);
@@ -91,27 +101,28 @@ export function LayerMergeDialog({
 
     setIsMerging(true);
 
-    try {
-      const targetId = parseInt(targetLayerId, 10);
+    const targetId = parseInt(targetLayerId, 10);
+    const sourceIds = Array.from(selectedLayers).filter(
+      (id) => id !== targetId,
+    );
 
-      const sourceIds = Array.from(selectedLayers).filter(
-        (id) => id !== targetId,
-      );
+    // Optimistically update layers (remove source layers)
+    updateOptimisticLayers({ targetId, sourceIds });
 
-      await mergeLayers(sourceIds, targetId, strategy);
+    startTransition(async () => {
+      try {
+        await mergeLayers(sourceIds, targetId, strategy);
 
-      setSelectedLayers(new Set());
-
-      setTargetLayerId("");
-
-      onOpenChange(false);
-
-      onMergeComplete?.();
-    } catch (error) {
-      console.error("Failed to merge layers:", error);
-    } finally {
-      setIsMerging(false);
-    }
+        setSelectedLayers(new Set());
+        setTargetLayerId("");
+        onOpenChange(false);
+        onMergeComplete?.();
+      } catch (error) {
+        console.error("Failed to merge layers:", error);
+      } finally {
+        setIsMerging(false);
+      }
+    });
   };
 
   const getPreviewStats = () => {
@@ -176,7 +187,7 @@ export function LayerMergeDialog({
           <div className="space-y-2">
             <Label>Layer auswählen (mindestens 2)</Label>
             <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-lg p-2">
-              {layers.map((layer) => (
+              {optimisticLayers.map((layer) => (
                 <div
                   key={layer.id}
                   className="flex items-center gap-3 p-2 hover:bg-accent rounded"

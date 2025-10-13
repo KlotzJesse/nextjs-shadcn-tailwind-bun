@@ -221,7 +221,7 @@ export function groupByLayer(rows: ProcessedImportRow[]): LayerGroup[] {
   const groups = new Map<string, ProcessedImportRow[]>();
 
   for (const row of rows) {
-    const layerName = row.layer || 'Default Layer';
+    const layerName = row.layer || 'Standard-Layer';
     if (!groups.has(layerName)) {
       groups.set(layerName, []);
     }
@@ -263,6 +263,6 @@ export function getImportStats(rows: ProcessedImportRow[]): ImportStats {
     validRows: validRows.length,
     invalidRows: invalidRows.length,
     uniquePostalCodes,
-    uniqueLayers: uniqueLayers > 0 ? uniqueLayers : 1, // At least 1 (default layer)
+    uniqueLayers: uniqueLayers > 0 ? uniqueLayers : 1, // Mindestens 1 (Standard)
   };
 }

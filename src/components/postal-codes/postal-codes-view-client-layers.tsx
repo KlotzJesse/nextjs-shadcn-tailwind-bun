@@ -53,7 +53,7 @@ import { ChevronsUpDownIcon, FileUpIcon } from "lucide-react";
 
 import dynamic from "next/dynamic";
 
-import { useState, useTransition, useOptimistic } from "react";
+import { useState, useTransition, useOptimistic, use } from "react";
 
 import { toast } from "sonner";
 
@@ -103,66 +103,52 @@ const PostalCodeImportDialog = dynamic(
 );
 
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
+import { useMapState } from "@/lib/url-state/map-state";
 
 interface PostalCodesViewClientWithLayersProps {
-  initialData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
-
-  statesData: FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>;
-
+  postalCodesDataPromise: Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>>;
+  statesDataPromise: Promise<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>>;
   defaultGranularity: string;
-
   areaId: number;
-
-  activeLayerId: number | null;
-
-  initialAreas: Area[];
-
-  initialArea: Area | null;
-
-  initialLayers: Layer[];
-
-  initialUndoRedoStatus: {
+  areasPromise: Promise<Area[]>;
+  areaPromise: Promise<Area | null>;
+  layersPromise: Promise<Layer[]>;
+  undoRedoStatusPromise: Promise<{
     canUndo: boolean;
-
     canRedo: boolean;
-
     undoCount: number;
-
     redoCount: number;
-  };
-
-  versions: SelectAreaVersions[];
-
-  changes: SelectAreaChanges[];
-
+  }>;
+  versionsPromise: Promise<SelectAreaVersions[]>;
+  changesPromise: Promise<SelectAreaChanges[]>;
   isViewingVersion?: boolean;
-
   versionId?: number | null;
 }
 
 export function PostalCodesViewClientWithLayers({
-  initialData,
-
-  statesData,
-
+  postalCodesDataPromise,
+  statesDataPromise,
   defaultGranularity,
-
   areaId,
-
-  activeLayerId,
-
-  initialLayers,
-
-  initialUndoRedoStatus,
-
-  versions,
-
-  changes,
-
+  layersPromise,
+  undoRedoStatusPromise,
+  versionsPromise,
+  changesPromise,
   isViewingVersion = false,
-
   versionId,
 }: PostalCodesViewClientWithLayersProps) {
+  // Client Component: use() to consume promises where data is actually used
+  const initialData = use(postalCodesDataPromise);
+  const statesData = use(statesDataPromise);
+  const initialLayers = use(layersPromise);
+  const initialUndoRedoStatus = use(undoRedoStatusPromise);
+  const versions = use(versionsPromise);
+  const changes = use(changesPromise);
+
+  // Read activeLayerId directly from URL state for instant switching
+  const mapState = useMapState();
+  const activeLayerId = mapState.activeLayerId || initialLayers[0]?.id || null;
+
   const [data] =
     useState<FeatureCollection<Polygon | MultiPolygon, GeoJsonProperties>>(
       initialData,
@@ -211,6 +197,18 @@ export function PostalCodesViewClientWithLayers({
     },
   );
 
+  // Optimistic state for undo/redo counts
+  const [optimisticUndoRedo, updateOptimisticUndoRedo] = useOptimistic(
+    initialUndoRedoStatus,
+    (current, action: 'increment') => ({
+      ...current,
+      undoCount: current.undoCount + 1,
+      redoCount: 0, // Clear redo stack on new change
+      canUndo: true,
+      canRedo: false,
+    })
+  );
+
   const [_isPending, startTransition] = useTransition();
 
   // Server action wrappers with optimistic updates
@@ -221,13 +219,16 @@ export function PostalCodesViewClientWithLayers({
     postalCodes: string[],
   ) => {
     if (!areaId) {
-      toast.error("Kein Bereich ausgewählt");
+      toast.error("Kein Gebiet ausgewählt");
 
       return;
     }
 
     startTransition(async () => {
       updateOptimisticLayers({ type: "add", layerId, postalCodes });
+
+      // Optimistically increment undo count (new change added)
+      updateOptimisticUndoRedo('increment');
 
       try {
         const result = await addPostalCodesToLayerAction(
@@ -259,13 +260,16 @@ export function PostalCodesViewClientWithLayers({
     postalCodes: string[],
   ) => {
     if (!areaId) {
-      toast.error("Kein Bereich ausgewählt");
+      toast.error("Kein Gebiet ausgewählt");
 
       return;
     }
 
     startTransition(async () => {
       updateOptimisticLayers({ type: "remove", layerId, postalCodes });
+
+      // Optimistically increment undo count (new change added)
+      updateOptimisticUndoRedo('increment');
 
       try {
         const result = await removePostalCodesFromLayerAction(
@@ -312,14 +316,14 @@ export function PostalCodesViewClientWithLayers({
       if (activeLayerId && areaId) {
         await addPostalCodesToLayer(activeLayerId, postalCodes);
 
-        toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
+        toast.success(`${postalCodes.length} PLZ hinzugefügt`);
       } else {
-        toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
+        toast.warning("Bitte aktives Gebiet wählen", {
           duration: 3000,
         });
       }
     } else {
-      toast.error("Fehler bei der Radiussuche");
+      toast.error("Radiussuche fehlgeschlagen");
     }
   };
 
@@ -348,14 +352,14 @@ export function PostalCodesViewClientWithLayers({
       if (activeLayerId && areaId) {
         await addPostalCodesToLayer(activeLayerId, postalCodes);
 
-        toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
+        toast.success(`${postalCodes.length} PLZ hinzugefügt`);
       } else {
-        toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
+        toast.warning("Bitte aktives Gebiet wählen", {
           duration: 3000,
         });
       }
     } else {
-      toast.error("Fehler bei der Fahrtzeitsuche");
+      toast.error("Fahrtzeitsuche fehlgeschlagen");
     }
   };
 
@@ -376,8 +380,8 @@ export function PostalCodesViewClientWithLayers({
 
     // which updates the area's granularity via server action and triggers a refresh
 
-    toast.info("Granularität wird über den Bereich aktualisiert", {
-      description: "Die Änderung wird automatisch gespeichert",
+    toast.info("Granularität wird aktualisiert", {
+      description: "Änderung wird gespeichert",
 
       duration: 3000,
     });
@@ -399,24 +403,24 @@ export function PostalCodesViewClientWithLayers({
         if (activeLayerId && areaId) {
           await addPostalCodesToLayer(activeLayerId, [code]);
 
-          return `PLZ ${code} zu Gebiet hinzugefügt`;
+          return `PLZ ${code} hinzugefügt`;
         }
 
         selectPostalCode(code);
 
-        return `PLZ ${code} ausgewählt`;
+        return `PLZ ${code} gewählt`;
       }
 
-      throw new Error("Keine PLZ-Region für diese Adresse gefunden");
+      throw new Error("Keine PLZ für Adresse gefunden");
     };
 
     toast.promise(selectionPromise(), {
-      loading: "📍 PLZ-Region wird ermittelt...",
+      loading: "📍 PLZ wird ermittelt...",
 
       success: (message: string) => message,
 
       error: (error: unknown) =>
-        error instanceof Error ? error.message : "Fehler bei PLZ-Auswahl",
+        error instanceof Error ? error.message : "PLZ-Auswahl fehlgeschlagen",
     });
   };
 
@@ -446,9 +450,9 @@ export function PostalCodesViewClientWithLayers({
     if (activeLayerId && areaId) {
       await addPostalCodesToLayer(activeLayerId, postalCodes);
 
-      toast.success(`${postalCodes.length} PLZ zu Gebiet hinzugefügt`);
+      toast.success(`${postalCodes.length} PLZ hinzugefügt`);
     } else {
-      toast.warning("Bitte wählen Sie ein aktives Gebiet aus", {
+      toast.warning("Bitte aktives Gebiet wählen", {
         duration: 3000,
       });
     }
@@ -532,15 +536,15 @@ export function PostalCodesViewClientWithLayers({
                       }}
                       className="cursor-pointer truncate"
                     >
-                      <span className="truncate block w-full text-left">
-                        {code || "Unbekannt"}
-                      </span>
-                    </CommandItem>
-                  ))}
+                        <span className="truncate block w-full text-left">
+                          {code || "Unbekannt"}
+                        </span>
+                      </CommandItem>
+                    ))}
                 {allPostalCodes.filter((code) =>
                   code.toLowerCase().includes(postalCodeQuery.toLowerCase()),
                 ).length === 0 && (
-                  <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
+                  <CommandEmpty>Keine Ergebnisse</CommandEmpty>
                 )}
               </CommandList>
             </Command>
@@ -556,7 +560,7 @@ export function PostalCodesViewClientWithLayers({
                 onClick={() => setImportDialogOpen(true)}
                 size="default"
                 className="h-10 px-4"
-                title="PLZ-Regionen importieren"
+                title="PLZ importieren"
               >
                 <FileUpIcon className="h-4 w-4" />
               </Button>
@@ -586,7 +590,7 @@ export function PostalCodesViewClientWithLayers({
             versionId={versionId!}
             versions={versions}
             changes={changes}
-            initialUndoRedoStatus={initialUndoRedoStatus}
+            initialUndoRedoStatus={optimisticUndoRedo}
           />
         </MapErrorBoundary>
       </div>

@@ -12,16 +12,17 @@ export async function VersionIndicator({ areaId }: VersionIndicatorProps) {
   if (!areaId) {
     return null;
   }
-  const area = await getAreaById(areaId!);
+
+  // Server Component: fetch data where it's used
+  // Deduplication ensures this is efficient even if area is fetched elsewhere
+  const area = await getAreaById(areaId);
   const versionInfo = await getVersionIndicatorInfo(
-    areaId!,
+    areaId,
     area.currentVersionNumber
   );
 
-  console.log("VERSION INFO:", versionInfo, areaId);
-
-  // Don't show anything if no area is selected or no versions exist
-  if (!areaId || !versionInfo.hasVersions || !versionInfo.versionInfo) {
+  // Don't show anything if no versions exist
+  if (!versionInfo.hasVersions || !versionInfo.versionInfo) {
     return null;
   }
 
@@ -32,7 +33,7 @@ export async function VersionIndicator({ areaId }: VersionIndicatorProps) {
         className="flex items-center gap-1"
       >
         <IconHistory className="h-3 w-3" />
-        {versionInfo.versionInfo.isLatest ? "Aktuelle " : ""}Version{" "}
+        {versionInfo.versionInfo.isLatest ? "Aktuell " : ""}v
         {versionInfo.versionInfo.versionNumber}
         {versionInfo.versionInfo.name && ` (${versionInfo.versionInfo.name})`}
       </Badge>

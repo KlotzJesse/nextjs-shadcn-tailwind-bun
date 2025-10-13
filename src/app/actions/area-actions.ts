@@ -11,13 +11,15 @@ import {
 
 import { eq, and, inArray, sql } from "drizzle-orm";
 
-import { updateTag } from "next/cache";
+import { updateTag, revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { recordChangeAction } from "./change-tracking-actions";
 
 import { createVersionAction } from "./version-actions";
 
 import type { FeatureCollection, Geometry } from "geojson";
+import { Route } from "next";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -56,21 +58,6 @@ interface Result {
 // AREA OPERATIONS
 
 // ===============================
-
-export async function getAreasAction(): ServerActionResponse<unknown[]> {
-  try {
-    const result = await db.query.areas.findMany({
-      orderBy: (areas, { desc }) => [desc(areas.updatedAt)],
-    });
-
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("Error fetching areas:", error);
-
-    return { success: false, error: "Failed to fetch areas" };
-  }
-}
-
 export async function createAreaAction(data: {
   name: string;
 
@@ -79,7 +66,7 @@ export async function createAreaAction(data: {
   granularity?: string;
 
   createdBy?: string;
-}): ServerActionResponse<{ id: number }> {
+}) {
   try {
     // Create the area first
 
@@ -100,7 +87,7 @@ export async function createAreaAction(data: {
     // Create the first version automatically
 
     const versionResult = await createVersionAction(area.id, {
-      name: "Initial Version",
+      name: "Erstversion",
 
       description: "Automatically created first version",
 
@@ -112,7 +99,7 @@ export async function createAreaAction(data: {
 
       await db.delete(areas).where(eq(areas.id, area.id));
 
-      throw new Error("Failed to create initial version");
+      throw new Error("Erstversion konnte nicht erstellt werden");
     }
 
     updateTag("areas");
@@ -123,7 +110,11 @@ export async function createAreaAction(data: {
 
     updateTag(`area-${area.id}-undo-redo`);
 
-    return { success: true, data: { id: area.id } };
+    revalidatePath("/postal-codes", "layout");
+    revalidatePath(`/postal-codes/${area.id}`, "page");
+
+    // Server-side redirect - this throws NEXT_REDIRECT and stops execution
+    redirect(`/postal-codes/${area.id}` as Route);
   } catch (error) {
     console.error("Error creating area:", error);
 
@@ -142,7 +133,7 @@ export async function updateAreaAction(
     granularity?: string;
   },
 
-  createdBy?: string,
+  createdBy?: string
 ): ServerActionResponse {
   try {
     // Get previous state
@@ -195,6 +186,8 @@ export async function updateAreaAction(
 
     updateTag(`area-${id}-undo-redo`);
 
+
+    revalidatePath("/postal-codes", "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating area:", error);
@@ -203,7 +196,7 @@ export async function updateAreaAction(
   }
 }
 
-export async function deleteAreaAction(id: number): ServerActionResponse {
+export async function deleteAreaAction(id: number) {
   try {
     // Delete in correct order due to foreign key constraints
 
@@ -223,8 +216,8 @@ export async function deleteAreaAction(id: number): ServerActionResponse {
           inArray(
             areaLayerPostalCodes.layerId,
 
-            areaLayerIds.map((l) => l.id),
-          ),
+            areaLayerIds.map((l) => l.id)
+          )
         );
 
         // Then delete the layers
@@ -239,41 +232,21 @@ export async function deleteAreaAction(id: number): ServerActionResponse {
 
     updateTag("areas");
 
-    return { success: true };
+    revalidatePath("/postal-codes", "layout");
+
+    // Server-side redirect after deletion - this throws NEXT_REDIRECT
+    redirect("/postal-codes" as Route);
   } catch (error) {
+    // Check if this is a redirect (expected) or an actual error
+    if (error && typeof error === 'object' && 'digest' in error &&
+        typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+      // This is the redirect working as intended - rethrow it
+      throw error;
+    }
+
     console.error("Error deleting area:", error);
 
     return { success: false, error: "Failed to delete area" };
-  }
-}
-
-export async function getAreaByIdAction(
-  id: number,
-): ServerActionResponse<unknown> {
-  try {
-    const area = await db.query.areas.findFirst({
-      where: eq(areas.id, id),
-
-      with: {
-        layers: {
-          with: {
-            postalCodes: true,
-          },
-
-          orderBy: (layers, { asc }) => [asc(layers.orderIndex)],
-        },
-      },
-    });
-
-    if (!area) {
-      return { success: false, error: "Area not found" };
-    }
-
-    return { success: true, data: area };
-  } catch (error) {
-    console.error("Error fetching area:", error);
-
-    return { success: false, error: "Failed to fetch area" };
   }
 }
 
@@ -282,28 +255,6 @@ export async function getAreaByIdAction(
 // LAYER OPERATIONS
 
 // ===============================
-
-export async function getLayersAction(
-  areaId: number,
-): ServerActionResponse<unknown[]> {
-  try {
-    const result = await db.query.areaLayers.findMany({
-      where: eq(areaLayers.areaId, areaId),
-
-      with: {
-        postalCodes: true,
-      },
-
-      orderBy: (layers, { asc }) => [asc(layers.orderIndex)],
-    });
-
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("Error fetching layers:", error);
-
-    return { success: false, error: "Failed to fetch layers" };
-  }
-}
 
 export async function createLayerAction(
   areaId: number,
@@ -320,7 +271,7 @@ export async function createLayerAction(
     orderIndex: number;
   },
 
-  createdBy?: string,
+  createdBy?: string
 ): ServerActionResponse<{ id: number }> {
   try {
     const [layer] = await db
@@ -381,6 +332,7 @@ export async function createLayerAction(
 
     updateTag(`area-${areaId}-undo-redo`);
 
+    revalidatePath("/postal-codes", "layout");
     return { success: true, data: { id: layer.id } };
   } catch (error) {
     console.error("Error creating layer:", error);
@@ -408,7 +360,7 @@ export async function updateLayerAction(
     postalCodes?: string[];
   },
 
-  createdBy?: string,
+  createdBy?: string
 ): ServerActionResponse {
   try {
     // Get previous state
@@ -471,7 +423,7 @@ export async function updateLayerAction(
               layerId,
 
               postalCode: code,
-            })),
+            }))
           );
         }
       }
@@ -544,6 +496,9 @@ export async function updateLayerAction(
 
     updateTag(`area-${areaId}-undo-redo`);
 
+
+
+    revalidatePath("/postal-codes", "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating layer:", error);
@@ -557,7 +512,7 @@ export async function deleteLayerAction(
 
   layerId: number,
 
-  createdBy?: string,
+  createdBy?: string
 ): ServerActionResponse {
   try {
     // Get layer data before deletion
@@ -632,6 +587,9 @@ export async function deleteLayerAction(
 
     updateTag(`area-${areaId}-undo-redo`);
 
+
+
+    revalidatePath("/postal-codes", "layout");
     return { success: true };
   } catch (error) {
     console.error("Error deleting layer:", error);
@@ -647,7 +605,7 @@ export async function addPostalCodesToLayerAction(
 
   postalCodes: string[],
 
-  createdBy?: string,
+  createdBy?: string
 ): ServerActionResponse {
   try {
     // Validate inputs
@@ -677,7 +635,7 @@ export async function addPostalCodesToLayerAction(
     const existingCodes = layer.postalCodes?.map((pc) => pc.postalCode) || [];
 
     const newCodes = postalCodes.filter(
-      (code) => !existingCodes.includes(code),
+      (code) => !existingCodes.includes(code)
     );
 
     if (newCodes.length === 0) {
@@ -689,7 +647,7 @@ export async function addPostalCodesToLayerAction(
         layerId,
 
         postalCode: code,
-      })),
+      }))
     );
 
     // Record change
@@ -724,6 +682,9 @@ export async function addPostalCodesToLayerAction(
 
     updateTag(`area-${areaId}-undo-redo`);
 
+
+
+    revalidatePath("/postal-codes", "layout");
     return { success: true };
   } catch (error) {
     console.error("Error adding postal codes to layer:", error);
@@ -739,7 +700,7 @@ export async function removePostalCodesFromLayerAction(
 
   postalCodes: string[],
 
-  createdBy?: string,
+  createdBy?: string
 ): ServerActionResponse {
   try {
     // Validate inputs
@@ -767,7 +728,7 @@ export async function removePostalCodesFromLayerAction(
     const existingCodes = layer.postalCodes?.map((pc) => pc.postalCode) || [];
 
     const codesToRemove = postalCodes.filter((code) =>
-      existingCodes.includes(code),
+      existingCodes.includes(code)
     );
 
     if (codesToRemove.length === 0) {
@@ -782,8 +743,8 @@ export async function removePostalCodesFromLayerAction(
         and(
           eq(areaLayerPostalCodes.layerId, layerId),
 
-          inArray(areaLayerPostalCodes.postalCode, postalCodes),
-        ),
+          inArray(areaLayerPostalCodes.postalCode, postalCodes)
+        )
       );
 
     // Record change
@@ -818,6 +779,8 @@ export async function removePostalCodesFromLayerAction(
 
     updateTag(`area-${areaId}-undo-redo`);
 
+
+    revalidatePath("/postal-codes", "layout");
     return { success: true };
   } catch (error) {
     console.error("Error removing postal codes from layer:", error);
@@ -862,23 +825,23 @@ export async function geoprocessAction(data: {
       if (selectedCodes.length > 0) {
         const { rows } = await db.execute(
           sql`SELECT code FROM postal_codes WHERE granularity = ${granularity} AND code NOT IN (${sql.raw(
-            selectedCodes.map(String).join(","),
+            selectedCodes.map(String).join(",")
           )}) AND ST_Touches(geometry, (SELECT ST_Union(geometry) AS geom FROM postal_codes WHERE code IN (${sql.raw(
-            selectedCodes.map(String).join(","),
-          )}))`,
+            selectedCodes.map(String).join(",")
+          )}))`
         );
 
         expandRows = rows;
       } else {
         const { rows } = await db.execute(
-          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity}`,
+          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity}`
         );
 
         expandRows = rows;
       }
 
       resultCodes = expandRows.map((r) =>
-        String((r as Record<string, unknown>)["code"]),
+        String((r as Record<string, unknown>)["code"])
       );
     } else if (mode === "holes") {
       // Use a CTE for the convex hull to avoid recomputation and maximize performance
@@ -897,13 +860,13 @@ export async function geoprocessAction(data: {
             SELECT ST_ConvexHull(ST_Collect(geometry)) AS geom
             FROM postal_codes
             WHERE granularity = ${granularity} AND code IN (${sql.raw(
-              codeList,
-            )})
+            codeList
+          )})
             )
             SELECT code FROM postal_codes, hull
             WHERE granularity = ${granularity}
               AND code NOT IN (${sql.raw(codeList)})
-              AND ST_Within(geometry, hull.geom)`,
+              AND ST_Within(geometry, hull.geom)`
         );
 
         resultCodes = rows.map((r: Record<string, unknown>) => String(r.code));
@@ -918,26 +881,27 @@ export async function geoprocessAction(data: {
       if (selectedCodes.length > 0) {
         const { rows } = await db.execute(
           sql`SELECT code FROM postal_codes WHERE granularity = ${granularity} AND code NOT IN (${sql.raw(
-            selectedCodes.map(String).join(","),
+            selectedCodes.map(String).join(",")
           )}) AND ST_Intersects(geometry, (SELECT ST_Union(geometry) AS geom FROM postal_codes WHERE code IN (${sql.raw(
-            selectedCodes.map(String).join(","),
-          )}))`,
+            selectedCodes.map(String).join(",")
+          )}))`
         );
 
         gapRows = rows;
       } else {
         const { rows } = await db.execute(
-          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity}`,
+          sql`SELECT code FROM postal_codes WHERE granularity = ${granularity}`
         );
 
         gapRows = rows;
       }
 
       resultCodes = gapRows.map((r) =>
-        String((r as Record<string, unknown>)["code"]),
+        String((r as Record<string, unknown>)["code"])
       );
     }
 
+    revalidatePath("/postal-codes", "layout");
     return { success: true, data: { resultCodes } };
   } catch (error) {
     console.error("Error in geoprocessing:", error);
@@ -984,12 +948,14 @@ export async function radiusSearchAction(data: {
           ST_Transform(geometry, 3857),
           ST_Transform(ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326), 3857)
         )
-      `,
+      `
     );
 
     const postalCodes = rows.map((row) =>
-      String((row as { code: string }).code),
+      String((row as { code: string }).code)
     );
+
+
 
     return { success: true, data: { postalCodes } };
   } catch (error) {
@@ -1033,12 +999,14 @@ export async function drivingRadiusSearchAction(data: {
           ST_Transform(geometry, 3857),
           ST_Transform(ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326), 3857)
         )
-      `,
+      `
     );
 
     const postalCodes = rows.map((row) =>
-      String((row as { code: string }).code),
+      String((row as { code: string }).code)
     );
+
+
 
     return { success: true, data: { postalCodes } };
   } catch (error) {
@@ -1092,6 +1060,8 @@ export async function geocodeAction(address: string): ServerActionResponse<{
 
     const result = results[0];
 
+
+    revalidatePath("/postal-codes", "layout");
     return {
       success: true,
 
@@ -1186,30 +1156,26 @@ export async function geocodeSearchAction(data: {
 
     const nominatimResults = await response.json();
 
-    const results = nominatimResults.map(
-      (result: Result) => ({
-        id: result.place_id,
+    const results = nominatimResults.map((result: Result) => ({
+      id: result.place_id,
 
-        display_name: result.display_name,
+      display_name: result.display_name,
 
-        coordinates: [parseFloat(result.lon), parseFloat(result.lat)] as [
-          number,
+      coordinates: [parseFloat(result.lon), parseFloat(result.lat)] as [
+        number,
 
-          number,
-        ],
+        number
+      ],
 
-        postal_code: result.address?.postcode,
+      postal_code: result.address?.postcode,
 
-        city:
-          result.address?.city ||
-          result.address?.town ||
-          result.address?.village,
+      city:
+        result.address?.city || result.address?.town || result.address?.village,
 
-        state: result.address?.state,
+      state: result.address?.state,
 
-        country: result.address?.country,
-      }),
-    );
+      country: result.address?.country,
+    }));
 
     // Filter results if postal code is required
 
@@ -1217,6 +1183,9 @@ export async function geocodeSearchAction(data: {
       ? results.filter((result: { postal_code: string }) => result.postal_code)
       : results;
 
+
+
+    revalidatePath("/postal-codes", "layout");
     return {
       success: true,
 
@@ -1278,42 +1247,38 @@ export async function searchPostalCodesByLocationAction(data: {
           properties->>'bundesland' ILIKE ${`%${variant}%`} OR
           properties->>'region' ILIKE ${`%${variant}%`} OR
           properties->>'ort' ILIKE ${`%${variant}%`} OR
-          properties->>'gemeinde' ILIKE ${`%${variant}%`}`,
+          properties->>'gemeinde' ILIKE ${`%${variant}%`}`
     );
 
     const whereCondition = sql`(${searchConditions.reduce(
       (acc, condition, index) =>
-        index === 0 ? condition : sql`${acc} OR ${condition}`,
+        index === 0 ? condition : sql`${acc} OR ${condition}`
     )}) AND granularity = ${granularity}`;
-const results = await db
+    const results = (await db
 
-  .select({
+      .select({
+        code: postalCodes.code,
 
-    code: postalCodes.code,
+        granularity: postalCodes.granularity,
 
-    granularity: postalCodes.granularity,
+        geometry: sql<string>`ST_AsGeoJSON(${postalCodes.geometry})`,
 
-    geometry: sql<string>`ST_AsGeoJSON(${postalCodes.geometry})`,
+        properties: postalCodes.properties,
+      })
 
-    properties: postalCodes.properties,
+      .from(postalCodes)
 
-  })
+      .where(whereCondition)
 
-  .from(postalCodes)
+      .limit(limit)) as {
+      code: string;
 
-  .where(whereCondition)
+      granularity: string;
 
-  .limit(limit) as {
+      geometry: string;
 
-    code: string;
-
-    granularity: string;
-
-    geometry: string;
-
-    properties: unknown;
-
-  }[];
+      properties: unknown;
+    }[];
     // Create features array
 
     const features = results.map((result) => ({
@@ -1329,6 +1294,8 @@ const results = await db
 
       geometry: JSON.parse(result.geometry) as Geometry,
     }));
+
+
 
     return {
       success: true,
@@ -1542,12 +1509,14 @@ export async function searchPostalCodesByBoundaryAction(data: {
           AND ST_Contains(
             ST_GeomFromGeoJSON(${boundaryGeometry}),
             ST_Centroid(${postalCodes.geometry})
-          )`,
+          )`
       )
 
       .limit(limit);
 
     const codes = intersectingCodes.map((row) => row.code).sort();
+
+
 
     return {
       success: true,

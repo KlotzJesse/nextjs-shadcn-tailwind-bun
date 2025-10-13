@@ -20,12 +20,10 @@ export function PostalCodesOverview() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
-            Willkommen bei KRAUSS Gebietsmanagement
+            KRAUSS Gebietsmanagement
           </h1>
           <p className="text-muted-foreground text-lg">
-            Verwalten Sie Postleitzahlgebiete mit verschiedenen
-            Granularitätsstufen und erstellen Sie benutzerdefinierte
-            Gebietsaufteilungen für Ihre Geschäftsprozesse.
+            PLZ-Gebiete mit verschiedenen Granularitäten verwalten und Gebietsaufteilungen erstellen.
           </p>
         </div>
 
@@ -37,17 +35,15 @@ export function PostalCodesOverview() {
                 Gebietsverwaltung
               </CardTitle>
               <CardDescription>
-                Erstellen und verwalten Sie benutzerdefinierte
-                Gebietsaufteilungen mit mehreren Layern für verschiedene
-                Postleitzahlbereiche.
+                Gebietsaufteilungen mit mehreren Layern für verschiedene PLZ-Bereiche erstellen.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Mehrere Layer pro Gebiet</li>
-                <li>• Flexible Postleitzahl-Zuordnung</li>
+                <li>• Flexible PLZ-Zuordnung</li>
                 <li>• Versionsverwaltung</li>
-                <li>• Export- und Importfunktionen</li>
+                <li>• Export & Import</li>
               </ul>
             </CardContent>
           </Card>
@@ -56,7 +52,7 @@ export function PostalCodesOverview() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <IconMapPin className="w-5 h-5 text-primary" />
-                Postleitzahlen erkunden
+                PLZ erkunden
               </CardTitle>
               <CardDescription>
                 Interaktive Karte zur Erforschung der deutschen

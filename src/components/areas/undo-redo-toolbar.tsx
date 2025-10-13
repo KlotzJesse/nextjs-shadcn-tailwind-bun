@@ -10,6 +10,7 @@ import {
 import { IconArrowBackUp, IconArrowForwardUp } from "@tabler/icons-react";
 import { useUndoRedo } from "@/lib/hooks/use-undo-redo";
 import { cn } from "@/lib/utils";
+import { useState, useOptimistic, useCallback } from "react";
 
 interface UndoRedoToolbarProps {
   areaId: number | null;
@@ -31,10 +32,36 @@ export function UndoRedoToolbar({
   initialStatus,
   onStatusUpdate,
 }: UndoRedoToolbarProps) {
+  // Optimistic state for undo/redo counts
+  const [optimisticStatus, updateOptimisticStatus] = useOptimistic(
+    initialStatus || { canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 },
+    (current, action: 'undo' | 'redo') => {
+      if (action === 'undo') {
+        return {
+          canUndo: current.undoCount > 1,
+          canRedo: true,
+          undoCount: Math.max(0, current.undoCount - 1),
+          redoCount: current.redoCount + 1,
+        };
+      } else {
+        return {
+          canUndo: true,
+          canRedo: current.redoCount > 1,
+          undoCount: current.undoCount + 1,
+          redoCount: Math.max(0, current.redoCount - 1),
+        };
+      }
+    }
+  );
+
   const { undo, redo, isLoading } = useUndoRedo(
     areaId,
-    initialStatus,
-    onStatusUpdate
+    optimisticStatus,
+    onStatusUpdate,
+    {
+      onOptimisticUndo: () => updateOptimisticStatus('undo'),
+      onOptimisticRedo: () => updateOptimisticStatus('redo'),
+    }
   );
 
   if (!areaId) return null;
@@ -56,14 +83,14 @@ export function UndoRedoToolbar({
             <Button
               variant={"outline"}
               onClick={undo}
-              disabled={!initialStatus?.canUndo || isLoading}
+              disabled={!optimisticStatus.canUndo || isLoading}
               className="h-10 p-0 gap-2"
             >
               <IconArrowBackUp className="h-4 w-4" />
               Rückgängig
-              {initialStatus!.undoCount > 0 && (
+              {optimisticStatus.undoCount > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  ({initialStatus?.undoCount})
+                  ({optimisticStatus.undoCount})
                 </span>
               )}
             </Button>
@@ -78,14 +105,14 @@ export function UndoRedoToolbar({
             <Button
               variant={"outline"}
               onClick={redo}
-              disabled={!initialStatus?.canRedo || isLoading}
+              disabled={!optimisticStatus.canRedo || isLoading}
               className="h-10 p-0 gap-2"
             >
               <IconArrowForwardUp className="h-4 w-4" />
               Wiederholen
-              {initialStatus!.redoCount > 0 && (
+              {optimisticStatus.redoCount > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  ({initialStatus?.redoCount})
+                  ({optimisticStatus.redoCount})
                 </span>
               )}
             </Button>

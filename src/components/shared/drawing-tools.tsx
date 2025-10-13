@@ -46,7 +46,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 
-import { Suspense, useState, useEffect, Activity } from "react";
+import { Suspense, useState, useEffect, Activity, useOptimistic, useTransition } from "react";
 
 import { toast } from "sonner";
 
@@ -328,6 +328,25 @@ function DrawingToolsImpl({
 
   changes = [],
 }: DrawingToolsProps) {
+  // Optimistic layer state for instant UI updates
+  const [optimisticLayers, updateOptimisticLayers] = useOptimistic(
+    layers,
+    (currentLayers: Layer[], update: { type: 'create' | 'update' | 'delete'; layer?: Partial<Layer>; id?: number }) => {
+      if (update.type === 'create' && update.layer) {
+        return [...currentLayers, { ...update.layer, id: Date.now() } as Layer];
+      }
+      if (update.type === 'update' && update.id && update.layer) {
+        return currentLayers.map(l => l.id === update.id ? { ...l, ...update.layer } : l);
+      }
+      if (update.type === 'delete' && update.id) {
+        return currentLayers.filter(l => l.id !== update.id);
+      }
+      return currentLayers;
+    }
+  );
+
+  const [isPending, startTransition] = useTransition();
+
   // Collapsible section states
 
   const [layersOpen, setLayersOpen] = useState(areaId ? true : false);
@@ -585,21 +604,21 @@ function DrawingToolsImpl({
 
         "- layers provided via props:",
 
-        layers.length,
+        optimisticLayers.length,
       );
     }
-  }, [areaId, layers.length]);
+  }, [areaId, optimisticLayers.length]);
 
   // Export as Excel with multiple sheets per layer
 
   const handleExportExcel = async () => {
-    if (!layers.length) {
+    if (!optimisticLayers.length) {
       toast.warning("Keine Ebenen zum Exportieren vorhanden");
 
       return;
     }
 
-    const layersWithCodes = layers
+    const layersWithCodes = optimisticLayers
 
       .filter((layer) => layer.postalCodes && layer.postalCodes.length > 0)
 
@@ -665,31 +684,60 @@ function DrawingToolsImpl({
 
     setIsCreating(true);
 
-    try {
-      const nextColor = DEFAULT_COLORS[layers.length % DEFAULT_COLORS.length];
+    startTransition(async () => {
+      const nextColor = DEFAULT_COLORS[optimisticLayers.length % DEFAULT_COLORS.length];
 
-      const result = await createLayer({
-        name: newLayerName,
-
-        color: nextColor,
-
-        orderIndex: layers.length,
+      // Optimistic update
+      updateOptimisticLayers({
+        type: 'create',
+        layer: {
+          name: newLayerName,
+          color: nextColor,
+          opacity: 100,
+          isVisible: "true",
+          orderIndex: optimisticLayers.length,
+          areaId: areaId!,
+          postalCodes: [],
+        }
       });
 
-      setNewLayerName("");
+      try {
+        const result = await createLayer({
+          name: newLayerName,
 
-      // Set the newly created layer as active
+          color: nextColor,
 
-      if (result?.id && onLayerSelect) {
-        onLayerSelect(result.id);
+          orderIndex: optimisticLayers.length,
+        });
+
+        setNewLayerName("");
+
+        // Set the newly created layer as active
+
+        if (result?.id && onLayerSelect) {
+          onLayerSelect(result.id);
+        }
+      } catch (error) {
+        console.error("Error creating layer:", error);
+        toast.error("Fehler beim Erstellen des Gebiets");
+      } finally {
+        setIsCreating(false);
       }
-    } finally {
-      setIsCreating(false);
-    }
+    });
   };
 
   const handleColorChange = async (layerId: number, color: string) => {
-    await updateLayerColor(layerId, color);
+    startTransition(async () => {
+      // Optimistic update
+      updateOptimisticLayers({ type: 'update', id: layerId, layer: { color } });
+
+      try {
+        await updateLayerColor(layerId, color);
+      } catch (error) {
+        console.error("Error updating layer color:", error);
+        toast.error("Fehler beim Ändern der Farbe");
+      }
+    });
   };
 
   const handleDeleteLayer = async (layerId: number) => {
@@ -701,17 +749,23 @@ function DrawingToolsImpl({
   const confirmDeleteLayer = async () => {
     if (!layerToDelete || !deleteLayer) return;
 
-    try {
-      await deleteLayer(layerToDelete);
+    startTransition(async () => {
+      // Optimistic update
+      updateOptimisticLayers({ type: 'delete', id: layerToDelete });
 
-      toast.success("Gebiet gelöscht");
+      try {
+        await deleteLayer(layerToDelete);
 
-      setShowDeleteDialog(false);
+        toast.success("Gebiet gelöscht");
 
-      setLayerToDelete(null);
-    } catch {
-      // Error already handled by hook
-    }
+        setShowDeleteDialog(false);
+
+        setLayerToDelete(null);
+      } catch (error) {
+        console.error("Error deleting layer:", error);
+        toast.error("Fehler beim Löschen des Gebiets");
+      }
+    });
   };
 
   const handleRenameLayer = async (layerId: number, newName: string) => {
@@ -806,7 +860,7 @@ function DrawingToolsImpl({
                   size="sm"
                   className="w-full justify-between h-7 px-2 text-xs font-semibold"
                 >
-                  <span>Gebiete ({layers.length})</span>
+                  <span>Gebiete ({optimisticLayers.length})</span>
                   {layersOpen ? (
                     <ChevronUp className="h-3 w-3" />
                   ) : (
@@ -920,7 +974,7 @@ function DrawingToolsImpl({
 
                 {/* Layer list - Optimized with shadcn */}
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {layers.map((layer) => (
+                  {optimisticLayers.map((layer) => (
                     <div
                       key={layer.id}
                       className={`group relative rounded-lg border transition-all ${
@@ -1268,10 +1322,10 @@ function DrawingToolsImpl({
                       variant="secondary"
                       size="sm"
                       disabled={
-                        isFilling || !layers.find((l) => l.id === activeLayerId)
+                        isFilling || !optimisticLayers.find((l) => l.id === activeLayerId)
                       }
                       onClick={() => {
-                        const activeLayer = layers.find(
+                        const activeLayer = optimisticLayers.find(
                           (l) => l.id === activeLayerId,
                         );
 

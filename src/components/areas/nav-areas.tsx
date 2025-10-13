@@ -36,7 +36,7 @@ import {
   IconCheck,
   IconX,
 } from "@tabler/icons-react";
-import { useState, Activity } from "react";
+import { useState, Activity, useOptimistic, useTransition, use } from "react";
 import { CreateAreaDialog } from "./create-area-dialog";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -45,18 +45,21 @@ import { toast } from "sonner";
 import type { Route } from "next";
 
 interface NavAreasProps {
-  areas: Area[];
+  areasPromise: Promise<Area[]>;
   isLoading?: boolean;
   currentAreaId?: number | null;
   onAreaSelect?: (areaId: number) => void;
 }
 
 export function NavAreas({
-  areas,
+  areasPromise,
   isLoading = false,
   currentAreaId: _currentAreaId,
   onAreaSelect,
 }: NavAreasProps) {
+  // Client Component: use() to consume promise where data is actually used
+  const areas = use(areasPromise);
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
   const [editingAreaName, setEditingAreaName] = useState("");
@@ -66,6 +69,24 @@ export function NavAreas({
   const router = useRouter();
   const params = useParams();
   const currentAreaIdFromRoute = params?.areaId ? String(params.areaId) : null;
+
+  // Optimistic state for areas
+  const [optimisticAreas, updateOptimisticAreas] = useOptimistic(
+    areas,
+    (currentAreas: Area[], update: { type: 'rename' | 'delete'; id: number; name?: string }) => {
+      if (update.type === 'rename' && update.name) {
+        return currentAreas.map(area =>
+          area.id === update.id ? { ...area, name: update.name! } : area
+        );
+      }
+      if (update.type === 'delete') {
+        return currentAreas.filter(area => area.id !== update.id);
+      }
+      return currentAreas;
+    }
+  );
+
+  const [isPending, startTransition] = useTransition();
 
   const handleAreaCreated = (areaId: number) => {
     if (onAreaSelect) {
@@ -107,7 +128,7 @@ export function NavAreas({
 
   const handleConfirmRename = async (areaId: number) => {
     if (!editingAreaName.trim()) {
-      toast.error("Gebiets-Name darf nicht leer sein");
+      toast.error("Name darf nicht leer sein");
       return;
     }
 
@@ -118,27 +139,27 @@ export function NavAreas({
       return;
     }
 
-    // Renaming in progress
-    try {
-      const result = await updateAreaAction(areaId, {
-        name: editingAreaName.trim(),
-      });
+    // Optimistic update for instant feedback
+    startTransition(async () => {
+      updateOptimisticAreas({ type: 'rename', id: areaId, name: editingAreaName.trim() });
 
-      if (result.success) {
-        toast.success("Gebiet erfolgreich umbenannt");
-        setEditingAreaId(null);
-        setEditingAreaName("");
-        // Trigger a refresh of the areas list
-        router.refresh();
-      } else {
-        toast.error(result.error || "Fehler beim Umbenennen des Gebiets");
+      try {
+        const result = await updateAreaAction(areaId, {
+          name: editingAreaName.trim(),
+        });
+
+        if (result.success) {
+          toast.success("Gebiet umbenannt");
+          setEditingAreaId(null);
+          setEditingAreaName("");
+        } else {
+          toast.error(result.error || "Umbenennen fehlgeschlagen");
+        }
+      } catch (error) {
+        console.error("Error renaming area:", error);
+        toast.error("Umbenennen fehlgeschlagen");
       }
-    } catch (error) {
-      console.error("Error renaming area:", error);
-      toast.error("Fehler beim Umbenennen des Gebiets");
-    } finally {
-      // Renaming completed
-    }
+    });
   };
 
   const handleStartDelete = (area: Area, e: React.MouseEvent) => {
@@ -151,27 +172,24 @@ export function NavAreas({
     if (!areaToDelete) return;
 
     setIsDeleting(true);
-    try {
-      const result = await deleteAreaAction(areaToDelete.id);
 
-      if (result.success) {
-        toast.success(`Gebiet "${areaToDelete.name}" erfolgreich gelöscht`);
+    // Optimistic update for instant feedback
+    startTransition(async () => {
+      updateOptimisticAreas({ type: 'delete', id: areaToDelete.id });
+
+      try {
+        // Server action now handles redirect
+        await deleteAreaAction(areaToDelete.id);
+        // If successful, the server will redirect automatically
+        toast.success(`"${areaToDelete.name}" gelöscht`);
         setDeleteDialogOpen(false);
         setAreaToDelete(null);
-        // If the deleted area was the current one, navigate to overview
-        if (currentAreaIdFromRoute === String(areaToDelete.id)) {
-          router.push("/postal-codes");
-        }
-        // Trigger a refresh of the areas list
-        router.refresh();
-      } else {
-        toast.error(result.error || "Fehler beim Löschen des Gebiets");
+      } catch {
+        toast.error("Löschen fehlgeschlagen");
+      } finally {
+        setIsDeleting(false);
       }
-    } catch {
-      toast.error("Fehler beim Löschen des Gebiets");
-    } finally {
-      setIsDeleting(false);
-    }
+    });
   };
 
   return (
@@ -196,7 +214,7 @@ export function NavAreas({
                 <SidebarMenuButton disabled>Lade...</SidebarMenuButton>
               </SidebarMenuItem>
             </Activity>
-            <Activity mode={!isLoading && areas.length === 0 ? "visible" : "hidden"}>
+            <Activity mode={!isLoading && optimisticAreas.length === 0 ? "visible" : "hidden"}>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setCreateDialogOpen(true)}
@@ -208,7 +226,7 @@ export function NavAreas({
               </SidebarMenuItem>
             </Activity>
             {!isLoading &&
-              areas.map((area) => (
+              optimisticAreas.map((area) => (
                 <SidebarMenuItem key={area.id}>
                   <div className="group/item relative flex items-center w-full">
                     {editingAreaId === area.id ? (
@@ -349,13 +367,12 @@ export function NavAreas({
           <AlertDialogHeader>
             <AlertDialogTitle>Gebiet löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Sind Sie sicher, dass Sie das Gebiet &quot;{areaToDelete?.name}
-              &quot; löschen möchten?
+              Gebiet &quot;{areaToDelete?.name}
+              &quot; wirklich löschen?
               <br />
               <br />
               <strong>
-                Alle zugehörigen Layer und Regionen werden unwiderruflich
-                gelöscht.
+                Alle Layer und Regionen werden unwiderruflich gelöscht.
               </strong>
             </AlertDialogDescription>
           </AlertDialogHeader>

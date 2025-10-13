@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import {
   undoChangeAction,
   redoChangeAction,
@@ -14,56 +14,75 @@ interface UndoRedoStatus {
   redoCount: number;
 }
 
+interface UseUndoRedoOptions {
+  onOptimisticUndo?: () => void;
+  onOptimisticRedo?: () => void;
+}
+
 export function useUndoRedo(
   areaId: number | null,
   initialStatus?: UndoRedoStatus,
-  onStatusUpdate?: () => void
+  onStatusUpdate?: () => void,
+  options?: UseUndoRedoOptions
 ) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const undo = useCallback(async () => {
     if (!areaId || !initialStatus?.canUndo || isLoading) return;
 
     setIsLoading(true);
-    try {
-      const result = await undoChangeAction(areaId);
 
-      if (result.success) {
-        toast.success("Änderung rückgängig gemacht");
-        // Trigger revalidation to update status
-        onStatusUpdate?.();
-      } else {
-        toast.error(result.error || "Fehler beim Rückgängigmachen");
+    startTransition(async () => {
+      // Optimistic update
+      options?.onOptimisticUndo?.();
+
+      try {
+        const result = await undoChangeAction(areaId);
+
+        if (result.success) {
+          toast.success("Änderung rückgängig gemacht");
+          // Trigger revalidation to update status
+          onStatusUpdate?.();
+        } else {
+          toast.error(result.error || "Fehler beim Rückgängigmachen");
+        }
+      } catch (error) {
+        console.error("Error undoing change:", error);
+        toast.error("Fehler beim Rückgängigmachen");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error undoing change:", error);
-      toast.error("Fehler beim Rückgängigmachen");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [areaId, initialStatus?.canUndo, isLoading, onStatusUpdate]);
+    });
+  }, [areaId, initialStatus?.canUndo, isLoading, onStatusUpdate, options]);
 
   const redo = useCallback(async () => {
     if (!areaId || !initialStatus?.canRedo || isLoading) return;
 
     setIsLoading(true);
-    try {
-      const result = await redoChangeAction(areaId);
 
-      if (result.success) {
-        toast.success("Änderung wiederhergestellt");
-        // Trigger revalidation to update status
-        onStatusUpdate?.();
-      } else {
-        toast.error(result.error || "Fehler beim Wiederherstellen");
+    startTransition(async () => {
+      // Optimistic update
+      options?.onOptimisticRedo?.();
+
+      try {
+        const result = await redoChangeAction(areaId);
+
+        if (result.success) {
+          toast.success("Änderung wiederhergestellt");
+          // Trigger revalidation to update status
+          onStatusUpdate?.();
+        } else {
+          toast.error(result.error || "Fehler beim Wiederherstellen");
+        }
+      } catch (error) {
+        console.error("Error redoing change:", error);
+        toast.error("Fehler beim Wiederherstellen");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error redoing change:", error);
-      toast.error("Fehler beim Wiederherstellen");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [areaId, initialStatus?.canRedo, isLoading, onStatusUpdate]);
+    });
+  }, [areaId, initialStatus?.canRedo, isLoading, onStatusUpdate, options]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -95,5 +114,6 @@ export function useUndoRedo(
     undo,
     redo,
     isLoading,
+    isPending,
   };
 }

@@ -1,99 +1,20 @@
-"use client";
+// Server Component wrapper that fetches data and passes promise to client
+// This prevents server-only imports from leaking into client bundle
 
-"use client";
+import { AppSidebarClient } from "./app-sidebar-client";
+import { getAreas } from "@/lib/db/data-functions";
+import type { ComponentProps } from "react";
+import type { Sidebar } from "@/components/ui/sidebar";
 
-import {
-  IconDashboard,
-  IconMapPin2,
-} from "@tabler/icons-react";
-import * as React from "react";
-
-import { NavMain } from "@/components/nav-main";
-import { NavAreas } from "@/components/areas/nav-areas";
-import { CreateAreaDialog } from "@/components/areas/create-area-dialog";
-import { type Area } from "@/lib/types/area-types";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { useRouter } from "next/navigation";
-import type { Route } from "next";
-
-const data = {
-  navMain: [
-    {
-      title: "Übersicht",
-      url: "/",
-      icon: IconDashboard,
-    },
-  ],
-};
-
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  areas?: Area[];
+interface AppSidebarProps extends ComponentProps<typeof Sidebar> {
   currentAreaId?: number | null;
   onAreaSelect?: (areaId: number) => void;
 }
 
-export function AppSidebar({
-  areas = [],
-  currentAreaId,
-  onAreaSelect,
-  ...props
-}: AppSidebarProps) {
-  const router = useRouter();
-  const [createAreaDialogOpen, setCreateAreaDialogOpen] = React.useState(false);
+export async function AppSidebar(props: AppSidebarProps) {
+  // Server Component: fetch data here and pass promise to client
+  // This keeps server-only code above the client boundary
+  const areasPromise = getAreas();
 
-  const handleCreateArea = () => {
-    setCreateAreaDialogOpen(true);
-  };
-
-  const handleAreaCreated = (areaId: number) => {
-    // Navigate to the newly created area
-    router.push(`/postal-codes/${areaId}` as Route);
-    if (onAreaSelect) {
-      onAreaSelect(areaId);
-    }
-  };
-
-  return (
-    <>
-      <Sidebar collapsible="offcanvas" {...props}>
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="data-[slot=sidebar-menu-button]:!p-1.5"
-              >
-                <a href="#">
-                  <IconMapPin2 className="!size-5" />
-                  <span className="text-base font-semibold">
-                    KRAUSS Gebietsmanagement
-                  </span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-        <SidebarContent>
-          <NavMain items={data.navMain} onCreateArea={handleCreateArea} />
-          <NavAreas
-            areas={areas}
-            currentAreaId={currentAreaId}
-            onAreaSelect={onAreaSelect}
-          />
-        </SidebarContent>
-      </Sidebar>
-      <CreateAreaDialog
-        open={createAreaDialogOpen}
-        onOpenChange={setCreateAreaDialogOpen}
-        onAreaCreated={handleAreaCreated}
-      />
-    </>
-  );
+  return <AppSidebarClient areasPromise={areasPromise} {...props} />;
 }

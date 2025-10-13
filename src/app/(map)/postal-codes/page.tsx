@@ -5,11 +5,11 @@ export const experimental_ppr = true;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "KRAUSS Territory Management - Postal Codes",
-    description: "Interactive territory management for German postal code regions",
+    title: "KRAUSS Gebietsmanagement - PLZ",
+    description: "Interaktives Gebietsmanagement für deutsche Postleitzahlen",
     openGraph: {
-      title: "KRAUSS Territory Management - Postal Codes",
-      description: "Interactive territory management for German postal code regions",
+      title: "KRAUSS Gebietsmanagement - PLZ",
+      description: "Interaktives Gebietsmanagement für deutsche Postleitzahlen",
       type: "website",
     },
   };

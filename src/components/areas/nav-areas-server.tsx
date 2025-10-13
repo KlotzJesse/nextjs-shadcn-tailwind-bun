@@ -19,11 +19,13 @@ async function NavAreasContent({
   currentAreaId,
   onAreaSelect,
 }: NavAreasServerProps) {
-  const areas = await getAreas();
+  // Server Component: initiate fetch and pass promise down
+  // Deduplication ensures this is efficient even if called multiple times
+  const areasPromise = getAreas();
 
   return (
     <NavAreas
-      areas={areas}
+      areasPromise={areasPromise}
       isLoading={false}
       currentAreaId={currentAreaId}
       onAreaSelect={onAreaSelect}

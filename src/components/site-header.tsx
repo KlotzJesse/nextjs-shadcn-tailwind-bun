@@ -1,5 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { VersionIndicatorSkeleton } from "@/components/ui/loading-skeleton";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
@@ -20,7 +21,7 @@ export function SiteHeader({ areaId }: { areaId: number }) {
         />
         <h1 className="text-base font-medium">Gebietsmanagement</h1>
         <div className="flex-1" />
-        <Suspense fallback={null}>
+        <Suspense fallback={<VersionIndicatorSkeleton />}>
           <VersionIndicator areaId={areaId} />
         </Suspense>
       </div>

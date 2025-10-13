@@ -35,7 +35,7 @@ import {
   IconDelta,
 } from "@tabler/icons-react";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useOptimistic } from "react";
 
 import { formatDistanceToNow } from "date-fns";
 
@@ -119,6 +119,12 @@ export function EnhancedVersionHistoryDialog({
   const [versionToRestore, setVersionToRestore] =
     useState<SelectAreaVersions | null>(null);
 
+  // Optimistic restore state
+  const [optimisticRestoring, updateOptimisticRestoring] = useOptimistic(
+    false,
+    (_state, restoring: boolean) => restoring
+  );
+
   const handleRestore = (version: SelectAreaVersions) => {
     setVersionToRestore(version);
 
@@ -127,6 +133,9 @@ export function EnhancedVersionHistoryDialog({
 
   const confirmRestore = () => {
     if (!versionToRestore) return;
+
+    // Optimistically show restoring state
+    updateOptimisticRestoring(true);
 
     startTransition(async () => {
       try {
@@ -157,6 +166,7 @@ export function EnhancedVersionHistoryDialog({
         setShowRestoreDialog(false);
 
         setVersionToRestore(null);
+        updateOptimisticRestoring(false);
       }
     });
   };
@@ -287,14 +297,14 @@ export function EnhancedVersionHistoryDialog({
                       )}
 
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>{version.changeCount} changes</span>
+                        <span>{version.changeCount} Änderungen</span>
                         <span>
                           {(version.snapshot as VersionSnapshot)?.layers
                             ?.length || 0}{" "}
-                          layer(s)
+                          Layer
                         </span>
                         {version.createdBy && (
-                          <span>by {version.createdBy}</span>
+                          <span>von {version.createdBy}</span>
                         )}
                       </div>
                     </div>

@@ -13,6 +13,8 @@ import { eq, and, like } from "drizzle-orm";
 
 import { getGranularityLevel } from "@/lib/utils/granularity-utils";
 
+import { revalidatePath, updateTag,refresh } from "next/cache";
+
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
 
@@ -163,6 +165,11 @@ export async function changeAreaGranularityAction(
         .where(eq(areas.id, areaId));
     });
 
+    updateTag(`area-${areaId}`);
+    updateTag("layers");
+    updateTag(`area-${areaId}-layers`);
+    revalidatePath('/postal-codes', 'layout');
+        refresh();
     return {
       success: true,
 
@@ -210,6 +217,8 @@ export async function getMatchingPostalCodesAction(
         ),
       );
 
+    revalidatePath('/postal-codes', 'layout');
+        refresh();
     return {
       success: true,
 

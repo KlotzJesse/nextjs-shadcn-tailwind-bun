@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createAreaAction } from "@/app/actions/area-actions";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useOptimistic } from "react";
 
 interface CreateAreaDialogProps {
   open: boolean;
@@ -38,24 +38,39 @@ export function CreateAreaDialog({
   const [description, setDescription] = useState("");
   const [granularity, setGranularity] = useState("5digit");
 
+  // Optimistic creating state
+  const [optimisticCreating, updateOptimisticCreating] = useOptimistic(
+    false,
+    (_state, creating: boolean) => creating
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     startTransition(async () => {
       try {
-        const result = await createAreaAction({ name, description, granularity, createdBy: "user" });
-        if (result.success && result.data) {
-          setName("");
-          setDescription("");
-          setGranularity("5digit");
-          onOpenChange(false);
-          if (onAreaCreated) {
-            onAreaCreated(result.data.id);
-          }
-        } else {
-          console.error("Failed to create area:", result.error);
-        }
+        // Optimistically show creating state INSIDE transition
+        updateOptimisticCreating(true);
+
+        // Server action handles redirect automatically
+        // This will throw NEXT_REDIRECT which is expected and should not be caught
+        await createAreaAction({ name, description, granularity, createdBy: "user" });
+
+        // These lines won't execute if redirect happens (which is expected)
+        setName("");
+        setDescription("");
+        setGranularity("5digit");
+        onOpenChange(false);
       } catch (error) {
+        // Only catch real errors, not NEXT_REDIRECT
+        if (error && typeof error === 'object' && 'digest' in error &&
+            typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          // This is a redirect, not an error - let it propagate
+          throw error;
+        }
+        // Only log actual errors
         console.error("Error creating area:", error);
+        updateOptimisticCreating(false);
       }
     });
   };
@@ -65,10 +80,9 @@ export function CreateAreaDialog({
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Neues Gebiet erstellen</DialogTitle>
+            <DialogTitle>Gebiet erstellen</DialogTitle>
             <DialogDescription>
-              Erstellen Sie ein neues Gebiet mit mehreren Layern für
-              verschiedene Postleitzahlen-Bereiche.
+              Gebiet mit mehreren Layern für PLZ-Bereiche erstellen.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -78,7 +92,7 @@ export function CreateAreaDialog({
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="z.B. Nord-Region"
+                placeholder="z.B. Nordregion"
                 required
               />
             </div>
@@ -88,7 +102,7 @@ export function CreateAreaDialog({
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optionale Beschreibung..."
+                placeholder="Optional..."
                 rows={3}
               />
             </div>
@@ -112,12 +126,12 @@ export function CreateAreaDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isPending}
+              disabled={isPending || optimisticCreating}
             >
               Abbrechen
             </Button>
-            <Button type="submit" disabled={isPending || !name}>
-              {isPending ? "Erstelle..." : "Erstellen"}
+            <Button type="submit" disabled={isPending || optimisticCreating || !name}>
+              {(isPending || optimisticCreating) ? "Erstelle..." : "Erstellen"}
             </Button>
           </DialogFooter>
         </form>

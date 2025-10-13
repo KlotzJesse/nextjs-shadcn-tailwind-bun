@@ -16,7 +16,7 @@ import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-import { updateTag, unstable_cache } from "next/cache";
+import { updateTag, revalidatePath,refresh } from "next/cache";
 
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
@@ -163,6 +163,9 @@ export async function recordChangeAction(
 
     updateTag("undo-redo-status");
 
+    revalidatePath("/postal-codes", "layout");
+
+    refresh();
     return { success: true, data: changeKey };
   } catch (error) {
     console.error("Error recording change:", error);
@@ -317,7 +320,8 @@ export async function undoChangeAction(
     });
 
     updateTag("undo-redo-status");
-
+    revalidatePath("/postal-codes", "layout");
+    refresh();
     return { success: true, data: result };
   } catch (error) {
     console.error("Error undoing change:", error);
@@ -426,7 +430,8 @@ export async function redoChangeAction(
     });
 
     updateTag("undo-redo-status");
-
+    revalidatePath("/postal-codes", "layout");
+    refresh();
     return { success: true, data: result };
   } catch (error) {
     console.error("Error redoing change:", error);
@@ -682,137 +687,6 @@ async function applyRedoOperation(
 
 // ===============================
 
-/**
- * Get change history for an area
- */
-
-export async function getChangeHistoryAction(
-  areaId: number,
-
-  options?: {
-    versionId?: number;
-
-    limit?: number;
-
-    includeUndone?: boolean;
-  },
-): ServerActionResponse<SelectAreaChanges[]> {
-  try {
-    let whereConditions = eq(areaChanges.areaId, areaId);
-
-    if (options?.versionId) {
-      // For now, we'll need to get the version first to get the composite key
-
-      // This is a limitation of the current design - we might need to change this later
-
-      const version = await db.query.areaVersions.findFirst({
-        where: and(
-          eq(areaVersions.areaId, areaId),
-
-          eq(areaVersions.versionNumber, options.versionId),
-        ),
-      });
-
-      if (version) {
-        whereConditions = and(
-          whereConditions,
-
-          eq(areaChanges.versionAreaId, version.areaId),
-
-          eq(areaChanges.versionNumber, version.versionNumber),
-        )!;
-      }
-    }
-
-    if (!options?.includeUndone) {
-      whereConditions = and(
-        whereConditions,
-
-        eq(areaChanges.isUndone, "false"),
-      )!;
-    }
-
-    let query = db
-
-      .select()
-
-      .from(areaChanges)
-
-      .where(whereConditions)
-
-      .orderBy(desc(areaChanges.sequenceNumber));
-
-    if (options?.limit) {
-      query = query.limit(options.limit) as unknown as typeof query;
-    }
-
-    const changes = await query;
-
-    return { success: true, data: changes };
-  } catch (error) {
-    console.error("Error fetching change history:", error);
-
-    return { success: false, error: "Failed to fetch change history" };
-  }
-}
-
-/**
- * Get undo/redo stack status
- */
-
-export const getUndoRedoStatusAction = unstable_cache(
-  async (
-    areaId: number,
-  ): ServerActionResponse<{
-    canUndo: boolean;
-
-    canRedo: boolean;
-
-    undoCount: number;
-
-    redoCount: number;
-  }> => {
-    try {
-      const stack = await db.query.areaUndoStacks.findFirst({
-        where: eq(areaUndoStacks.areaId, areaId),
-      });
-
-      if (!stack) {
-        return {
-          success: true,
-
-          data: { canUndo: false, canRedo: false, undoCount: 0, redoCount: 0 },
-        };
-      }
-
-      const undoStack = (stack.undoStack as ChangeKey[]) || [];
-
-      const redoStack = (stack.redoStack as ChangeKey[]) || [];
-
-      return {
-        success: true,
-
-        data: {
-          canUndo: undoStack.length > 0,
-
-          canRedo: redoStack.length > 0,
-
-          undoCount: undoStack.length,
-
-          redoCount: redoStack.length,
-        },
-      };
-    } catch (error) {
-      console.error("Error getting undo/redo status:", error);
-
-      return { success: false, error: "Failed to get undo/redo status" };
-    }
-  },
-
-  ["undo-redo-status"],
-
-  { tags: ["undo-redo-status"] },
-);
 
 /**
  * Clear undo/redo stacks (useful when creating a new version)
@@ -842,6 +716,9 @@ export async function clearUndoRedoStacksAction(
         .where(eq(areaUndoStacks.id, stack.id));
     }
 
+    updateTag("undo-redo-status");
+    revalidatePath("/postal-codes", "layout");
+    refresh();
     return { success: true };
   } catch (error) {
     console.error("Error clearing undo/redo stacks:", error);

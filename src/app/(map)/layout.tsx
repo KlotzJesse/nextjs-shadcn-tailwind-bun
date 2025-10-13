@@ -1,32 +1,13 @@
-import { FeatureErrorBoundary } from "@/components/ui/error-boundaries";
+import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getAreas } from "@/lib/db/data-functions";
-import { connection } from "next/server";
-import dynamic from "next/dynamic";
+import { SidebarSkeleton } from "@/components/ui/loading-skeleton";
+import { FeatureErrorBoundary } from "@/components/ui/error-boundaries";
 import { Suspense } from "react";
-
-const AppSidebar = dynamic(
-  () =>
-    import("@/components/app-sidebar").then((m) => ({ default: m.AppSidebar })),
-  {
-    loading: () => <Skeleton className="w-72 h-full" />,
-  }
-);
-
-async function AppSidebarWithData() {
-  // Ensure connection is established for prerendering
-  await connection();
-
-  // Fetch areas data on the server
-  const areas = await getAreas();
-
-  return <AppSidebar variant="inset" areas={areas} />;
-}
+import { connection } from "next/server";
 
 export const experimental_ppr = true;
 
-export default function MapLayout({
+export default async function MapLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -41,8 +22,9 @@ export default function MapLayout({
           } as React.CSSProperties
         }
       >
-        <Suspense fallback={<Skeleton className="w-72 h-full" />}>
-          <AppSidebarWithData />
+        {/* Sidebar with Suspense boundary */}
+        <Suspense fallback={<SidebarSkeleton />}>
+          <AppSidebar variant="inset" />
         </Suspense>
         <SidebarInset>
           <div className="flex flex-1 flex-col">

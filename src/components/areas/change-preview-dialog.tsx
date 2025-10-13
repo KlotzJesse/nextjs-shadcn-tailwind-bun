@@ -233,7 +233,7 @@ export function ChangePreviewDialog({
 
             {change.createdBy && (
               <p className="text-sm text-muted-foreground">
-                By: {change.createdBy}
+                Von: {change.createdBy}
               </p>
             )}
 

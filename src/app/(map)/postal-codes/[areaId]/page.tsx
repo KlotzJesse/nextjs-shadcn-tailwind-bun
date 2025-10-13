@@ -1,5 +1,6 @@
 import { PostalCodesErrorBoundary } from "@/components/ui/error-boundaries";
 import { PostalCodesViewSkeleton } from "@/components/ui/loading-skeletons";
+import { SiteHeaderSkeleton } from "@/components/ui/loading-skeleton";
 import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
 import { connection } from "next/server";
@@ -75,11 +76,11 @@ export async function generateMetadata({
   }
 
   return {
-    title: `KRAUSS Territory Management - ${granularity.toUpperCase()} Postal Codes`,
-    description: `Interactive territory management for German postal code regions with ${granularity} granularity`,
+    title: `KRAUSS Gebietsmanagement - ${granularity.toUpperCase()} PLZ`,
+    description: `Interaktives Gebietsmanagement für deutsche Postleitzahlen mit ${granularity} Granularität`,
     openGraph: {
-      title: `KRAUSS Territory Management - ${granularity.toUpperCase()} Postal Codes`,
-      description: `Interactive territory management for German postal code regions with ${granularity} granularity`,
+      title: `KRAUSS Gebietsmanagement - ${granularity.toUpperCase()} PLZ`,
+      description: `Interaktives Gebietsmanagement für deutsche Postleitzahlen mit ${granularity} Granularität`,
       type: "website",
     },
   };
@@ -89,16 +90,14 @@ export default async function PostalCodesPage({
   params,
   searchParams,
 }: PostalCodesPageProps) {
-  await connection();
   const { areaId: areaIdParam } = await params;
   const search = await searchParams;
 
   // Extract area ID from route params
   const areaId = parseInt(areaIdParam, 10);
 
-  const activeLayerId = search.activeLayerId
-    ? parseInt(search.activeLayerId as string, 10)
-    : null;
+  // Note: activeLayerId is now handled purely client-side via URL state
+  // to prevent server re-renders on layer switching
   const versionId = search.versionId
     ? parseInt(search.versionId as string, 10)
     : null;
@@ -138,7 +137,7 @@ export default async function PostalCodesPage({
 
   return (
     <>
-      <Suspense fallback={<Skeleton className="w-full h-12" />}>
+      <Suspense fallback={<SiteHeaderSkeleton />}>
         <SiteHeader areaId={areaId} />
       </Suspense>
       <div className="h-full px-4 lg:px-6">
@@ -147,7 +146,6 @@ export default async function PostalCodesPage({
             <ServerPostalCodesView
               defaultGranularity={granularity}
               areaId={areaId}
-              activeLayerId={activeLayerId!}
               versionId={versionId!}
             />
           </Suspense>

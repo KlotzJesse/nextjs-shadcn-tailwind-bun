@@ -14,6 +14,8 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 
 import { clearUndoRedoStacksAction } from "./change-tracking-actions";
 
+import { revalidatePath, updateTag } from "next/cache";
+
 type ServerActionResponse<T = void> = Promise<{
   success: boolean;
 
@@ -211,6 +213,11 @@ export async function createVersionAction(
 
     await clearUndoRedoStacksAction(areaId);
 
+    updateTag("versions");
+    updateTag(`area-${areaId}-versions`);
+    updateTag(`area-${areaId}`);
+    updateTag("undo-redo-status");
+    revalidatePath('/postal-codes', 'layout');
     return { success: true, data: result };
   } catch (error) {
     console.error("Error creating version:", error);
@@ -262,6 +269,9 @@ export async function autoSaveVersionAction(
       createdBy,
     });
 
+    updateTag("versions");
+    updateTag(`area-${areaId}-versions`);
+    revalidatePath('/postal-codes', 'layout');
     return result;
   } catch (error) {
     console.error("Error auto-saving version:", error);
@@ -290,6 +300,7 @@ export async function getVersionsAction(
       orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
     });
 
+    revalidatePath('/postal-codes', 'layout');
     return { success: true, data: versions };
   } catch (error) {
     console.error("Error fetching versions:", error);
@@ -320,6 +331,7 @@ export async function getVersionAction(
       return { success: false, error: "Version not found" };
     }
 
+    revalidatePath('/postal-codes', 'layout');
     return { success: true, data: version };
   } catch (error) {
     console.error("Error fetching version:", error);
@@ -502,6 +514,13 @@ export async function restoreVersionAction(
 
     await clearUndoRedoStacksAction(areaId);
 
+    updateTag("versions");
+    updateTag(`area-${areaId}-versions`);
+    updateTag(`area-${areaId}`);
+    updateTag("layers");
+    updateTag(`area-${areaId}-layers`);
+    updateTag("undo-redo-status");
+    revalidatePath('/postal-codes', 'layout');
     return { success: true, data: result };
   } catch (error) {
     console.error("Error restoring version:", error);
@@ -573,6 +592,9 @@ export async function deleteVersionAction(
         );
     });
 
+    updateTag("versions");
+    updateTag(`area-${areaId}-versions`);
+    revalidatePath('/postal-codes', 'layout');
     return { success: true };
   } catch (error) {
     console.error("Error deleting version:", error);
@@ -681,6 +703,7 @@ export async function compareVersionsAction(
       (c) => !allCodes2.has(c),
     );
 
+    revalidatePath('/postal-codes', 'layout');
     return {
       success: true,
 

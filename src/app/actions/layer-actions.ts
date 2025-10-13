@@ -51,12 +51,12 @@ export async function createLayerAction(
       createdBy,
     });
 
-    revalidatePath(`/postal-codes`);
     updateTag("layers");
     updateTag(`area-${areaId}-layers`);
     updateTag(`area-${areaId}`);
     updateTag("undo-redo");
     updateTag(`area-${areaId}-undo-redo`);
+    revalidatePath("/postal-codes", "layout");
     return { success: true, data: { id: layer.id } };
   } catch (error) {
     console.error("Error creating layer:", error);
@@ -159,7 +159,7 @@ export async function updateLayerAction(
       createdBy,
     });
 
-    revalidatePath(`/postal-codes`);
+    revalidatePath("/postal-codes", "layout");
     updateTag("layers");
     updateTag(`area-${areaId}-layers`);
     updateTag(`area-${areaId}`);
@@ -221,7 +221,7 @@ export async function deleteLayerAction(
       createdBy,
     });
 
-    revalidatePath(`/postal-codes`);
+    revalidatePath("/postal-codes", "layout");
     updateTag("layers");
     updateTag(`area-${areaId}-layers`);
     updateTag(`area-${areaId}`);
@@ -297,7 +297,7 @@ export async function addPostalCodesToLayerAction(
       createdBy,
     });
 
-    revalidatePath(`/postal-codes`);
+    revalidatePath("/postal-codes", "layout");
     updateTag("layers");
     updateTag(`area-${areaId}-layers`);
     updateTag(`area-${areaId}`);
@@ -375,7 +375,7 @@ export async function removePostalCodesFromLayerAction(
       createdBy,
     });
 
-    revalidatePath(`/postal-codes`);
+    revalidatePath("/postal-codes", "layout");
     updateTag("layers");
     updateTag(`area-${areaId}-layers`);
     updateTag(`area-${areaId}`);
