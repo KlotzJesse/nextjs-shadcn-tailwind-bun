@@ -67,6 +67,8 @@ export async function createAreaAction(data: {
 
   createdBy?: string;
 }) {
+  let redirectPath: string | null = null;
+
   try {
     // Create the area first
 
@@ -113,12 +115,17 @@ export async function createAreaAction(data: {
     revalidatePath("/postal-codes", "layout");
     revalidatePath(`/postal-codes/${area.id}`, "page");
 
-    // Server-side redirect - this throws NEXT_REDIRECT and stops execution
-    redirect(`/postal-codes/${area.id}` as Route);
+    // Set redirect path for finally block
+    redirectPath = `/postal-codes/${area.id}`;
   } catch (error) {
     console.error("Error creating area:", error);
 
     return { success: false, error: "Failed to create area" };
+  } finally {
+    // Redirect in finally block for cleaner resource management
+    if (redirectPath) {
+      redirect(redirectPath as Route);
+    }
   }
 }
 
@@ -197,6 +204,8 @@ export async function updateAreaAction(
 }
 
 export async function deleteAreaAction(id: number) {
+  let redirectPath: string | null = null;
+
   try {
     // Delete in correct order due to foreign key constraints
 
@@ -234,19 +243,17 @@ export async function deleteAreaAction(id: number) {
 
     revalidatePath("/postal-codes", "layout");
 
-    // Server-side redirect after deletion - this throws NEXT_REDIRECT
-    redirect("/postal-codes" as Route);
+    // Set redirect path for finally block
+    redirectPath = "/postal-codes";
   } catch (error) {
-    // Check if this is a redirect (expected) or an actual error
-    if (error && typeof error === 'object' && 'digest' in error &&
-        typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-      // This is the redirect working as intended - rethrow it
-      throw error;
-    }
-
     console.error("Error deleting area:", error);
 
     return { success: false, error: "Failed to delete area" };
+  } finally {
+    // Redirect in finally block for cleaner resource management
+    if (redirectPath) {
+      redirect(redirectPath as Route);
+    }
   }
 }
 
