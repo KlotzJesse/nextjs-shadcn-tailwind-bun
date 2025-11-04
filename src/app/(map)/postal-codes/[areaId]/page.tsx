@@ -17,8 +17,6 @@ const ServerPostalCodesView = nextDynamic(
   }
 );
 
-export const experimental_ppr = true;
-
 interface PostalCodesPageProps {
   params: Promise<{ areaId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;

@@ -4,8 +4,6 @@ import { SidebarSkeleton } from "@/components/ui/loading-skeleton";
 import { FeatureErrorBoundary } from "@/components/ui/error-boundaries";
 import { Suspense } from "react";
 
-export const experimental_ppr = true;
-
 export default async function MapLayout({
   children,
 }: {

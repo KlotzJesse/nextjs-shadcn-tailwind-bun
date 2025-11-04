@@ -20,8 +20,6 @@ const ThemeProvider = dynamic(
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const experimental_ppr = true;
-
 export const metadata: Metadata = {
   title: "Gebietsmanager",
   description:
