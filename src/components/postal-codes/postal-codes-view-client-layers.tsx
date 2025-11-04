@@ -2,20 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
 import { usePostalCodeLookup } from "@/lib/hooks/use-postal-code-lookup";
 
 import { usePostalCodeSearch } from "@/lib/hooks/use-postal-code-search";
@@ -49,7 +35,7 @@ type Layer = InferSelectModel<typeof areaLayers> & {
   postalCodes?: { postalCode: string }[];
 };
 
-import { ChevronsUpDownIcon, FileUpIcon } from "lucide-react";
+import { FileUpIcon } from "lucide-react";
 
 import dynamic from "next/dynamic";
 
@@ -364,14 +350,6 @@ export function PostalCodesViewClientWithLayers({
     );
   };
 
-  const [postalCodeQuery, setPostalCodeQuery] = useState("");
-
-  const [postalCodeOpen, setPostalCodeOpen] = useState(false);
-
-  const [selectedPostalCode, setSelectedPostalCode] = useState<string | null>(
-    null,
-  );
-
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [previewPostalCode, setPreviewPostalCode] = useState<string | null>(null);
 
@@ -461,12 +439,8 @@ export function PostalCodesViewClientWithLayers({
   };
 
   // Get all postal codes for autocomplete
-
-  const allPostalCodes = data.features
-
-    .map((f) => f.properties?.code || f.properties?.PLZ || f.properties?.plz)
-
-    .filter((code): code is string => Boolean(code));
+  // Previously: const allPostalCodes = data.features.map(...).filter(...)
+  // Not currently needed as postal code dropdown is commented out
 
   return (
     <div className="h-full relative">

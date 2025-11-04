@@ -138,8 +138,7 @@ export async function exportLayersXLSX(layers: LayerExportData[], areaName?: str
         const plzWithD = `D-${plzFormatted}`;
         const plzWithDAndComma = `${plzWithD},`;
 
-        // Use string prefix to force Excel to treat as text and preserve leading zeros
-        return [`'${plzFormatted}`, `'${plzWithD}`, `'${plzWithDAndComma}`];
+        return [plzFormatted, plzWithD, plzWithDAndComma];
       });
 
       // Add header row
@@ -149,6 +148,18 @@ export async function exportLayersXLSX(layers: LayerExportData[], areaName?: str
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Set all cells to text format to preserve leading zeros
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (ws[cellAddress]) {
+            ws[cellAddress].t = 's'; // Set cell type to string
+          }
+        }
+      }
+
       XLSX.utils.book_append_sheet(wb, ws, layerName);
     });
 
@@ -184,12 +195,21 @@ export async function exportLayersXLSX(layers: LayerExportData[], areaName?: str
 export async function exportPostalCodesXLSX(codes: string[]) {
   const exportPromise = async () => {
     const XLSX = await import("xlsx");
-    // Use string prefix to force Excel to treat as text and preserve leading zeros
-    const formattedCodes = codes.map((code) => [`'${formatPostalCode(code)}`]);
+    const formattedCodes = codes.map((code) => [formatPostalCode(code)]);
     const ws = XLSX.utils.aoa_to_sheet([
       ["Postleitzahl"],
       ...formattedCodes,
     ]);
+
+    // Set all data cells to text format to preserve leading zeros
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
+      if (ws[cellAddress]) {
+        ws[cellAddress].t = 's'; // Set cell type to string
+      }
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Postleitzahlen");
     XLSX.writeFile(wb, "postleitzahlen.xlsx");
