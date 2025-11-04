@@ -2,7 +2,7 @@ import "server-only";
 // Database functions for data loading - to be used directly in server components
 // These replace the server actions for GET operations
 
-import { unstable_cacheTag as cacheTag } from "next/cache";
+import { cacheTag } from "next/cache";
 import {
   areas,
   areaLayers,
