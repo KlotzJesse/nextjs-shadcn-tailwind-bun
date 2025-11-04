@@ -129,6 +129,7 @@ export function PostalCodesViewClientWithLayers({
   postalCodesDataPromise,
   statesDataPromise,
   defaultGranularity,
+  areaPromise,
   areaId,
   layersPromise,
   undoRedoStatusPromise,
@@ -494,8 +495,7 @@ export function PostalCodesViewClientWithLayers({
           </AddressAutocompleteErrorBoundary>
         </div>
 
-        {/* Postal Code Dropdown - Commented out as Umkreis search already handles this */}
-        {/* <Popover open={postalCodeOpen} onOpenChange={setPostalCodeOpen}>
+        {/* Postal Code Dropdown - Commented out as Umkreis search already handles this /* <Popover open={postalCodeOpen} onOpenChange={setPostalCodeOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="secondary"
@@ -561,10 +561,10 @@ export function PostalCodesViewClientWithLayers({
               </CommandList>
             </Command>
           </PopoverContent>
-        </Popover> */
+        </Popover> */}
 
         {/* Import Button - Opens the import dialog */}
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

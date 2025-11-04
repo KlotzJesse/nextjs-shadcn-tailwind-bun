@@ -130,8 +130,8 @@ export function AddressAutocompleteEnhanced({
   // Helper function to get layers containing a postal code
   const getLayersForPostalCode = useStableCallback((postalCode: string) => {
     if (!layers || layers.length === 0) return [];
-    return layers.filter(layer =>
-      layer.postalCodes?.some(pc => pc.postalCode === postalCode)
+    return layers.filter((layer) =>
+      layer.postalCodes?.some((pc) => pc.postalCode === postalCode)
     );
   });
 
@@ -421,33 +421,36 @@ export function AddressAutocompleteEnhanced({
                       <div className="text-xs text-muted-foreground truncate">
                         {result.display_name}
                       </div>
-                      {result.postal_code && (() => {
-                        const containingLayers = getLayersForPostalCode(result.postal_code);
-                        if (containingLayers.length > 0) {
-                          return (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {containingLayers.map(layer => (
-                                <span
-                                  key={layer.id}
-                                  className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md border"
-                                  style={{
-                                    borderColor: layer.color,
-                                    backgroundColor: `${layer.color}15`,
-                                    color: layer.color
-                                  }}
-                                >
-                                  <span
-                                    className="w-2 h-2 rounded-full"
-                                    style={{ backgroundColor: layer.color }}
-                                  />
-                                  {layer.name}
-                                </span>
-                              ))}
-                            </div>
+                      {result.postal_code &&
+                        (() => {
+                          const containingLayers = getLayersForPostalCode(
+                            result.postal_code
                           );
-                        }
-                        return null;
-                      })()}
+                          if (containingLayers.length > 0) {
+                            return (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {containingLayers.map((layer) => (
+                                  <span
+                                    key={layer.id}
+                                    className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md border"
+                                    style={{
+                                      borderColor: layer.color,
+                                      backgroundColor: `${layer.color}15`,
+                                      color: layer.color,
+                                    }}
+                                  >
+                                    <span
+                                      className="w-2 h-2 rounded-full"
+                                      style={{ backgroundColor: layer.color }}
+                                    />
+                                    {layer.name}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                     </div>
                     <div className="flex gap-1 shrink-0">
                       {onPreviewSelect && result.postal_code && (
@@ -456,7 +459,11 @@ export function AddressAutocompleteEnhanced({
                             <TooltipTrigger asChild>
                               <Button
                                 size="sm"
-                                variant={previewPostalCode === result.postal_code ? "default" : "outline"}
+                                variant={
+                                  previewPostalCode === result.postal_code
+                                    ? "default"
+                                    : "outline"
+                                }
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onPreviewSelect(
