@@ -4,6 +4,18 @@ import type { Content, PageSize } from "pdfmake/interfaces";
 interface LayerExportData {
   layerName: string;
   postalCodes: string[];
+  areaName?: string;
+}
+
+/**
+ * Formats a postal code to ensure it has leading zeros (5 digits).
+ * Examples: "1900" -> "01900", "01900" -> "01900", "12345" -> "12345"
+ */
+function formatPostalCode(code: string): string {
+  // Remove D- prefix if present
+  const cleanCode = code.startsWith("D-") ? code.substring(2) : code;
+  // Pad with leading zeros to ensure 5 digits
+  return cleanCode.padStart(5, "0");
 }
 
 /**
@@ -15,8 +27,9 @@ interface LayerExportData {
  * Layer Name 2:
  * ...
  * @param layers Array of layer data with postal codes
+ * @param areaName Optional area/project name to include in filename
  */
-export function exportLayersPDF(layers: LayerExportData[]) {
+export function exportLayersPDF(layers: LayerExportData[], areaName?: string) {
   const exportPromise = async () => {
     // Use pdfmake for PDF generation without manual positioning
     const pdfMake = await import("pdfmake/build/pdfmake");
@@ -45,7 +58,9 @@ export function exportLayersPDF(layers: LayerExportData[]) {
       });
 
       // Layer postal codes
-      const formattedCodes = postalCodes.map((code) => `D-${code}`).join(", ");
+      const formattedCodes = postalCodes
+        .map((code) => `D-${formatPostalCode(code)}`)
+        .join(", ");
       content.push({
         text: formattedCodes,
         style: "content",
@@ -81,7 +96,8 @@ export function exportLayersPDF(layers: LayerExportData[]) {
       .toISOString()
       .slice(0, 19)
       .replace(/[:.]/g, "-");
-    const filename = `gebiete-export-${timestamp}.pdf`;
+    const areaPrefix = areaName ? `${areaName.replace(/[^a-zA-Z0-9-_]/g, "_")}_` : "";
+    const filename = `${areaPrefix}gebiete-export-${timestamp}.pdf`;
 
     // Generate and download PDF
     const pdfDocGenerator = pdfMake.default.createPdf(docDefinition);
@@ -105,8 +121,9 @@ export function exportLayersPDF(layers: LayerExportData[]) {
  * Exports postal codes per layer as separate sheets in XLSX file.
  * Creates one sheet per layer with 3 columns: PLZ without D-, PLZ with D-, PLZ with D-POSTALCODE
  * @param layers Array of layer data with postal codes
+ * @param areaName Optional area/project name to include in filename
  */
-export async function exportLayersXLSX(layers: LayerExportData[]) {
+export async function exportLayersXLSX(layers: LayerExportData[], areaName?: string) {
   const exportPromise = async () => {
     const XLSX = await import("xlsx");
 
@@ -117,13 +134,12 @@ export async function exportLayersXLSX(layers: LayerExportData[]) {
     layers.forEach(({ layerName, postalCodes }) => {
       // Transform postal codes into the 3 required formats
       const sheetData = postalCodes.map((plz) => {
-        const plzWithoutD = plz.startsWith("D-") ? plz.substring(2) : plz;
-        const plzWithD = plzWithoutD.startsWith("D-")
-          ? plzWithoutD
-          : `D-${plzWithoutD}`;
+        const plzFormatted = formatPostalCode(plz);
+        const plzWithD = `D-${plzFormatted}`;
         const plzWithDAndComma = `${plzWithD},`;
 
-        return [plzWithoutD, plzWithD, plzWithDAndComma];
+        // Use string prefix to force Excel to treat as text and preserve leading zeros
+        return [`'${plzFormatted}`, `'${plzWithD}`, `'${plzWithDAndComma}`];
       });
 
       // Add header row
@@ -141,7 +157,8 @@ export async function exportLayersXLSX(layers: LayerExportData[]) {
       .toISOString()
       .slice(0, 19)
       .replace(/[:.]/g, "-");
-    const filename = `gebiete-export-${timestamp}.xlsx`;
+    const areaPrefix = areaName ? `${areaName.replace(/[^a-zA-Z0-9-_]/g, "_")}_` : "";
+    const filename = `${areaPrefix}gebiete-export-${timestamp}.xlsx`;
 
     XLSX.writeFile(wb, filename);
 
@@ -161,14 +178,17 @@ export async function exportLayersXLSX(layers: LayerExportData[]) {
 
 /**
  * Exports an array of postal codes as an XLSX file. Uses dynamic import for xlsx.
+ * Ensures postal codes are formatted with leading zeros.
  * @param codes Array of postal codes (strings)
  */
 export async function exportPostalCodesXLSX(codes: string[]) {
   const exportPromise = async () => {
     const XLSX = await import("xlsx");
+    // Use string prefix to force Excel to treat as text and preserve leading zeros
+    const formattedCodes = codes.map((code) => [`'${formatPostalCode(code)}`]);
     const ws = XLSX.utils.aoa_to_sheet([
       ["Postleitzahl"],
-      ...codes.map((code: string) => [code]),
+      ...formattedCodes,
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Postleitzahlen");
@@ -185,11 +205,22 @@ export async function exportPostalCodesXLSX(codes: string[]) {
 
 /**
  * Copies an array of postal codes as a CSV string to the clipboard.
+ * Ensures postal codes are formatted with leading zeros.
  * @param codes Array of postal codes (strings)
  */
 export async function copyPostalCodesCSV(codes: string[]) {
   const copyPromise = async () => {
-    const csv = codes.join(",");
+    // Format codes to ensure leading zeros are preserved
+    const formattedCodes = codes.map((code) => {
+      // If code already has D- prefix, keep it and format the postal code part
+      if (code.startsWith("D-")) {
+        const postalPart = code.substring(2);
+        return `D-${formatPostalCode(postalPart)}`;
+      }
+      // Otherwise just format the code
+      return formatPostalCode(code);
+    });
+    const csv = formattedCodes.join(",");
     await navigator.clipboard.writeText(csv);
     return `${codes.length} Postleitzahlen in Zwischenablage kopiert`;
   };

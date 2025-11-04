@@ -144,6 +144,7 @@ export function PostalCodesViewClientWithLayers({
   const initialUndoRedoStatus = use(undoRedoStatusPromise);
   const versions = use(versionsPromise);
   const changes = use(changesPromise);
+  const area = use(areaPromise);
 
   // Read activeLayerId directly from URL state for instant switching
   const mapState = useMapState();
@@ -371,6 +372,7 @@ export function PostalCodesViewClientWithLayers({
   );
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [previewPostalCode, setPreviewPostalCode] = useState<string | null>(null);
 
   const handleGranularityChange = (newGranularity: string) => {
     if (newGranularity === defaultGranularity) return;
@@ -475,14 +477,25 @@ export function PostalCodesViewClientWithLayers({
               onAddressSelect={handleAddressSelect}
               onBoundarySelect={(codes) => handleImport(codes)}
               onRadiusSelect={handleRadiusSelect}
+              onPreviewSelect={(coords, label, postalCode) => {
+                // Set preview postal code and zoom to it
+                if (postalCode) {
+                  setPreviewPostalCode(previewPostalCode === postalCode ? null : postalCode);
+                  // Zoom to the postal code
+                  searchPostalCodes(postalCode);
+                }
+              }}
               performDrivingRadiusSearch={performDrivingRadiusSearchWrapper}
               granularity={defaultGranularity}
               triggerClassName="truncate"
+              previewPostalCode={previewPostalCode}
+              layers={optimisticLayers}
             />
           </AddressAutocompleteErrorBoundary>
         </div>
 
-        <Popover open={postalCodeOpen} onOpenChange={setPostalCodeOpen}>
+        {/* Postal Code Dropdown - Commented out as Umkreis search already handles this */}
+        {/* <Popover open={postalCodeOpen} onOpenChange={setPostalCodeOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="secondary"
@@ -548,7 +561,7 @@ export function PostalCodesViewClientWithLayers({
               </CommandList>
             </Command>
           </PopoverContent>
-        </Popover>
+        </Popover> */
 
         {/* Import Button - Opens the import dialog */}
         <div className="flex-shrink-0">
@@ -583,6 +596,7 @@ export function PostalCodesViewClientWithLayers({
             layers={optimisticLayers}
             activeLayerId={activeLayerId}
             areaId={areaId}
+            areaName={area?.name}
             addPostalCodesToLayer={addPostalCodesToLayer}
             removePostalCodesFromLayer={removePostalCodesFromLayer}
             isViewingVersion={isViewingVersion}

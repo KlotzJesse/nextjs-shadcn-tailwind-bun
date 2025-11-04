@@ -69,6 +69,7 @@ const BaseMapComponent = ({
   layers,
   activeLayerId,
   areaId,
+  areaName,
   addPostalCodesToLayer,
   removePostalCodesFromLayer,
   isViewingVersion = false,
@@ -203,6 +204,7 @@ const BaseMapComponent = ({
                 onAddPending={interactions.addPendingToSelection}
                 onRemovePending={interactions.removePendingFromSelection}
                 areaId={areaId ?? undefined}
+                areaName={areaName}
                 activeLayerId={activeLayerId}
                 onLayerSelect={(layerId: number) => {
                   console.log("Test");

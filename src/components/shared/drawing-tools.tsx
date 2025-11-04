@@ -141,6 +141,8 @@ export interface DrawingToolsProps {
 
   areaId?: number;
 
+  areaName?: string; // Optional area/project name for exports
+
   activeLayerId?: number | null;
 
   onLayerSelect?: (layerId: number) => void;
@@ -309,6 +311,8 @@ function DrawingToolsImpl({
   onRemovePending,
 
   areaId,
+
+  areaName,
 
   activeLayerId,
 
@@ -634,7 +638,7 @@ function DrawingToolsImpl({
       return;
     }
 
-    await exportLayersXLSX(layersWithCodes);
+    await exportLayersXLSX(layersWithCodes, areaName);
   };
 
   // Copy as CSV - moved to per-layer buttons
@@ -672,7 +676,7 @@ function DrawingToolsImpl({
       return;
     }
 
-    await exportLayersPDF(layersWithCodes);
+    await exportLayersPDF(layersWithCodes, areaName);
   };
 
   // --- UI State ---

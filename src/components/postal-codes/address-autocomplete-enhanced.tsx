@@ -26,7 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useStableCallback } from "@/lib/hooks/use-stable-callback";
-import { ChevronsUpDownIcon, MapPinIcon, RadiusIcon } from "lucide-react";
+import { ChevronsUpDownIcon, MapPinIcon, RadiusIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import { useRef, useState, useOptimistic } from "react";
 import { toast } from "sonner";
 import {
@@ -57,6 +57,11 @@ interface AddressAutocompleteEnhancedProps {
     radius: number,
     granularity: string
   ) => void;
+  onPreviewSelect?: (
+    coords: [number, number],
+    label: string,
+    postalCode?: string
+  ) => void; // For previewing/highlighting a postal code without adding it
   performDrivingRadiusSearch?: (
     coordinates: [number, number],
     radius: number,
@@ -66,15 +71,25 @@ interface AddressAutocompleteEnhancedProps {
   ) => Promise<unknown>;
   granularity: string;
   triggerClassName?: string;
+  previewPostalCode?: string | null; // Currently previewed postal code
+  layers?: Array<{
+    id: number;
+    name: string;
+    color: string;
+    postalCodes?: { postalCode: string }[];
+  }>; // Available layers to check postal code membership
 }
 
 export function AddressAutocompleteEnhanced({
   onAddressSelect,
   onBoundarySelect,
   onRadiusSelect,
+  onPreviewSelect,
   performDrivingRadiusSearch,
   granularity,
   triggerClassName = "",
+  previewPostalCode,
+  layers = [],
 }: AddressAutocompleteEnhancedProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -110,6 +125,14 @@ export function AddressAutocompleteEnhanced({
     if (!isNaN(numValue) && numValue >= 0.5 && numValue <= 200) {
       setRadius(numValue);
     }
+  });
+
+  // Helper function to get layers containing a postal code
+  const getLayersForPostalCode = useStableCallback((postalCode: string) => {
+    if (!layers || layers.length === 0) return [];
+    return layers.filter(layer =>
+      layer.postalCodes?.some(pc => pc.postalCode === postalCode)
+    );
   });
 
   const handleInputChange = useStableCallback((value: string) => {
@@ -398,8 +421,70 @@ export function AddressAutocompleteEnhanced({
                       <div className="text-xs text-muted-foreground truncate">
                         {result.display_name}
                       </div>
+                      {result.postal_code && (() => {
+                        const containingLayers = getLayersForPostalCode(result.postal_code);
+                        if (containingLayers.length > 0) {
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {containingLayers.map(layer => (
+                                <span
+                                  key={layer.id}
+                                  className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md border"
+                                  style={{
+                                    borderColor: layer.color,
+                                    backgroundColor: `${layer.color}15`,
+                                    color: layer.color
+                                  }}
+                                >
+                                  <span
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: layer.color }}
+                                  />
+                                  {layer.name}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      {onPreviewSelect && result.postal_code && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant={previewPostalCode === result.postal_code ? "default" : "outline"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onPreviewSelect(
+                                    result.coordinates,
+                                    formatDisplayName(result),
+                                    result.postal_code
+                                  );
+                                }}
+                                className="h-8 px-2"
+                              >
+                                {previewPostalCode === result.postal_code ? (
+                                  <EyeOffIcon className="h-3 w-3" />
+                                ) : (
+                                  <EyeIcon className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                {previewPostalCode === result.postal_code
+                                  ? "Vorschau beenden"
+                                  : "Vorschau & Zoom zur PLZ"}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
